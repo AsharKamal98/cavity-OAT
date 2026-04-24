@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+
+import numpy as np
+from scipy.sparse import csc_matrix, diags
+from scipy.sparse.linalg import expm_multiply
+
+
+Array = np.ndarray
+
+# ----------------------------------------------------
+# Classes
+# ----------------------------------------------------
+
+@dataclass(frozen=True)
+class Phase:
+    """One piecewise-constant stage of the protocol."""
+
+    duration: float
+    omega: float
+    delta: float
+    label: str = ""
+
+
+@dataclass
+class SectorOperators:
+    Nj: int
+    J_plus: csc_matrix
+    J_minus: csc_matrix
+    J_x: csc_matrix
+    N_e: csc_matrix
+    JpJm: csc_matrix
+
+
+@dataclass
+class SectorWavefunction:
+    """Wavefunction in one fixed-Nj block on the symmetric |n_e> basis."""
+
+    Nj: int
+    amplitudes: Array  # shape (Nj+1,), basis |n_e>, n_e = 0..Nj
+
+
+@dataclass
+class TrajectorySnapshot:
+    time: float
+    sector_blocks: Dict[int, Array]
+    norm: float
+    phase_index: int
+
+
+@dataclass
+class TrajectoryResult:
+    N: int
+    gamma: float
+    sectors: List[int]
+    sector_multiplicities: Dict[int, int]
+    final_sector_blocks: Dict[int, Array]
+    snapshots: List[TrajectorySnapshot]
+    jump_times: List[float]
+    jump_count: int
+    sector_dimensions: Dict[int, int]
+
