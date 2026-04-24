@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from utils_qt_custom.parser import (
+from quantum_trajectories.parser import (
     Array,
 )
 
-from dataclasses import dataclass
-from math import comb
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Mapping, Optional
 
 import numpy as np
-from scipy.sparse import csc_matrix, diags
-from scipy.sparse.linalg import expm_multiply
 
 
 # -----------------------------------------------------------------------------

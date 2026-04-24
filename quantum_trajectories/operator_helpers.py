@@ -1,10 +1,10 @@
-from utils_qt_custom.parser import (
+from quantum_trajectories.parser import (
     SectorOperators,
 )
 
 import numpy as np
 from math import comb
-from scipy.sparse import csc_matrix, diags
+from scipy.sparse import diags
 
 
 # -----------------------------------------------------------------------------

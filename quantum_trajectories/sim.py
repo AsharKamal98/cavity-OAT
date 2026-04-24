@@ -1,28 +1,25 @@
 from __future__ import annotations
 
-from utils_qt_custom.parser import (
+from quantum_trajectories.parser import (
     Array,
     Phase,
     SectorOperators,
     TrajectorySnapshot,
     TrajectoryResult,
 )
-from utils_qt_custom.operator_helpers import (
+from quantum_trajectories.operator_helpers import (
     build_sector_ops,
     sector_multiplicity,
 )
-from utils_qt_custom.state_helpers import (
+from quantum_trajectories.state_helpers import (
     build_initial_sector_state,
     total_norm2,
 )
 
-from utils import Phase
-
-from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
-from scipy.sparse import csc_matrix, diags
+from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import expm_multiply
 
 

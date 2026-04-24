@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List
 
 import numpy as np
-from scipy.sparse import csc_matrix, diags
-from scipy.sparse.linalg import expm_multiply
+from scipy.sparse import csc_matrix
 
 
 Array = np.ndarray

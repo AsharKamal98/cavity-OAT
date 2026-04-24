@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from utils_qt_custom.parser import (
+from quantum_trajectories.parser import (
     Phase,
 )
-from utils_qt_custom.state_helpers import (
+from quantum_trajectories.state_helpers import (
     total_norm2,
 )
-from utils_qt_custom.operator_helpers import (
+from quantum_trajectories.operator_helpers import (
     build_sector_ops,
 )
 
-from dataclasses import dataclass
-from math import comb
+from utils import phase_change_times
+
 from typing import Dict, Mapping, Sequence, Tuple
 
 import numpy as np
@@ -155,15 +155,6 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> D
         "sy": sy,
         "sz": sz,
     }
-
-
-
-def phase_change_times(phases: Sequence[Phase]) -> Tuple[float, float]:
-    if len(phases) < 2:
-        raise ValueError("Need at least two phases to define change times.")
-    t1 = phases[0].duration
-    t2 = phases[0].duration + phases[1].duration
-    return t1, t2
 
 
 def phase1_ss_angles_for_nj(Nj: int, Omega: float, Gamma: float):

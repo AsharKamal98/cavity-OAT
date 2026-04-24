@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import List
-
+from typing import List, Sequence, Tuple
 
 @dataclass(frozen=True)
 class Phase:
@@ -10,6 +9,14 @@ class Phase:
     omega: float
     delta: float
     label: str = ""
+
+
+def phase_change_times(phases: Sequence[Phase]) -> Tuple[float, float]:
+    if len(phases) < 2:
+        raise ValueError("Need at least two phases to define change times.")
+    t1 = phases[0].duration
+    t2 = phases[0].duration + phases[1].duration
+    return t1, t2
 
 # ----------------------------------------------------
 # Helper functions
