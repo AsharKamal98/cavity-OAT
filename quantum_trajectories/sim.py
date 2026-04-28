@@ -89,7 +89,7 @@ def apply_jump(blocks: Mapping[int, Array], ops_map: Mapping[int, SectorOperator
 # -----------------------------------------------------------------------------
 
 
-def simulate_nj_sector_trajectory(
+def simulate_single_trajectory(
     N: int,
     gamma: float,
     phases: Sequence[Phase],
@@ -144,7 +144,7 @@ def simulate_nj_sector_trajectory(
 
     rng=np.random.default_rng(seed)
 
-    # Sorted dictionaty of key: sector Nj, value: coefficient for that sector
+    # Sorted list of Nj sectors  populated in the initial state.
     sectors = sorted(sector_coeffs.keys())
     # Dictionary of key: sector Nj, value: operators (Jp,Jm...) for that sector
     ops_map = {Nj: build_sector_ops(Nj) for Nj in sectors}
@@ -154,8 +154,8 @@ def simulate_nj_sector_trajectory(
     dims = {Nj: Nj + 1 for Nj in sectors}
 
     # Dictionary of key: sector Nj, value: normalized state vector in that sector's symmetric |n_e> basis (1,0,0,...,0), multiplied by the normalized sector coefficient.
-    # blocks = {Nj: (1,0,0,...,0) * coeff for Nj, coeff in coeffs.items()}
-    # (1,0,0,...,0) is the down state in each sector
+    # blocks = {Nj: (a0, a1, a2, ..., a_Nj) * coeff, where (a0, a1, a2, ..., a_Nj) = a0|n_e=0> + a1|n_e=1> + ... + a_Nj|n_e=Nj>
+    # Initially, a0=1 and a1=a2=...=a_Nj=0, meaning all Nj sectors start in |down>.
     blocks = build_initial_sector_state(N, sector_coeffs, internal_sector_states)
     blocks = renormalize_blocks(blocks)
 
@@ -174,18 +174,21 @@ def simulate_nj_sector_trajectory(
     accepted_steps = 0
     threshold = rng.random()
 
+    # Loop over protocol phases
     for phase_index, phase in enumerate(phases):
         if phase.duration < 0.0:
             raise ValueError("Phase durations must be non-negative.")
         if phase.duration == 0.0:
             continue
 
-        # Dictionary of key: sector Nj, value: effective non-Hermitian Hamiltonian for that sector in this phase.
+        # Construct effective non-Hermitian Hamiltonian for that sector in this phase.
+        # Dictionary of key: sector Nj, value: effective Hamiltonian
         generators = {
             Nj: heff_for_sector(ops_map[Nj], phase.omega, phase.delta, gamma)
             for Nj in sectors
         }
 
+        # Loop within each phase
         phase_end = current_time + phase.duration
         while current_time < phase_end - 1e-15:
             step = min(dt, phase_end - current_time)
@@ -278,11 +281,18 @@ def simulate_nj_sector_trajectory(
     return TrajectoryResult(
         N=N,
         gamma=gamma,
+        # Sorted list of Nj sectors  populated in the initial state.
         sectors=sectors,
+        # Dictionary of key: sector Nj, value: (number of states with that total excitation number / Nj
         sector_multiplicities=multiplicities,
+        # blocks is the full final wavefunction: {Nj: (a0, a1, a2, ..., a_Nj) * coeff, where (a0, a1, a2, ..., a_Nj) = a0|n_e=0> + a1|n_e=1> + ... + a_Nj|n_e=Nj>
         final_sector_blocks={Nj: psi.copy() for Nj, psi in blocks.items()},
+        # snapshots is a list of (time, sector_blocks, norm, phase_index) tuples,
         snapshots=snapshots,
+        # jump_times is a list of jump times in ascending order.
         jump_times=jump_times,
+        # jump_count is the total number of jumps that happened in the trajectory.
         jump_count=len(jump_times),
+        # sector_dimensions is a dictionary of key: sector Nj, value: dimension of that sector's Hilbert space in the e,d manifold (Nj + 1)
         sector_dimensions=dims,
     )

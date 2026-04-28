@@ -159,6 +159,7 @@ def build_initial_sector_state(
         blocks[Nj] = coeff * local
 
     # blocks = {Nj: (1,0,0,...,0) * coeff for Nj, coeff in coeffs.items()}
-    # (1,0,0,...,0) is the down state in each sector
+    # The array is (a0, a1, a2, ..., a_Nj) = a0|n_e=0> + a1|n_e=1> + ... + a_Nj|n_e=Nj>, for given Nj
+    # (1,0,0,...,0) means that the Nj sector in only in the |n_e=0> state, i.e. all active atoms are in |down>.
     return blocks
 
