@@ -3,24 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List
 
-import numpy as np
+from common.parser import Array, AveragedResult, ObservableSeries, Phase
 from scipy.sparse import csc_matrix
-
-
-Array = np.ndarray
 
 # ----------------------------------------------------
 # Classes
 # ----------------------------------------------------
-
-@dataclass(frozen=True)
-class Phase:
-    """One piecewise-constant stage of the protocol."""
-
-    duration: float
-    omega: float
-    delta: float
-    label: str = ""
 
 
 @dataclass
@@ -61,3 +49,11 @@ class TrajectoryResult:
     jump_count: int
     sector_dimensions: Dict[int, int]
 
+# -----------------------------------------------------------------------------
+# Ensambles
+# -----------------------------------------------------------------------------
+
+@dataclass
+class TrajectoryEnsemble:
+    trajectories: List[TrajectoryResult]
+    seeds: List[int]
