@@ -194,22 +194,24 @@ def simulate_fixed_nj_mc_trajectory(
     gamma: float,
     phases: Sequence,
     *,
-    tlist: Optional[np.ndarray] = None,
     num_points: int = 600,
     ntraj: int = 200,
     seed: Optional[int] = None,
     keep_runs_results: bool = True,
 ):
     """
-    Run fixed-N_J mcsolve benchmark using the same high-level inputs as your
-    current main file.
+    Run fixed-N_J mcsolve benchmark and return raw solver output together with
+    the metadata needed for later observable extraction.
 
-    Returns a dictionary with keys:
-        model, t, result, Jx, Jy, Jz, N_e
+    The time grid is built internally as num_points equally spaced samples over
+    the full protocol duration.
     """
+    if num_points < 2:
+        raise ValueError("num_points must be at least 2.")
+
     model = build_qutip_fixed_nj_model_from_phases(N=N, gamma=gamma, phases=phases)
-    if tlist is None:
-        tlist = build_tlist_from_phases(phases, num_points=num_points)
+    tlist = build_tlist_from_phases(phases, num_points=num_points)
+    tlist = np.asarray(tlist, dtype=float)
 
     options = {
         "progress_bar": "",
@@ -217,6 +219,7 @@ def simulate_fixed_nj_mc_trajectory(
         "store_states": True,
         "keep_runs_results": keep_runs_results,
     }
+
     result = qt.mcsolve(
         model.H,
         model.psi0,
@@ -229,24 +232,12 @@ def simulate_fixed_nj_mc_trajectory(
         options=options,
     )
 
-    Jx = np.real(np.asarray(result.expect[0], dtype=float))
-    Jy = np.real(np.asarray(result.expect[1], dtype=float))
-    Jz = np.real(np.asarray(result.expect[2], dtype=float))
-    N_e = np.real(np.asarray(result.expect[3], dtype=float))
-
-    # QuTiP can return shape (ntraj, nt). Average if needed.
-    if Jx.ndim == 2:
-        Jx = Jx.mean(axis=0)
-        Jy = Jy.mean(axis=0)
-        Jz = Jz.mean(axis=0)
-        N_e = N_e.mean(axis=0)
-
     return {
-        "model": model,
-        "t": np.asarray(tlist, dtype=float),
         "result": result,
-        "Jx": Jx,
-        "Jy": Jy,
-        "Jz": Jz,
-        "N_e": N_e,
+        "model": model,
+        "N": N,
+        "gamma": gamma,
+        "ntraj": ntraj,
+        "tlist": tlist,
+        "num_points": num_points,
     }
