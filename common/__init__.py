@@ -1,6 +1,5 @@
 from common.parser import Array, AveragedResult, ObservableSeries, Phase
 from common.plotting import (
-    plot_qutip_angles_and_excitation,
     plot_trajectory_angles_and_excitation,
 )
 from common.utils import (

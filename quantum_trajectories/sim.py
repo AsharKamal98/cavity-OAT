@@ -142,7 +142,9 @@ def simulate_single_trajectory(
     if save_every <= 0:
         raise ValueError("save_every must be >= 1.")
 
-    rng=np.random.default_rng(seed)
+    # rng=np.random.default_rng(seed)
+    seed_seq = np.random.SeedSequence(1234).spawn(1)[0]
+    rng = np.random.default_rng(seed_seq)
 
     # Sorted list of Nj sectors  populated in the initial state.
     sectors = sorted(sector_coeffs.keys())

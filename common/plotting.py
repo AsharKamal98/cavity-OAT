@@ -15,8 +15,10 @@ def plot_trajectory_angles_and_excitation(
     phases,
     *,
     output_path=None,
-    show_phase1_ss=True,
+    show_phase1_ss=False,
     show_spread: bool = False,
+    axes=None,
+    label=None
 ):
     obs = result.observables
     tlist = obs.t
@@ -25,11 +27,15 @@ def plot_trajectory_angles_and_excitation(
     ne_mc = obs.N_e
     t_step1_end, t_step2_end = phase_change_times(phases)
 
-    fig, axes = plt.subplots(3, 1, figsize=(8, 10), sharex=False)
+    # fig, axes = plt.subplots(3, 1, figsize=(8, 10), sharex=False)
+    if axes is None:
+        fig, axes = plt.subplots(3, 1, figsize=(8, 10), sharex=False)
+    else:
+        fig = axes[0].figure
 
-    label = "qt"
-    if hasattr(result, "ntraj") and getattr(result, "ntraj") is not None:
-        label = f"MC avg ({result.ntraj} traj)"
+    #label = "qt"
+    if label is None:
+        label = "missing label"
 
     axes[0].plot(tlist, theta_mc, label=label, linewidth=1.8)
     axes[1].plot(tlist, phi_mc, label=label, linewidth=1.8)
@@ -88,75 +94,4 @@ def plot_trajectory_angles_and_excitation(
     fig.tight_layout()
     if output_path is not None:
         fig.savefig(output_path, dpi=200, bbox_inches="tight")
-    return fig, axes
-
-
-def plot_qutip_angles_and_excitation(
-    qt_data,
-    phases,
-    *,
-    N,
-    output_path=None,
-    show_phase1_ss=True,
-    gamma=None,
-):
-    tlist = np.asarray(qt_data["t"], dtype=float)
-    Jx = np.asarray(qt_data["Jx"], dtype=float)
-    Jy = np.asarray(qt_data["Jy"], dtype=float)
-    Jz = np.asarray(qt_data["Jz"], dtype=float)
-    N_e = np.asarray(qt_data["N_e"], dtype=float)
-
-    Nj = N // 2
-    theta, phi, _, _, _, _ = active_manifold_angles(Jx, Jy, Jz, N_e)
-    t_step1_end, t_step2_end = phase_change_times(phases)
-
-    fig, axes = plt.subplots(3, 1, figsize=(8, 10), sharex=False)
-
-    axes[0].plot(tlist, theta, label="qutip", linewidth=1.8)
-    axes[1].plot(tlist, phi, label="qutip", linewidth=1.8)
-    axes[2].plot(tlist, N_e, label="qutip", linewidth=1.8)
-
-    for ax in axes:
-        ax.axvline(t_step1_end, linestyle="--", color="black", alpha=0.6)
-        ax.axvline(t_step2_end, linestyle="--", color="black", alpha=0.6)
-        ax.grid(alpha=0.3)
-
-    if show_phase1_ss and gamma is not None:
-        Omega1 = phases[0].omega
-        theta_ss, phi_ss = phase1_ss_angles_for_nj(Nj, Omega1, gamma)
-
-        if np.isfinite(theta_ss):
-            axes[0].hlines(
-                y=theta_ss,
-                xmin=0.0,
-                xmax=t_step1_end,
-                linestyle=":",
-                alpha=0.9,
-                label=r"phase-1 ss ($N_J=N/2$)",
-            )
-            axes[1].hlines(
-                y=phi_ss,
-                xmin=0.0,
-                xmax=t_step1_end,
-                linestyle=":",
-                alpha=0.9,
-                label=r"phase-1 ss",
-            )
-
-    axes[0].set_xlabel(r"$\Gamma t$")
-    axes[0].set_ylabel(r"Polar $\theta(t)$")
-    axes[0].legend()
-
-    axes[1].set_xlabel(r"$\Gamma t$")
-    axes[1].set_ylabel(r"Azimuthal $\phi(t)$")
-    axes[1].legend()
-
-    axes[2].set_xlabel(r"$\Gamma t$")
-    axes[2].set_ylabel(r"$\langle N_e(t)\rangle$")
-    axes[2].legend()
-
-    fig.tight_layout()
-    if output_path is not None:
-        fig.savefig(output_path, dpi=200, bbox_inches="tight")
-
     return fig, axes
