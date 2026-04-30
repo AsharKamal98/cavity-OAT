@@ -151,22 +151,27 @@ def simulate_fixed_nj_me_trajectory(
     gamma: float,
     phases: Sequence,
     *,
-    tlist: Optional[np.ndarray] = None,
     num_points: int = 600,
     store_states: bool = True,
 ):
     """
-    Run fixed-N_J mesolve benchmark using the same high-level inputs as your
-    current main file.
+    Run fixed-N_J mesolve benchmark and return raw solver output together with
+    the metadata needed for later observable extraction.
 
-    Returns a dictionary with keys:
-        model, t, result, states, Jx, Jy, Jz, N_e
+    The output is intentionally shaped like simulate_fixed_nj_mc_trajectory(...),
+    so qutip_fixed_nj_mcsolve_observables(...) can also consume it.
     """
-    model = build_qutip_fixed_nj_model_from_phases(N=N, gamma=gamma, phases=phases)
-    if tlist is None:
-        tlist = build_tlist_from_phases(phases, num_points=num_points)
+    if num_points < 2:
+        raise ValueError("num_points must be at least 2.")
 
-    options = {"store_states": store_states}
+    model = build_qutip_fixed_nj_model_from_phases(N=N, gamma=gamma, phases=phases)
+    tlist = build_tlist_from_phases(phases, num_points=num_points)
+    tlist = np.asarray(tlist, dtype=float)
+
+    options = {
+        "store_states": store_states,
+    }
+
     result = qt.mesolve(
         model.H,
         model.psi0,
@@ -178,14 +183,14 @@ def simulate_fixed_nj_me_trajectory(
     )
 
     return {
-        "model": model,
-        "t": np.asarray(tlist, dtype=float),
         "result": result,
+        "model": model,
+        "N": N,
+        "gamma": gamma,
+        "ntraj": None,
+        "tlist": tlist,
+        "num_points": num_points,
         "states": result.states if store_states else None,
-        "Jx": np.real(np.asarray(result.expect[0], dtype=float)),
-        "Jy": np.real(np.asarray(result.expect[1], dtype=float)),
-        "Jz": np.real(np.asarray(result.expect[2], dtype=float)),
-        "N_e": np.real(np.asarray(result.expect[3], dtype=float)),
     }
 
 

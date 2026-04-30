@@ -52,13 +52,31 @@ def qutip_fixed_nj_mcsolve_observables(
     N_j = np.full_like(t, float(N // 2), dtype=float)
     N_j_std = np.zeros_like(t, dtype=float) if Jx_std is not None else None
 
-    theta, phi, N_active, sx, sy, sz = active_manifold_angles(
-        Jx_mean,
-        Jy_mean,
-        Jz_mean,
-        N_e_mean,
-        tol=tol,
-    )
+    # theta, phi, N_active, sx, sy, sz = active_manifold_angles(
+    #     Jx_mean,
+    #     Jy_mean,
+    #     Jz_mean,
+    #     N_e_mean,
+    #     tol=tol,
+    # )
+
+    N_j = np.full_like(t, float(N // 2), dtype=float)
+
+    sx = 2.0 * Jx_mean / N_j
+    sy = 2.0 * Jy_mean / N_j
+
+    # QuTiP convention: initial all-down has Jz = -Nj/2,
+    # and we want theta = 0 there.
+    sz = -2.0 * Jz_mean / N_j
+    sz = np.clip(sz, -1.0, 1.0)
+
+    theta = np.arccos(sz)
+
+    phi = np.arctan2(sy, sx)
+    r_perp = np.sqrt(sx**2 + sy**2)
+    phi[r_perp < tol] = 0.0
+
+    N_active = N_j
 
     obs = ObservableSeries(
         t=t,

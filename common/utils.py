@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Sequence, Tuple
+from typing import Iterable, List, Sequence, Tuple
 
 import numpy as np
 
@@ -75,6 +75,41 @@ def active_manifold_angles(
     phi[r_perp < tol] = 0.0
 
     return theta, phi, N_active, sx, sy, sz
+
+
+def observable_mse_by_time(
+    candidate,
+    reference,
+    *,
+    keys: Iterable[str] = ("Jx", "Jy", "Jz", "N_e"),
+):
+    """
+    Compute per-timestep MSE between two observable containers.
+
+    The reference series are linearly interpolated onto the candidate time grid,
+    so the returned time array always matches candidate.observables.t.
+    """
+    o_c = candidate.observables
+    o_r = reference.observables
+
+    t_c = np.asarray(o_c.t, dtype=float)
+    t_r = np.asarray(o_r.t, dtype=float)
+
+    out = {}
+    for key in keys:
+        y_c = np.asarray(getattr(o_c, key), dtype=float)
+        y_r = np.asarray(getattr(o_r, key), dtype=float)
+        y_r_interp = np.interp(t_c, t_r, y_r)
+        mse_t = (y_c - y_r_interp) ** 2
+
+        out[key] = {
+            "t": t_c,
+            "mse_t": mse_t,
+            "mean_mse": float(np.mean(mse_t)),
+            "integrated_mse": float(np.trapezoid(mse_t, t_c) / (t_c[-1] - t_c[0])),
+        }
+
+    return out
 
 
 def omega_c(N_J: int, Gamma: float) -> float:
