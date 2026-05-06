@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ast import Tuple
+from typing import Dict, Mapping
 
 import numpy as np
 
@@ -23,6 +24,25 @@ from quantum_trajectories.operator_helpers import (
 # Single-trajectory observables
 # -----------------------------------------------------------------------------
 
+_sector_ne_arrays: Dict[int, Array] = {}
+_sector_jz_diagonals: Dict[int, Array] = {}
+
+
+def _cached_ne_array(Nj: int) -> Array:
+    ne = _sector_ne_arrays.get(Nj)
+    if ne is None:
+        ne = np.arange(Nj + 1, dtype=float)
+        _sector_ne_arrays[Nj] = ne
+    return ne
+
+
+def _cached_jz_diag(Nj: int) -> Array:
+    jz_diag = _sector_jz_diagonals.get(Nj)
+    if jz_diag is None:
+        jz_diag = _cached_ne_array(Nj) - 0.5 * Nj
+        _sector_jz_diagonals[Nj] = jz_diag
+    return jz_diag
+
 def expected_collective_components(blocks: Mapping[int, Array]) -> Tuple[float, float, float, float]:
     """
     Return normalized expectations (Jx, Jy, Jz, Ne) summed over all Nj blocks.
@@ -41,16 +61,17 @@ def expected_collective_components(blocks: Mapping[int, Array]) -> Tuple[float, 
         if psi.size == 0:
             continue
         ops = build_sector_ops(Nj)
-        # For certain Nj sector, we have n=0,1,...,Nj states
-        ne = np.arange(Nj + 1, dtype=float)
+        ne = _cached_ne_array(Nj)
+        jz_diag = _cached_jz_diag(Nj)
+        psi_prob = np.abs(psi) ** 2
 
         jx_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
-        jy_total += float(np.vdot(psi, ((ops.J_plus - ops.J_minus) / (2.0j)).dot(psi)).real)
+        jy_total += float(np.vdot(psi, ops.J_y.dot(psi)).real)
         # J_z value for state ∣n_e⟩ = (N_e - N_down) / 2 = (n_e - (Nj - n_e)) / 2 = n_e - Nj/2
         # J_z for N_j = Sum_n_e (probability of basis state ∣n_e⟩ in N_j sector times J_z value for state ∣n_e⟩)
-        jz_total += float(np.dot(np.abs(psi) ** 2, ne - 0.5 * Nj))
+        jz_total += float(np.dot(psi_prob, jz_diag))
         # ne for N_j = Sum_n_e (probability of basis state ∣n_e⟩ in N_j sector times n_e value for state ∣n_e⟩)
-        ne_total += float(np.dot(np.abs(psi) ** 2, ne))
+        ne_total += float(np.dot(psi_prob, ne))
 
     # FIXME: correct?
     return (

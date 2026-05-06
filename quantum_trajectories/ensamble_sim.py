@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from quantum_trajectories.sim import simulate_single_trajectory
+from quantum_trajectories.sim import (
+    build_precomputed_trajectory_data,
+    simulate_single_trajectory,
+)
 from quantum_trajectories.parser import (
     Array,
     Phase,
@@ -41,9 +44,16 @@ def run_trajectory_ensemble(
     master_rng = np.random.default_rng(seed)
     seeds = master_rng.integers(0, 2**32 - 1, size=ntraj, dtype=np.uint64).tolist()
 
+    precomputed = build_precomputed_trajectory_data(
+        N=N,
+        gamma=gamma,
+        phases=phases,
+        sector_coeffs=sector_coeffs,
+        dt=dt,
+    )
+
     trajectories: List[TrajectoryResult] = []
     for s in seeds:
-        rng = np.random.default_rng(int(s))
         result = simulate_single_trajectory(
             N=N,
             gamma=gamma,
@@ -53,6 +63,7 @@ def run_trajectory_ensemble(
             dt=dt,
             save_every=save_every,
             seed=int(s),
+            precomputed=precomputed,
         )
         trajectories.append(result)
 

@@ -40,6 +40,7 @@ def build_sector_ops(Nj: int) -> SectorOperators:
     J_minus = diags(jminus_vals, offsets=+1, shape=(dim, dim), dtype=np.complex128).tocsc()
 
     J_x = (J_plus + J_minus) * 0.5
+    J_y = ((J_plus - J_minus) / (2.0j)).tocsc()
     N_e = diags(ne, 0, shape=(dim, dim), dtype=np.complex128).tocsc()
     JpJm = (J_plus @ J_minus).tocsc()
 
@@ -48,6 +49,7 @@ def build_sector_ops(Nj: int) -> SectorOperators:
         J_plus=J_plus,
         J_minus=J_minus,
         J_x=J_x,
+        J_y=J_y,
         N_e=N_e,
         JpJm=JpJm,
     )

@@ -17,6 +17,7 @@ class SectorOperators:
     J_plus: csc_matrix
     J_minus: csc_matrix
     J_x: csc_matrix
+    J_y: csc_matrix
     N_e: csc_matrix
     JpJm: csc_matrix
 
