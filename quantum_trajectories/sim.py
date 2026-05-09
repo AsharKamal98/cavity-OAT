@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
-from scipy.sparse import csc_matrix
+from scipy.sparse import csc_matrix, eye
 from scipy.sparse.linalg import expm, expm_multiply
 
 from quantum_trajectories.operator_helpers import (
@@ -28,7 +28,35 @@ from quantum_trajectories.state_helpers import (
 # -----------------------------------------------------------------------------
 
 
-def heff_for_sector(ops: SectorOperators, omega: float, delta: float, gamma: float) -> csc_matrix:
+def build_phase_jump_operator_for_sector(
+    ops: SectorOperators,
+    omega: float,
+    gamma: float,
+    *,
+    shifted_jump_operator: bool = False,
+) -> csc_matrix:
+    if not shifted_jump_operator:
+        return ops.J_minus
+
+    if gamma <= 0.0:
+        raise ValueError(
+            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
+            "operator contains omega / gamma."
+        )
+
+    identity = eye(ops.J_minus.shape[0], format="csc", dtype=np.complex128)
+    return (ops.J_minus + (1j * omega / gamma) * identity).tocsc()
+
+
+def heff_for_sector(
+    ops: SectorOperators,
+    omega: float,
+    delta: float,
+    gamma: float,
+    *,
+    shifted_jump_operator: bool = False,
+    jump_operator: Optional[csc_matrix] = None,
+) -> csc_matrix:
     """
     Regular H_delta and regular jump operator from the paper:
         H_delta = Omega J_x - delta N_e,
@@ -40,13 +68,27 @@ def heff_for_sector(ops: SectorOperators, omega: float, delta: float, gamma: flo
     For the homogeneous collective decay, the only jump operator is J_-, so the sum reduces to J_+ J_-.
         H_delta - i/2 gamma J_+ J_-,
     """
-    H = omega * ops.J_x - delta * ops.N_e
-    Heff = H - 0.5j * gamma * ops.JpJm
+    if not shifted_jump_operator:
+        H = omega * ops.J_x - delta * ops.N_e
+        Heff = H - 0.5j * gamma * ops.JpJm
+        return Heff.tocsc()
+
+    if jump_operator is None:
+        jump_operator = build_phase_jump_operator_for_sector(
+            ops,
+            omega,
+            gamma,
+            shifted_jump_operator=True,
+        )
+
+    H = -delta * ops.N_e
+    jump_dag_jump = (jump_operator.conjugate().transpose() @ jump_operator).tocsc()
+    Heff = H - 0.5j * gamma * jump_dag_jump
     return Heff.tocsc()
 
 
-def jump_for_sector(ops: SectorOperators, psi: Array) -> Array:
-    return ops.J_minus.dot(psi)
+def jump_for_sector(jump_operator: csc_matrix, psi: Array) -> Array:
+    return jump_operator.dot(psi)
 
 
 def blocks_list_to_dict(sector_list: Sequence[int], psi_blocks: Sequence[Array]) -> Dict[int, Array]:
@@ -104,8 +146,8 @@ def propagate_blocks_with_propagators(
     return out
 
 
-def apply_jump(psi_blocks: Sequence[Array], ops_list: Sequence[SectorOperators]) -> List[Array]:
-    jumped = [jump_for_sector(ops, psi) for ops, psi in zip(ops_list, psi_blocks)]
+def apply_jump(psi_blocks: Sequence[Array], jump_operators_list: Sequence[csc_matrix]) -> List[Array]:
+    jumped = [jump_for_sector(jump_operator, psi) for jump_operator, psi in zip(jump_operators_list, psi_blocks)]
     if total_norm2_list(jumped) == 0.0:
         # No further jumps possible; keep the pre-jump state instead of crashing.
         return [psi.copy() for psi in psi_blocks]
@@ -118,14 +160,38 @@ def build_precomputed_trajectory_data(
     phases: Sequence[Phase],
     sector_coeffs: Mapping[int, complex],
     dt: float,
+    *,
+    shifted_jump_operator: bool = False,
 ) -> Dict[str, Any]:
     sector_list = sorted(sector_coeffs.keys())
     ops_list = [build_sector_ops(Nj) for Nj in sector_list]
     multiplicities = {Nj: sector_multiplicity(N, Nj) for Nj in sector_list}
     dims = {Nj: Nj + 1 for Nj in sector_list}
-    phase_generators = [
-        [heff_for_sector(ops, phase.omega, phase.delta, gamma) for ops in ops_list]
+    phase_jump_operators = [
+        [
+            build_phase_jump_operator_for_sector(
+                ops,
+                phase.omega,
+                gamma,
+                shifted_jump_operator=shifted_jump_operator,
+            )
+            for ops in ops_list
+        ]
         for phase in phases
+    ]
+    phase_generators = [
+        [
+            heff_for_sector(
+                ops,
+                phase.omega,
+                phase.delta,
+                gamma,
+                shifted_jump_operator=shifted_jump_operator,
+                jump_operator=jump_operator,
+            )
+            for ops, jump_operator in zip(ops_list, jump_operators_list)
+        ]
+        for phase, jump_operators_list in zip(phases, phase_jump_operators)
     ]
     phase_propagators = [
         [expm((-1j * generator) * dt).tocsc() for generator in generators_list]
@@ -137,6 +203,7 @@ def build_precomputed_trajectory_data(
         "ops_list": ops_list,
         "multiplicities": multiplicities,
         "dims": dims,
+        "phase_jump_operators": phase_jump_operators,
         "phase_generators": phase_generators,
         "phase_propagators": phase_propagators,
     }
@@ -157,6 +224,7 @@ def simulate_single_trajectory(
     dt: float = 1e-3,
     save_every: int = 1,
     seed: int = 1234,
+    shifted_jump_operator: bool = False,
     precomputed: Optional[Dict[str, Any]] = None,
 ) -> TrajectoryResult:
     """
@@ -200,18 +268,30 @@ def simulate_single_trajectory(
         raise ValueError("dt must be positive.")
     if save_every <= 0:
         raise ValueError("save_every must be >= 1.")
+    if shifted_jump_operator and gamma <= 0.0:
+        raise ValueError(
+            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
+            "operator contains omega / gamma."
+        )
 
     seed_seq = np.random.SeedSequence(seed).spawn(1)[0]
     rng = np.random.default_rng(seed_seq)
 
     # Keep dictionary inputs/outputs for compatibility, but use aligned lists in the hot loop.
     if precomputed is None:
-        precomputed = build_precomputed_trajectory_data(N, gamma, phases, sector_coeffs, dt)
+        precomputed = build_precomputed_trajectory_data(
+            N,
+            gamma,
+            phases,
+            sector_coeffs,
+            dt,
+            shifted_jump_operator=shifted_jump_operator,
+        )
 
     sector_list = precomputed["sector_list"]
-    ops_list = precomputed["ops_list"]
     multiplicities = precomputed["multiplicities"]
     dims = precomputed["dims"]
+    phase_jump_operators = precomputed["phase_jump_operators"]
     phase_generators = precomputed["phase_generators"]
     phase_propagators = precomputed["phase_propagators"]
 
@@ -238,6 +318,7 @@ def simulate_single_trajectory(
         if phase.duration == 0.0:
             continue
 
+        jump_operators_list = phase_jump_operators[phase_index]
         generators_list = phase_generators[phase_index]
         full_step_propagators = phase_propagators[phase_index]
 
@@ -281,7 +362,7 @@ def simulate_single_trajectory(
             current_time += tau
 
             psi_blocks = renormalize_psi_blocks(psi_blocks)
-            psi_blocks = apply_jump(psi_blocks, ops_list)
+            psi_blocks = apply_jump(psi_blocks, jump_operators_list)
             jump_times.append(current_time)
             threshold = rng.random()
 

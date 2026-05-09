@@ -16,6 +16,8 @@ class QutipFixedNjModel:
     N_J: int
     j: float
     gamma: float
+    shifted_jump_operator: bool
+    unraveling_picture: str
     omega0: float
     delta0: float
     Jp: qt.Qobj
@@ -48,10 +50,25 @@ def _delta_coeff(t, args):
     return 0.0
 
 
+def _make_omega_coeff_from_phases(Omega0: float, t_step1_end: float, t_step2_end: float):
+    def _omega_coeff_local(t, args=None):
+        if args is not None and "t_step1_end" in args:
+            return _omega_coeff(t, args)
+        if t < t_step1_end:
+            return Omega0
+        elif t < t_step2_end:
+            return Omega0
+        return 0.0
+
+    return _omega_coeff_local
+
+
 def build_qutip_fixed_nj_model_from_phases(
     N: int,
     gamma: float,
     phases: Sequence,
+    *,
+    shifted_jump_operator: bool = False,
 ) -> QutipFixedNjModel:
     """
     Build a fixed-N_J two-level collective model in QuTiP using the Dicke basis.
@@ -81,6 +98,11 @@ def build_qutip_fixed_nj_model_from_phases(
         raise ValueError("N must be positive.")
     if N % 2 != 0:
         raise ValueError("Need even N so that N_J = N/2 is integer.")
+    if shifted_jump_operator and gamma <= 0.0:
+        raise ValueError(
+            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
+            "operator contains omega / gamma."
+        )
 
     N_J = N // 2
     j = N_J / 2.0
@@ -96,13 +118,27 @@ def build_qutip_fixed_nj_model_from_phases(
     Jx = qt.jmat(j, "x")
     Jy = qt.jmat(j, "y")
     Jz = qt.jmat(j, "z")
-    N_e = Jz + j * qt.qeye(int(2 * j + 1))
+    identity = qt.qeye(int(2 * j + 1))
+    N_e = Jz + j * identity
+    omega_coeff_local = _make_omega_coeff_from_phases(Omega0, t_step1_end, t_step2_end)
 
-    H = [
-        [Jx, _omega_coeff],
-        [-N_e, _delta_coeff],
-    ]
-    c_ops = [np.sqrt(gamma) * Jm]
+    if shifted_jump_operator:
+        H = [
+            [-N_e, _delta_coeff],
+        ]
+        shifted_c_op = qt.QobjEvo([
+            np.sqrt(gamma) * Jm,
+            [1j / np.sqrt(gamma) * identity, omega_coeff_local],
+        ])
+        c_ops = [shifted_c_op]
+        unraveling_picture = "shifted"
+    else:
+        H = [
+            [Jx, _omega_coeff],
+            [-N_e, _delta_coeff],
+        ]
+        c_ops = [np.sqrt(gamma) * Jm]
+        unraveling_picture = "regular"
 
     # psi0 = qt.basis(int(2 * j + 1), 0)  # |m=-j> i.e. all active atoms in |down>
     dim = int(2 * j + 1)
@@ -113,6 +149,8 @@ def build_qutip_fixed_nj_model_from_phases(
         N_J=N_J,
         j=j,
         gamma=gamma,
+        shifted_jump_operator=shifted_jump_operator,
+        unraveling_picture=unraveling_picture,
         omega0=Omega0,
         delta0=delta0,
         Jp=Jp,
@@ -153,6 +191,7 @@ def simulate_fixed_nj_me_trajectory(
     *,
     num_points: int = 600,
     store_states: bool = True,
+    shifted_jump_operator: bool = False,
 ):
     """
     Run fixed-N_J mesolve benchmark and return raw solver output together with
@@ -164,7 +203,12 @@ def simulate_fixed_nj_me_trajectory(
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
 
-    model = build_qutip_fixed_nj_model_from_phases(N=N, gamma=gamma, phases=phases)
+    model = build_qutip_fixed_nj_model_from_phases(
+        N=N,
+        gamma=gamma,
+        phases=phases,
+        shifted_jump_operator=shifted_jump_operator,
+    )
     tlist = build_tlist_from_phases(phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
 
@@ -203,6 +247,7 @@ def simulate_fixed_nj_mc_trajectory(
     ntraj: int = 200,
     seed: Optional[int] = None,
     keep_runs_results: bool = True,
+    shifted_jump_operator: bool = False,
 ):
     """
     Run fixed-N_J mcsolve benchmark and return raw solver output together with
@@ -214,7 +259,12 @@ def simulate_fixed_nj_mc_trajectory(
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
 
-    model = build_qutip_fixed_nj_model_from_phases(N=N, gamma=gamma, phases=phases)
+    model = build_qutip_fixed_nj_model_from_phases(
+        N=N,
+        gamma=gamma,
+        phases=phases,
+        shifted_jump_operator=shifted_jump_operator,
+    )
     tlist = build_tlist_from_phases(phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
 

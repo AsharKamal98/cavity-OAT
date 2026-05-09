@@ -30,6 +30,7 @@ def run_trajectory_ensemble(
     dt: float = 1e-3,
     save_every: int = 1,
     seed: Optional[int] = None,
+    shifted_jump_operator: bool = False,
     ntraj: int,
 ) -> TrajectoryEnsemble:
     """
@@ -40,6 +41,11 @@ def run_trajectory_ensemble(
     """
     if ntraj <= 0:
         raise ValueError("ntraj must be positive.")
+    if shifted_jump_operator and gamma <= 0.0:
+        raise ValueError(
+            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
+            "operator contains omega / gamma."
+        )
 
     master_rng = np.random.default_rng(seed)
     seeds = master_rng.integers(0, 2**32 - 1, size=ntraj, dtype=np.uint64).tolist()
@@ -50,6 +56,7 @@ def run_trajectory_ensemble(
         phases=phases,
         sector_coeffs=sector_coeffs,
         dt=dt,
+        shifted_jump_operator=shifted_jump_operator,
     )
 
     trajectories: List[TrajectoryResult] = []
@@ -63,6 +70,7 @@ def run_trajectory_ensemble(
             dt=dt,
             save_every=save_every,
             seed=int(s),
+            shifted_jump_operator=shifted_jump_operator,
             precomputed=precomputed,
         )
         trajectories.append(result)
