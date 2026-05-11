@@ -13,6 +13,7 @@ from quantum_trajectories.parser import (
     TrajectoryResult,
     TrajectoryEnsemble,
 )
+from quantum_trajectories.sim import build_phase_jump_operator_for_sector
 from quantum_trajectories.state_helpers import (
     total_norm2,
 )
@@ -82,10 +83,50 @@ def expected_collective_components(blocks: Mapping[int, Array]) -> Tuple[float, 
     )
 
 
+def jump_rate_for_blocks(
+    blocks: Mapping[int, Array],
+    *,
+    gamma: float,
+    omega: float,
+    shifted_jump_operator: bool,
+) -> float:
+    """
+    Evaluate the physical jump rate for one saved MCWF state.
+
+    The rate is computed from the full block wavefunction and the same
+    phase-dependent jump operator used by the solver:
+        r(t) = gamma * sum_Nj <psi_Nj| l_Nj^dagger(t) l_Nj(t) |psi_Nj>.
+    """
+    norm2 = total_norm2(blocks)
+    if norm2 <= 1e-15:
+        return 0.0
+
+    jump_rate = 0.0
+    for Nj, psi in blocks.items():
+        if psi.size == 0:
+            continue
+        ops = build_sector_ops(Nj)
+        jump_operator = build_phase_jump_operator_for_sector(
+            ops,
+            omega,
+            gamma,
+            shifted_jump_operator=shifted_jump_operator,
+        )
+        # The MCWF code stores the unscaled jump operator l, so the physical
+        # rate is gamma * <l^dagger l>.
+        jumped = jump_operator.dot(psi)
+        jump_rate += float(gamma * np.vdot(jumped, jumped).real)
+
+    # Guard against tiny negative values from floating-point noise.
+    if jump_rate < 0.0 and abs(jump_rate) < 1e-10:
+        return 0.0
+    return jump_rate / norm2
+
+
 def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> ObservableSeries:
     """
-    Convert saved snapshots into time series for Jx, Jy, Jz, Ne, Nj, and the
-    active-manifold angles.
+    Convert saved snapshots into time series for Jx, Jy, Jz, Ne, jump rate,
+    Nj, and the active-manifold angles.
 
     The returned theta and phi are computed in the {|down>, |e>} manifold using
     the expected active-manifold population N_active = <N_down + N_e>.
@@ -95,6 +136,7 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
     jy = np.zeros_like(t)
     jz = np.zeros_like(t)
     ne = np.zeros_like(t)
+    jump_rate = np.zeros_like(t)
     nj = np.zeros_like(t)
 
     # Loop over snapshots and compute expectations for each one.
@@ -105,6 +147,14 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
         jy[k] = jy_k
         jz[k] = jz_k
         ne[k] = ne_k
+        # Recover the phase omega from the saved phase index so the shifted
+        # picture uses the same time-local jump operator as the trajectory.
+        jump_rate[k] = jump_rate_for_blocks(
+            snap.sector_blocks,
+            gamma=result.gamma,
+            omega=result.phases[snap.phase_index].omega,
+            shifted_jump_operator=result.shifted_jump_operator,
+        )
         nj[k] = sum(Nj * float(np.vdot(psi, psi).real) for Nj, psi in snap.sector_blocks.items())
 
     theta, phi, n_active, sx, sy, sz = active_manifold_angles(jx, jy, jz, ne, tol=tol)
@@ -115,6 +165,7 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
         Jy=jy,
         Jz=jz,
         N_e=ne,
+        jump_rate=jump_rate,
         N_j=nj,
         N_active=n_active,
         theta=theta,
@@ -168,15 +219,15 @@ def ensemble_observables(
 ) -> ObservableSeries:
     """
     Compute per-trajectory observables, interpolate them to a common time grid,
-    average Jx/Jy/Jz/N_e/N_j across trajectories, then compute theta/phi and
-    sx/sy/sz from those averaged observables.
+    average Jx/Jy/Jz/N_e/jump_rate/N_j across trajectories, then compute
+    theta/phi and sx/sy/sz from those averaged observables.
 
     Returns
     -------
     ObservableSeries
         Mean observables in the standard single-trajectory field names, with
         standard deviations filled for:
-            Jx, Jy, Jz, N_e, N_j, N_active
+        Jx, Jy, Jz, N_e, N_j, N_active
 
         For now, theta_std and phi_std are not included.
     """
@@ -195,6 +246,7 @@ def ensemble_observables(
     Jy_list = []
     Jz_list = []
     Ne_list = []
+    jump_rate_list = []
     Nj_list = []
 
     for traj in ensemble.trajectories:
@@ -204,24 +256,30 @@ def ensemble_observables(
         Jy_list.append(_interp_series(obs.t, obs.Jy, t_ref))
         Jz_list.append(_interp_series(obs.t, obs.Jz, t_ref))
         Ne_list.append(_interp_series(obs.t, obs.N_e, t_ref))
+        # Jump rate is averaged on the same reference grid as the other
+        # observables so ensemble means/stds line up in time.
+        jump_rate_list.append(_interp_series(obs.t, obs.jump_rate, t_ref))
         Nj_list.append(_interp_series(obs.t, obs.N_j, t_ref))
 
     Jx_arr = np.asarray(Jx_list, dtype=float)
     Jy_arr = np.asarray(Jy_list, dtype=float)
     Jz_arr = np.asarray(Jz_list, dtype=float)
     Ne_arr = np.asarray(Ne_list, dtype=float)
+    jump_rate_arr = np.asarray(jump_rate_list, dtype=float)
     Nj_arr = np.asarray(Nj_list, dtype=float)
 
     Jx_mean = np.mean(Jx_arr, axis=0)
     Jy_mean = np.mean(Jy_arr, axis=0)
     Jz_mean = np.mean(Jz_arr, axis=0)
     N_e_mean = np.mean(Ne_arr, axis=0)
+    jump_rate_mean = np.mean(jump_rate_arr, axis=0)
     N_j_mean = np.mean(Nj_arr, axis=0)
 
     Jx_std = np.std(Jx_arr, axis=0, ddof=0)
     Jy_std = np.std(Jy_arr, axis=0, ddof=0)
     Jz_std = np.std(Jz_arr, axis=0, ddof=0)
     N_e_std = np.std(Ne_arr, axis=0, ddof=0)
+    jump_rate_std = np.std(jump_rate_arr, axis=0, ddof=0)
     N_j_std = np.std(Nj_arr, axis=0, ddof=0)
 
     theta, phi, N_active, sx, sy, sz = active_manifold_angles(
@@ -253,6 +311,7 @@ def ensemble_observables(
         Jy=Jy_mean,
         Jz=Jz_mean,
         N_e=N_e_mean,
+        jump_rate=jump_rate_mean,
         N_j=N_j_mean,
         N_active=N_active,
         theta=theta,
@@ -264,6 +323,7 @@ def ensemble_observables(
         Jy_std=Jy_std,
         Jz_std=Jz_std,
         N_e_std=N_e_std,
+        jump_rate_std=jump_rate_std,
         N_j_std=N_j_std,
         N_active_std=0,
     )

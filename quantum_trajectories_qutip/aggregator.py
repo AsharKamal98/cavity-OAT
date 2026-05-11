@@ -6,22 +6,27 @@ import numpy as np
 
 from common.parser import AveragedResult, ObservableSeries
 from common.utils import active_manifold_angles
+from quantum_trajectories_qutip.sim import jump_rate_from_state
 
 
-def qutip_fixed_nj_mcsolve_observables(
+def qutip_fixed_nj_observables(
     sim_data,
     *,
     tol: float = 1e-12,
 ) -> AveragedResult:
     """
-    Convert output of simulate_fixed_nj_mc_trajectory(...) into AveragedResult,
-    so it can be passed to the common plotting function.
+    Convert fixed-N_J QuTiP solver output into AveragedResult.
+
+    The returned observable series now also includes the physical jump rate.
+    For mcsolve, the rate is averaged over runs when per-run states are present.
+    The same function also accepts the corresponding mesolve output shape.
     """
     result = sim_data["result"]
     N = sim_data["N"]
     gamma = sim_data["gamma"]
     ntraj = sim_data["ntraj"]
     t = np.asarray(sim_data["tlist"], dtype=float)
+    model = sim_data["model"]
 
     Jx = np.real(np.asarray(result.expect[0], dtype=float))
     Jy = np.real(np.asarray(result.expect[1], dtype=float))
@@ -48,6 +53,35 @@ def qutip_fixed_nj_mcsolve_observables(
         Jy_std = None
         Jz_std = None
         N_e_std = None
+
+    jump_rate_mean = None
+    jump_rate_std = None
+
+    states = sim_data.get("states")
+    runs_states = sim_data.get("runs_states")
+
+    if runs_states is not None:
+        # mcsolve can expose one saved state list per trajectory; use that to
+        # compute a mean and standard deviation for the jump rate.
+        jump_rate_runs = []
+        for run_states in runs_states:
+            jump_rate_runs.append(
+                [jump_rate_from_state(model, state, t_k) for state, t_k in zip(run_states, t)]
+            )
+        jump_rate_arr = np.asarray(jump_rate_runs, dtype=float)
+        jump_rate_mean = jump_rate_arr.mean(axis=0)
+        jump_rate_std = jump_rate_arr.std(axis=0, ddof=0)
+    elif states is not None:
+        # mesolve returns one state per saved time, so only a mean curve exists.
+        jump_rate_mean = np.asarray(
+            [jump_rate_from_state(model, state, t_k) for state, t_k in zip(states, t)],
+            dtype=float,
+        )
+    else:
+        raise ValueError(
+            "QuTiP jump-rate extraction requires stored states or runs_states. "
+            "Rerun the solver with state storage enabled."
+        )
 
     N_j = np.full_like(t, float(N // 2), dtype=float)
     N_j_std = np.zeros_like(t, dtype=float) if Jx_std is not None else None
@@ -84,6 +118,7 @@ def qutip_fixed_nj_mcsolve_observables(
         Jy=Jy_mean,
         Jz=Jz_mean,
         N_e=N_e_mean,
+        jump_rate=jump_rate_mean,
         N_j=N_j,
         N_active=N_active,
         theta=theta,
@@ -95,6 +130,7 @@ def qutip_fixed_nj_mcsolve_observables(
         Jy_std=Jy_std,
         Jz_std=Jz_std,
         N_e_std=N_e_std,
+        jump_rate_std=jump_rate_std,
         N_j_std=N_j_std,
         N_active_std=None,
     )
@@ -105,3 +141,18 @@ def qutip_fixed_nj_mcsolve_observables(
         ntraj=ntraj,
         observables=obs,
     )
+
+
+def qutip_fixed_nj_mcsolve_observables(
+    sim_data,
+    *,
+    tol: float = 1e-12,
+) -> AveragedResult:
+    """
+    Backward-compatible alias for qutip_fixed_nj_observables(...).
+
+    The old name is kept so existing notebook cells keep working, but the new
+    neutral name should be preferred because the function also handles mesolve
+    output.
+    """
+    return qutip_fixed_nj_observables(sim_data, tol=tol)

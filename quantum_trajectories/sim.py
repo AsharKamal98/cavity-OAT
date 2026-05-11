@@ -409,6 +409,8 @@ def simulate_single_trajectory(
     return TrajectoryResult(
         N=N,
         gamma=gamma,
+        phases=list(phases),
+        shifted_jump_operator=shifted_jump_operator,
         sectors=sector_list,
         sector_multiplicities=multiplicities,
         final_sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),

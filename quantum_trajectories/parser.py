@@ -42,6 +42,8 @@ class TrajectorySnapshot:
 class TrajectoryResult:
     N: int
     gamma: float
+    phases: List[Phase]
+    shifted_jump_operator: bool
     sectors: List[int]
     sector_multiplicities: Dict[int, int]
     final_sector_blocks: Dict[int, Array]

@@ -51,6 +51,12 @@ def _delta_coeff(t, args):
 
 
 def _make_omega_coeff_from_phases(Omega0: float, t_step1_end: float, t_step2_end: float):
+    """
+    Build an omega(t) coefficient that works both inside and outside a solver.
+
+    QuTiP may probe coefficients before solver args are attached, so this local
+    closure can fall back to the phase boundaries captured at model-build time.
+    """
     def _omega_coeff_local(t, args=None):
         if args is not None and "t_step1_end" in args:
             return _omega_coeff(t, args)
@@ -184,6 +190,52 @@ def _solver_args(model: QutipFixedNjModel) -> Dict[str, float]:
     }
 
 
+def collapse_ops_at_time(model: QutipFixedNjModel, t: float) -> List[qt.Qobj]:
+    """
+    Evaluate the model's actual collapse operators at time t.
+
+    Regular-picture collapse operators are plain Qobj instances.
+    Shifted-picture collapse operators are stored as QobjEvo and can be
+    evaluated directly at time t in the installed QuTiP API.
+    """
+    args = _solver_args(model)
+    evaluated = []
+    for c_op in model.c_ops:
+        # if time-dependent, c_op should be a QobjEvo; evaluate at time t
+        if isinstance(c_op, qt.QobjEvo):
+            evaluated.append(c_op(t, args=args))
+        # else t-independent, c_op should be a Qobj; use as-is
+        else:
+            evaluated.append(c_op)
+    return evaluated
+
+
+def jump_rate_operator_at_time(model: QutipFixedNjModel, t: float) -> qt.Qobj:
+    """
+    Return sum_c c^\dagger(t) c(t) from the model's actual collapse operators.
+    """
+    collapse_ops = collapse_ops_at_time(model, t)
+    rate_operator = 0 * model.Jm
+    # loop through decay channels
+    for c_op in collapse_ops:
+        rate_operator = rate_operator + c_op.dag() * c_op
+    return rate_operator
+
+
+def jump_rate_from_state(model: QutipFixedNjModel, state: qt.Qobj, t: float) -> float:
+    """Evaluate the physical jump rate for a ket or density matrix at time t."""
+    rate_operator = jump_rate_operator_at_time(model, t)
+    if state.isket:
+        value = qt.expect(rate_operator, state)
+    else:
+        value = (state * rate_operator).tr()
+    jump_rate = float(np.real(value))
+    # Numerical solvers can produce tiny negative roundoff errors near zero.
+    if jump_rate < 0.0 and abs(jump_rate) < 1e-10:
+        return 0.0
+    return jump_rate
+
+
 def simulate_fixed_nj_me_trajectory(
     N: int,
     gamma: float,
@@ -198,7 +250,7 @@ def simulate_fixed_nj_me_trajectory(
     the metadata needed for later observable extraction.
 
     The output is intentionally shaped like simulate_fixed_nj_mc_trajectory(...),
-    so qutip_fixed_nj_mcsolve_observables(...) can also consume it.
+    so qutip_fixed_nj_observables(...) can also consume it.
     """
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
@@ -295,4 +347,6 @@ def simulate_fixed_nj_mc_trajectory(
         "ntraj": ntraj,
         "tlist": tlist,
         "num_points": num_points,
+        "states": getattr(result, "states", None),
+        "runs_states": getattr(result, "runs_states", None),
     }
