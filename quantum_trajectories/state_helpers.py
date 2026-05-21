@@ -83,7 +83,7 @@ def _sector_distribution_weight(N: int, Nj: int, sector_distribution: str) -> fl
 
 def centered_sector_initial_coeffs(
     N: int,
-    half_width: int,
+    dN: int,
     *,
     phase_fn=None,
     sector_distribution: str = "square",
@@ -96,12 +96,12 @@ def centered_sector_initial_coeffs(
     N
         Total atom number. Assumes even N if you want the center exactly at
         N/2.
-    half_width
+    dN
         How many sectors on each side of N/2 to include.
 
-        half_width = 0  -> {N/2}
-        half_width = 1  -> {N/2 - 1, N/2, N/2 + 1}
-        half_width = 2  -> {N/2 - 2, ..., N/2 + 2}
+        dN = 0  -> {N/2}
+        dN = 1  -> {N/2 - 1, N/2, N/2 + 1}
+        dN = 2  -> {N/2 - 2, ..., N/2 + 2}
     phase_fn
         Optional function phase_fn(Nj) returning the phase to apply to sector
         Nj. If omitted, all included sectors have real non-negative amplitudes.
@@ -125,15 +125,15 @@ def centered_sector_initial_coeffs(
     """
     if N < 0:
         raise ValueError("N must be non-negative.")
-    if half_width < 0:
-        raise ValueError("half_width must be >= 0.")
+    if dN < 0:
+        raise ValueError("dN must be >= 0.")
     if N % 2 != 0:
         raise ValueError("This helper assumes even N so the center is exactly N/2.")
 
     sector_distribution = validate_sector_distribution(sector_distribution)
 
     center = N // 2
-    sector_list = list(range(center - half_width, center + half_width + 1))
+    sector_list = list(range(center - dN, center + dN + 1))
     sector_list = [Nj for Nj in sector_list if 0 <= Nj <= N]
     if not sector_list:
         raise ValueError("No valid sectors selected.")

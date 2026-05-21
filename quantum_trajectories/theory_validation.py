@@ -408,7 +408,7 @@ def theoretical_approx_jump_count_vs_half_width_data(
     Gamma: float,
     N: int,
     omega_over_omega_c: float,
-    max_half_width: int,
+    max_dN: int,
     simulation_time: float = 10.0,
 ) -> dict:
     """
@@ -419,8 +419,8 @@ def theoretical_approx_jump_count_vs_half_width_data(
     that the S_z moments come from the closed-form equal-sector approximation
     instead of from simulated trajectory sector weights.
     """
-    if max_half_width < 0:
-        raise ValueError("max_half_width must be >= 0.")
+    if max_dN < 0:
+        raise ValueError("max_dN must be >= 0.")
     if simulation_time < 0.0:
         raise ValueError("simulation_time must be non-negative.")
 
@@ -431,14 +431,14 @@ def theoretical_approx_jump_count_vs_half_width_data(
         N=N,
     )
 
-    half_widths = np.arange(max_half_width + 1, dtype=int)
-    n_sectors = 2 * half_widths + 1
-    sz_mean = np.zeros_like(half_widths, dtype=float)
-    sz2_mean = np.zeros_like(half_widths, dtype=float)
-    sz_var = np.zeros_like(half_widths, dtype=float)
-    jump_rate = np.zeros_like(half_widths, dtype=float)
+    dN_values = np.arange(max_dN + 1, dtype=int)
+    n_sectors = 2 * dN_values + 1
+    sz_mean = np.zeros_like(dN_values, dtype=float)
+    sz2_mean = np.zeros_like(dN_values, dtype=float)
+    sz_var = np.zeros_like(dN_values, dtype=float)
+    jump_rate = np.zeros_like(dN_values, dtype=float)
 
-    for i, dN in enumerate(half_widths):
+    for i, dN in enumerate(dN_values):
         moments = _sz_moments_from_uniform_half_width(int(dN))
         sz_mean[i] = moments["S_z_mean"]
         sz2_mean[i] = moments["S_z2_mean"]
@@ -453,7 +453,8 @@ def theoretical_approx_jump_count_vs_half_width_data(
     jump_count = simulation_time * jump_rate
 
     return {
-        "half_widths": half_widths,
+        "dN_values": dN_values,
+        "half_widths": dN_values,
         "n_sectors": n_sectors,
         "S_z_mean": sz_mean,
         "S_z2_mean": sz2_mean,
@@ -471,7 +472,7 @@ def plot_theoretical_approx_jump_count_vs_half_width(
     Gamma: float,
     N: int,
     omega_over_omega_c: float,
-    max_half_width: int,
+    max_dN: int,
     simulation_time: float = 10.0,
     ax: Optional[plt.Axes] = None,
     label: str | None = None,
@@ -487,8 +488,8 @@ def plot_theoretical_approx_jump_count_vs_half_width(
 
         Var(N_J) = dN(dN+1)/3.
     """
-    if max_half_width < 0:
-        raise ValueError("max_half_width must be >= 0.")
+    if max_dN < 0:
+        raise ValueError("max_dN must be >= 0.")
     if simulation_time < 0.0:
         raise ValueError("simulation_time must be non-negative.")
 
@@ -497,13 +498,13 @@ def plot_theoretical_approx_jump_count_vs_half_width(
         Gamma=Gamma,
         omega_over_omega_c=omega_over_omega_c,
         N=N,
-        max_half_width=max_half_width,
+        max_dN=max_dN,
         simulation_time=simulation_time,
     )
     coeffs = out["coeffs"]
     print(f"A: {coeffs['A']}")
     print(f"B: {coeffs['B']}")
-    half_widths = out["half_widths"]
+    dN_values = out["dN_values"]
     n_sectors = out["n_sectors"]
     var_Nj = out["var_Nj"]
     jump_count = out["jump_count"]
