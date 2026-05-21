@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from ast import Tuple
 from typing import Dict, Mapping
 
 import numpy as np
@@ -44,7 +43,8 @@ def _cached_jz_diag(Nj: int) -> Array:
         _sector_jz_diagonals[Nj] = jz_diag
     return jz_diag
 
-def expected_collective_components(blocks: Mapping[int, Array]) -> Tuple[float, float, float, float]:
+
+def expected_collective_components(blocks: Mapping[int, Array]) -> tuple[float, float, float, float]:
     """
     Return normalized expectations (Jx, Jy, Jz, Ne) summed over all Nj blocks.
     """
@@ -155,7 +155,13 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
             omega=result.phases[snap.phase_index].omega,
             shifted_jump_operator=result.shifted_jump_operator,
         )
-        nj[k] = sum(Nj * float(np.vdot(psi, psi).real) for Nj, psi in snap.sector_blocks.items())
+        norm2 = total_norm2(snap.sector_blocks)
+        if norm2 <= 1e-15:
+            nj[k] = 0.0
+        else:
+            nj[k] = sum(
+                Nj * float(np.vdot(psi, psi).real) for Nj, psi in snap.sector_blocks.items()
+            ) / norm2
 
     theta, phi, n_active, sx, sy, sz = active_manifold_angles(jx, jy, jz, ne, tol=tol)
 

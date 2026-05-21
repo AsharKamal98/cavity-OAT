@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 import qutip as qt
 #from Old.nj_sector_mc import phase_change_times, phase1_ss_angles_for_nj
+from quantum_trajectories.state_helpers import centered_sector_initial_coeffs
 from .utils import phase_change_times
 
 
@@ -50,23 +51,29 @@ def _delta_coeff(t, args):
     return 0.0
 
 
-def _make_omega_coeff_from_phases(Omega0: float, t_step1_end: float, t_step2_end: float):
+@dataclass(frozen=True)
+class OmegaCoeffFromPhases:
     """
-    Build an omega(t) coefficient that works both inside and outside a solver.
+    Pickle-safe omega(t) coefficient for time-dependent QuTiP operators.
 
-    QuTiP may probe coefficients before solver args are attached, so this local
-    closure can fall back to the phase boundaries captured at model-build time.
+    QuTiP may probe coefficients before solver args are attached, so this
+    callable falls back to the phase boundaries captured at model-build time.
+    Keeping it as a top-level dataclass makes it safe to serialize for
+    multiprocessing-based mcsolve runs.
     """
-    def _omega_coeff_local(t, args=None):
+
+    omega0: float
+    t_step1_end: float
+    t_step2_end: float
+
+    def __call__(self, t, args=None):
         if args is not None and "t_step1_end" in args:
             return _omega_coeff(t, args)
-        if t < t_step1_end:
-            return Omega0
-        elif t < t_step2_end:
-            return Omega0
+        if t < self.t_step1_end:
+            return self.omega0
+        if t < self.t_step2_end:
+            return self.omega0
         return 0.0
-
-    return _omega_coeff_local
 
 
 def build_qutip_fixed_nj_model_from_phases(
@@ -75,6 +82,7 @@ def build_qutip_fixed_nj_model_from_phases(
     phases: Sequence,
     *,
     shifted_jump_operator: bool = False,
+    sector_distribution: str = "square",
 ) -> QutipFixedNjModel:
     """
     Build a fixed-N_J two-level collective model in QuTiP using the Dicke basis.
@@ -92,6 +100,12 @@ def build_qutip_fixed_nj_model_from_phases(
             phase 1: delta = 0, omega = Omega0
             phase 2: delta = delta0, omega = Omega0
             phase 3: delta = 0, omega = 0
+    sector_distribution
+        Initial N_J-sector distribution choice shared with the custom MCWF
+        initialization helpers. The fixed-N_J QuTiP benchmark only keeps the
+        single central sector N_J = N/2, so both "square" and "binomial"
+        reduce to the same one-sector initial state. The option is accepted for
+        API consistency and validation.
 
     Returns
     -------
@@ -110,7 +124,12 @@ def build_qutip_fixed_nj_model_from_phases(
             "operator contains omega / gamma."
         )
 
-    N_J = N // 2
+    initial_sector_coeffs = centered_sector_initial_coeffs(
+        N,
+        half_width=0,
+        sector_distribution=sector_distribution,
+    )
+    N_J = next(iter(initial_sector_coeffs))
     j = N_J / 2.0
 
     Omega0 = float(phases[0].omega)
@@ -126,7 +145,7 @@ def build_qutip_fixed_nj_model_from_phases(
     Jz = qt.jmat(j, "z")
     identity = qt.qeye(int(2 * j + 1))
     N_e = Jz + j * identity
-    omega_coeff_local = _make_omega_coeff_from_phases(Omega0, t_step1_end, t_step2_end)
+    omega_coeff_local = OmegaCoeffFromPhases(Omega0, t_step1_end, t_step2_end)
 
     if shifted_jump_operator:
         H = [
@@ -244,6 +263,7 @@ def simulate_fixed_nj_me_trajectory(
     num_points: int = 600,
     store_states: bool = True,
     shifted_jump_operator: bool = False,
+    sector_distribution: str = "square",
 ):
     """
     Run fixed-N_J mesolve benchmark and return raw solver output together with
@@ -260,6 +280,7 @@ def simulate_fixed_nj_me_trajectory(
         gamma=gamma,
         phases=phases,
         shifted_jump_operator=shifted_jump_operator,
+        sector_distribution=sector_distribution,
     )
     tlist = build_tlist_from_phases(phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
@@ -300,6 +321,12 @@ def simulate_fixed_nj_mc_trajectory(
     seed: Optional[int] = None,
     keep_runs_results: bool = True,
     shifted_jump_operator: bool = False,
+    sector_distribution: str = "square",
+    n_processes: Optional[int] = None,
+    norm_steps: Optional[int] = None,
+    norm_tol: Optional[float] = None,
+    norm_t_tol: Optional[float] = None,
+    norm_min_step: Optional[float] = None,
 ):
     """
     Run fixed-N_J mcsolve benchmark and return raw solver output together with
@@ -307,6 +334,21 @@ def simulate_fixed_nj_mc_trajectory(
 
     The time grid is built internally as num_points equally spaced samples over
     the full protocol duration.
+
+    Parameters
+    ----------
+    sector_distribution
+        Initial N_J-sector distribution choice shared with the custom MCWF
+        helpers. In the fixed-N_J QuTiP benchmark this only validates and
+        documents the initialization choice, because the simulation keeps the
+        single sector N_J = N/2.
+    n_processes
+        QuTiP trajectory parallelism setting. ``None`` preserves the default
+        serial behavior. ``-1`` uses all available CPU cores. Positive values
+        request that many worker processes.
+    norm_steps, norm_tol, norm_t_tol, norm_min_step
+        Optional QuTiP collapse-time search controls forwarded to ``mcsolve``.
+        Leave them as ``None`` to use QuTiP's defaults.
     """
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
@@ -316,16 +358,30 @@ def simulate_fixed_nj_mc_trajectory(
         gamma=gamma,
         phases=phases,
         shifted_jump_operator=shifted_jump_operator,
+        sector_distribution=sector_distribution,
     )
     tlist = build_tlist_from_phases(phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
 
     options = {
         "progress_bar": "",
-        "map": "serial",
         "store_states": True,
         "keep_runs_results": keep_runs_results,
     }
+    if n_processes is None or n_processes == 1:
+        options["map"] = "serial"
+    else:
+        options["map"] = "parallel"
+        if n_processes > 1:
+            options["num_cpus"] = n_processes
+    if norm_steps is not None:
+        options["norm_steps"] = norm_steps
+    if norm_tol is not None:
+        options["norm_tol"] = norm_tol
+    if norm_t_tol is not None:
+        options["norm_t_tol"] = norm_t_tol
+    if norm_min_step is not None:
+        options["norm_min_step"] = norm_min_step
 
     result = qt.mcsolve(
         model.H,

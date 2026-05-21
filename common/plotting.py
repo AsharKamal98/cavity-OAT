@@ -14,7 +14,8 @@ def plot_trajectory_angles_and_excitation(
     show_phase1_ss=False,
     show_spread: bool = False,
     axes=None,
-    label=None
+    label=None,
+    paper_series=None,
 ):
     obs = result.observables
     tlist = obs.t
@@ -39,6 +40,13 @@ def plot_trajectory_angles_and_excitation(
     flat_axes[1].plot(tlist, phi_mc, label=label, linewidth=1.8)
     flat_axes[2].plot(tlist, ne_mc, label=label, linewidth=1.8)
     flat_axes[3].plot(tlist, jump_rate, label=label, linewidth=1.8)
+    if paper_series is not None:
+        flat_axes[3].plot(
+            np.asarray(paper_series["t"], dtype=float),
+            np.asarray(paper_series["R_paper_raw"], dtype=float),
+            linewidth=1.6,
+            label="paper raw",
+        )
 
     if show_spread:
         spread_specs = [
@@ -93,6 +101,7 @@ def plot_trajectory_angles_and_excitation(
 
     flat_axes[3].set_xlabel(r"$\Gamma t$")
     flat_axes[3].set_ylabel(r"Jump rate $r(t)$")
+    flat_axes[3].set_ylim(bottom=0.0)
     flat_axes[3].legend()
 
     fig.tight_layout()
@@ -171,6 +180,7 @@ def plot_qutip_angles_and_excitation(
 
     flat_axes[3].set_xlabel(r"$\Gamma t$")
     flat_axes[3].set_ylabel(r"Jump rate $r(t)$")
+    flat_axes[3].set_ylim(bottom=0.0)
     flat_axes[3].legend()
 
     fig.tight_layout()
@@ -211,3 +221,40 @@ def plot_mse_vs_time(
         fig.savefig(output_path, dpi=200, bbox_inches="tight")
 
     return fig, axes
+
+
+def plot_paper_jump_rate_comparison(
+    exact_result,
+    paper_series,
+    phases,
+    *,
+    ax=None,
+    output_path=None,
+    exact_label="exact jump rate",
+    raw_label="paper raw",
+):
+    """
+    Plot exact and paper-approximate jump-rate curves on one axis.
+    """
+    obs = exact_result.observables
+    t_step1_end, t_step2_end = phase_change_times(phases)
+
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 4.5))
+    else:
+        fig = ax.figure
+
+    ax.plot(obs.t, obs.jump_rate, linewidth=1.8, label=exact_label)
+    ax.plot(paper_series["t"], paper_series["R_paper_raw"], linewidth=1.8, label=raw_label)
+
+    ax.axvline(t_step1_end, linestyle="--", color="black", alpha=0.6)
+    ax.axvline(t_step2_end, linestyle="--", color="black", alpha=0.6)
+    ax.set_xlabel(r"$\Gamma t$")
+    ax.set_ylabel(r"Jump rate")
+    ax.grid(alpha=0.3)
+    ax.legend()
+
+    fig.tight_layout()
+    if output_path is not None:
+        fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    return fig, ax

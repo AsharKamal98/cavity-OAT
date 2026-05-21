@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, List, Mapping, Sequence, Tuple
 
 import numpy as np
 
@@ -116,6 +116,47 @@ def omega_c(N_J: int, Gamma: float) -> float:
     """Critical drive for the polarized-to-mixed transition at delta = 0."""
 
     return 0.5 * N_J * Gamma
+
+
+def check_initial_sector_omega_ratio(
+    sector_coeffs: Mapping[int, complex],
+    Omega: float,
+    Gamma: float,
+    *,
+    ratio_limit: float = 1.0,
+) -> dict:
+    """
+    Validate Omega / Omega_c against the smallest populated initial Nj sector.
+
+    This is useful for pre-validating an entire half-width sweep: if the check
+    passes for the smallest Nj in the widest initial support, it will also pass
+    for every narrower support centered at the same N/2.
+    """
+    if not sector_coeffs:
+        raise ValueError("sector_coeffs must contain at least one populated sector.")
+
+    min_nj = min(int(Nj) for Nj in sector_coeffs)
+    omega_crit = omega_c(min_nj, Gamma)
+
+    if omega_crit <= 0.0:
+        return {
+            "is_valid": False,
+            "min_nj": min_nj,
+            "omega": float(Omega),
+            "omega_c": float(omega_crit),
+            "ratio": np.inf,
+            "ratio_limit": float(ratio_limit),
+        }
+
+    ratio = float(Omega / omega_crit)
+    return {
+        "is_valid": bool(abs(ratio) < ratio_limit),
+        "min_nj": min_nj,
+        "omega": float(Omega),
+        "omega_c": float(omega_crit),
+        "ratio": ratio,
+        "ratio_limit": float(ratio_limit),
+    }
 
 
 def default_three_phase_protocol(

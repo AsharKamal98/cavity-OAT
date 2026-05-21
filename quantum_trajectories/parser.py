@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from common.parser import Array, AveragedResult, ObservableSeries, Phase
 from scipy.sparse import csc_matrix
@@ -59,4 +59,4 @@ class TrajectoryResult:
 @dataclass
 class TrajectoryEnsemble:
     trajectories: List[TrajectoryResult]
-    seeds: List[int]
+    seeds: List[Tuple[int, ...]]

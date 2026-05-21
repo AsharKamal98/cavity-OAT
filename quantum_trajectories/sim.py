@@ -224,6 +224,7 @@ def simulate_single_trajectory(
     dt: float = 1e-3,
     save_every: int = 1,
     seed: int = 1234,
+    seed_sequence: Optional[np.random.SeedSequence] = None,
     shifted_jump_operator: bool = False,
     precomputed: Optional[Dict[str, Any]] = None,
 ) -> TrajectoryResult:
@@ -274,7 +275,10 @@ def simulate_single_trajectory(
             "operator contains omega / gamma."
         )
 
-    seed_seq = np.random.SeedSequence(seed).spawn(1)[0]
+    if seed_sequence is None:
+        seed_seq = np.random.SeedSequence(seed).spawn(1)[0]
+    else:
+        seed_seq = seed_sequence
     rng = np.random.default_rng(seed_seq)
 
     # Keep dictionary inputs/outputs for compatibility, but use aligned lists in the hot loop.

@@ -1,22 +1,53 @@
 from __future__ import annotations
 
-from quantum_trajectories.parser import (
-    Array,
-)
-
+from math import comb
 from typing import Dict, Mapping, Optional
 
 import numpy as np
+
+from quantum_trajectories.parser import Array
+
+
+SUPPORTED_SECTOR_DISTRIBUTIONS = {"square", "binomial"}
 
 
 # -----------------------------------------------------------------------------
 # Initial state helpers
 # -----------------------------------------------------------------------------
 
+def validate_sector_distribution(sector_distribution: str) -> str:
+    """
+    Validate the requested initial N_J-sector distribution.
+
+    Supported options
+    -----------------
+    square
+        Equal amplitudes for every included N_J sector. This preserves the
+        project's original behavior exactly.
+    binomial
+        Weights matched to the product state
+            ((|u> + |d>) / sqrt(2))^N,
+        for which the probability of finding exactly N_J atoms in the active
+        manifold is
+            p(N_J) = binom(N, N_J) / 2^N.
+        Since probabilities are amplitudes squared, the sector amplitudes are
+        chosen proportional to sqrt(binom(N, N_J)) before renormalizing over
+        the included sectors.
+    """
+    if sector_distribution not in SUPPORTED_SECTOR_DISTRIBUTIONS:
+        allowed = ", ".join(sorted(SUPPORTED_SECTOR_DISTRIBUTIONS))
+        raise ValueError(
+            f"Unsupported sector_distribution={sector_distribution!r}. "
+            f"Expected one of: {allowed}."
+        )
+    return sector_distribution
+
+
 def down_state_in_sector(Nj: int) -> Array:
     """
     All Nj active atoms start in |down>, i.e. |n_e = 0>.
-    Returns arrar (1,0,0,...,0) of shape (Nj + 1,).
+
+    Returns the vector (1, 0, 0, ..., 0) of shape (Nj + 1,).
     """
     psi = np.zeros(Nj + 1, dtype=np.complex128)
     psi[0] = 1.0
@@ -25,8 +56,10 @@ def down_state_in_sector(Nj: int) -> Array:
 
 def normalize_sector_coefficients(coeffs: Mapping[int, complex]) -> Dict[int, complex]:
     """
-    Normalize a dictionary of sector coefficients to have unit norm. 
-    Assume each sector already has its own internal state normalized to 1, so the total norm is just the sum of |coeff|^2.
+    Normalize a dictionary of sector coefficients to have unit norm.
+
+    Each sector is assumed to carry an internally normalized state, so the full
+    norm is simply sum_NJ |c_NJ|^2.
     """
     norm2 = float(sum(abs(c) ** 2 for c in coeffs.values()))
     if norm2 <= 0.0:
@@ -35,19 +68,34 @@ def normalize_sector_coefficients(coeffs: Mapping[int, complex]) -> Dict[int, co
     return {Nj: c / norm for Nj, c in coeffs.items()}
 
 
+def _sector_distribution_weight(N: int, Nj: int, sector_distribution: str) -> float:
+    """
+    Return the unnormalized amplitude weight for one N_J sector.
+
+    The returned value is a real non-negative amplitude before any optional
+    phase factor is applied.
+    """
+    sector_distribution = validate_sector_distribution(sector_distribution)
+    if sector_distribution == "square":
+        return 1.0
+    return float(np.sqrt(comb(N, Nj)))
+
+
 def centered_sector_initial_coeffs(
     N: int,
     half_width: int,
     *,
     phase_fn=None,
+    sector_distribution: str = "square",
 ) -> Dict[int, complex]:
     """
-    Build a normalized superposition of Nj sectors centered around N/2.
+    Build a normalized superposition of N_J sectors centered around N/2.
 
     Parameters
     ----------
     N
-        Total atom number. Assumes even N if you want the center exactly at N/2.
+        Total atom number. Assumes even N if you want the center exactly at
+        N/2.
     half_width
         How many sectors on each side of N/2 to include.
 
@@ -55,10 +103,20 @@ def centered_sector_initial_coeffs(
         half_width = 1  -> {N/2 - 1, N/2, N/2 + 1}
         half_width = 2  -> {N/2 - 2, ..., N/2 + 2}
     phase_fn
-        Optional function phase_fn(Nj) returning the phase to apply to sector Nj.
-        If omitted, all included sectors have equal real amplitude.
-    
-    Center at N/2. For a binomial distribution, the width is about σ∼N/2. Good choice is NJ ​∈ [N/2−3σ,N/2+3σ]
+        Optional function phase_fn(Nj) returning the phase to apply to sector
+        Nj. If omitted, all included sectors have real non-negative amplitudes.
+    sector_distribution
+        Choice of how amplitudes are assigned across the included N_J sectors.
+
+        "square"
+            Equal amplitudes for all included sectors, normalized afterward.
+            This is the historical default used by the codebase.
+
+        "binomial"
+            Amplitudes proportional to sqrt(binom(N, N_J)), corresponding to
+            the product state ((|u> + |d>) / sqrt(2))^N. If the range of
+            included sectors is truncated, the amplitudes are renormalized over
+            only the retained sectors.
 
     Returns
     -------
@@ -72,51 +130,26 @@ def centered_sector_initial_coeffs(
     if N % 2 != 0:
         raise ValueError("This helper assumes even N so the center is exactly N/2.")
 
+    sector_distribution = validate_sector_distribution(sector_distribution)
+
     center = N // 2
     sector_list = list(range(center - half_width, center + half_width + 1))
-
-    # Keep only physical sectors
     sector_list = [Nj for Nj in sector_list if 0 <= Nj <= N]
     if not sector_list:
         raise ValueError("No valid sectors selected.")
 
-    if phase_fn is None:
-        coeffs = {Nj: 1.0 for Nj in sector_list}
-    else:
-        coeffs = {Nj: np.exp(1j * phase_fn(Nj)) for Nj in sector_list}
+    coeffs: Dict[int, complex] = {}
+    for Nj in sector_list:
+        phase = 1.0 if phase_fn is None else np.exp(1j * phase_fn(Nj))
+        coeffs[Nj] = _sector_distribution_weight(N, Nj, sector_distribution) * phase
 
     return normalize_sector_coefficients(coeffs)
+
 
 # -----------------------------------------------------------------------------
 
 def total_norm2(blocks: Mapping[int, Array]) -> float:
-    # FIXME: how is this caluclated
     return float(sum(np.vdot(psi, psi).real for psi in blocks.values()))
-
-
-
-def down_state_in_sector(Nj: int) -> Array:
-    """
-    All Nj active atoms start in |down>, i.e. |n_e = 0>.
-    Returns arrar (1,0,0,...,0) of shape (Nj + 1,).
-    """
-    psi = np.zeros(Nj + 1, dtype=np.complex128)
-    psi[0] = 1.0
-    return psi
-
-
-
-def normalize_sector_coefficients(coeffs: Mapping[int, complex]) -> Dict[int, complex]:
-    """
-    Normalize a dictionary of sector coefficients to have unit norm. 
-    Assume each sector already has its own internal state normalized to 1, so the total norm is just the sum of |coeff|^2.
-    """
-    norm2 = float(sum(abs(c) ** 2 for c in coeffs.values()))
-    if norm2 <= 0.0:
-        raise ValueError("At least one sector coefficient must be non-zero.")
-    norm = np.sqrt(norm2)
-    return {Nj: c / norm for Nj, c in coeffs.items()}
-
 
 
 def build_initial_sector_state(
@@ -131,9 +164,9 @@ def build_initial_sector_state(
     The total norm is
         sum_Nj ||psi_Nj||^2 = 1.
 
-    Returns a dictionary of key: sector Nj, value: normalized state vector in that sector's symmetric |n_e> basis (1,0,0,...,0), multiplied by the normalized sector coefficient.
+    Returns a dictionary whose values are the normalized local |n_e>-basis
+    states multiplied by the normalized sector coefficient for that N_J.
     """
-    # Normalize the sector coefficients so that the total norm is 1
     coeffs = normalize_sector_coefficients(sector_coeffs)
     blocks: Dict[int, Array] = {}
 
@@ -142,8 +175,6 @@ def build_initial_sector_state(
             raise ValueError(f"Invalid sector Nj={Nj} for N={N}.")
 
         if internal_sector_states is None or Nj not in internal_sector_states:
-            # Sector starts in |n_e=0> (all active atoms in |down>)
-            # Returns array (1,0,0,...,0) of shape (Nj + 1,).
             local = down_state_in_sector(Nj)
         else:
             local = np.asarray(internal_sector_states[Nj], dtype=np.complex128).copy()
@@ -158,8 +189,4 @@ def build_initial_sector_state(
 
         blocks[Nj] = coeff * local
 
-    # blocks = {Nj: (1,0,0,...,0) * coeff for Nj, coeff in coeffs.items()}
-    # The array is (a0, a1, a2, ..., a_Nj) = a0|n_e=0> + a1|n_e=1> + ... + a_Nj|n_e=Nj>, for given Nj
-    # (1,0,0,...,0) means that the Nj sector in only in the |n_e=0> state, i.e. all active atoms are in |down>.
     return blocks
-
