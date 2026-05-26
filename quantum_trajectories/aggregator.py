@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Dict, Mapping
+import multiprocessing as mp
+from typing import Dict, Iterable, Mapping, Optional
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from common.utils import active_manifold_angles
 from quantum_trajectories.parser import (
@@ -86,7 +88,7 @@ def expected_collective_components(blocks: Mapping[int, Array]) -> tuple[float, 
 def jump_rate_for_blocks(
     blocks: Mapping[int, Array],
     *,
-    gamma: float,
+    Gamma: float,
     omega: float,
     shifted_jump_operator: bool,
 ) -> float:
@@ -95,7 +97,7 @@ def jump_rate_for_blocks(
 
     The rate is computed from the full block wavefunction and the same
     phase-dependent jump operator used by the solver:
-        r(t) = gamma * sum_Nj <psi_Nj| l_Nj^dagger(t) l_Nj(t) |psi_Nj>.
+        r(t) = Gamma * sum_Nj <psi_Nj| l_Nj^dagger(t) l_Nj(t) |psi_Nj>.
     """
     norm2 = total_norm2(blocks)
     if norm2 <= 1e-15:
@@ -109,13 +111,13 @@ def jump_rate_for_blocks(
         jump_operator = build_phase_jump_operator_for_sector(
             ops,
             omega,
-            gamma,
+            Gamma,
             shifted_jump_operator=shifted_jump_operator,
         )
         # The MCWF code stores the unscaled jump operator l, so the physical
-        # rate is gamma * <l^dagger l>.
+        # rate is Gamma * <l^dagger l>.
         jumped = jump_operator.dot(psi)
-        jump_rate += float(gamma * np.vdot(jumped, jumped).real)
+        jump_rate += float(Gamma * np.vdot(jumped, jumped).real)
 
     # Guard against tiny negative values from floating-point noise.
     if jump_rate < 0.0 and abs(jump_rate) < 1e-10:
@@ -151,7 +153,7 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
         # picture uses the same time-local jump operator as the trajectory.
         jump_rate[k] = jump_rate_for_blocks(
             snap.sector_blocks,
-            gamma=result.gamma,
+            Gamma=result.Gamma,
             omega=result.phases[snap.phase_index].omega,
             shifted_jump_operator=result.shifted_jump_operator,
         )
@@ -188,7 +190,7 @@ def single_trajectory_to_averaged_result(
 
     return AveragedResult(
         N=result.N,
-        gamma=result.gamma,
+        Gamma=result.Gamma,
         ntraj=None,   # change to 1 if you want the plot label to show "MC avg (1 traj)"
         observables=observables,
     )
@@ -196,6 +198,44 @@ def single_trajectory_to_averaged_result(
 # -----------------------------------------------------------------------------
 # Ensemble trajectory observables and averaging
 # -----------------------------------------------------------------------------
+
+def _trajectory_observables_worker(args: tuple[TrajectoryResult, float]) -> ObservableSeries:
+    """
+    Top-level worker used to parallelize per-trajectory observable extraction.
+    """
+    traj, tol = args
+    return trajectory_observables(traj, tol=tol)
+
+
+def _map_with_optional_pool(
+    worker,
+    items: Iterable,
+    *,
+    n_processes: Optional[int],
+    progress_desc: str,
+):
+    """
+    Run an independent worker over items either serially or with a process pool,
+    while keeping the same tqdm progress reporting in both modes.
+    """
+    items = list(items)
+    if n_processes is None or n_processes == 1:
+        return [worker(item) for item in tqdm(items, desc=progress_desc)]
+
+    if n_processes == -1:
+        n_processes = mp.cpu_count()
+    if n_processes <= 0:
+        raise ValueError("n_processes must be None, 1, -1, or a positive integer.")
+
+    ctx = mp.get_context()
+    with ctx.Pool(processes=n_processes) as pool:
+        return list(
+            tqdm(
+                pool.imap(worker, items),
+                total=len(items),
+                desc=progress_desc,
+            )
+        )
 
 def _interp_series(t_src: Array, y_src: Array, t_ref: Array) -> Array:
     """
@@ -222,9 +262,10 @@ def ensemble_observables(
     *,
     tol: float = 1e-12,
     reference: str = "first",
+    n_processes: Optional[int] = None,
 ) -> ObservableSeries:
     """
-    Compute per-trajectory observables, interpolate them to a common time grid,
+    Compute per-trajectory observables on the shared MCWF t_eval grid,
     average Jx/Jy/Jz/N_e/jump_rate/N_j across trajectories, then compute
     theta/phi and sx/sy/sz from those averaged observables.
 
@@ -255,17 +296,26 @@ def ensemble_observables(
     jump_rate_list = []
     Nj_list = []
 
-    for traj in ensemble.trajectories:
-        obs = trajectory_observables(traj, tol=tol)
+    per_traj_obs = _map_with_optional_pool(
+        _trajectory_observables_worker,
+        [(traj, tol) for traj in ensemble.trajectories],
+        n_processes=n_processes,
+        progress_desc="ensemble_observables",
+    )
 
-        Jx_list.append(_interp_series(obs.t, obs.Jx, t_ref))
-        Jy_list.append(_interp_series(obs.t, obs.Jy, t_ref))
-        Jz_list.append(_interp_series(obs.t, obs.Jz, t_ref))
-        Ne_list.append(_interp_series(obs.t, obs.N_e, t_ref))
-        # Jump rate is averaged on the same reference grid as the other
-        # observables so ensemble means/stds line up in time.
-        jump_rate_list.append(_interp_series(obs.t, obs.jump_rate, t_ref))
-        Nj_list.append(_interp_series(obs.t, obs.N_j, t_ref))
+    for obs in per_traj_obs:
+        if len(obs.t) != len(t_ref) or not np.allclose(obs.t, t_ref, atol=1e-12, rtol=0.0):
+            raise ValueError(
+                "All trajectories must share the same t_eval snapshot grid. "
+                "Run the ensemble through the common num_snapshots API."
+            )
+
+        Jx_list.append(obs.Jx)
+        Jy_list.append(obs.Jy)
+        Jz_list.append(obs.Jz)
+        Ne_list.append(obs.N_e)
+        jump_rate_list.append(obs.jump_rate)
+        Nj_list.append(obs.N_j)
 
     Jx_arr = np.asarray(Jx_list, dtype=float)
     Jy_arr = np.asarray(Jy_list, dtype=float)
@@ -342,7 +392,7 @@ def make_averaged_result(
     first = ensemble.trajectories[0]
     return AveragedResult(
         N=first.N,
-        gamma=first.gamma,
+        Gamma=first.Gamma,
         ntraj=len(ensemble.trajectories),
         observables=observables,
     )

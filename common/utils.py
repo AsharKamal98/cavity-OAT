@@ -118,6 +118,54 @@ def omega_c(N_J: int, Gamma: float) -> float:
     return 0.5 * N_J * Gamma
 
 
+def delta0_from_N_Gamma(N: int, Gamma: float) -> float:
+    """Protocol detuning used in the notebook scans: delta = 0.05 * N * Gamma."""
+
+    return 0.05 * N * Gamma
+
+
+def Omega0_from_N_Gamma(N: int, Gamma: float) -> float:
+    """Protocol drive used in the notebook scans: Omega = 0.465 * N * Gamma."""
+
+    return 0.465 * N * Gamma
+
+
+def validated_mcwf_dt(
+    dt: float,
+    N: int,
+    Gamma: float,
+    *,
+    safety_factor: float = 250.0,
+) -> float:
+    """
+    Enforce the notebook MCWF timestep rule
+
+        dt <= (N * Gamma)^(-1) / safety_factor.
+
+    If the proposed ``dt`` is already valid it is returned unchanged. If it is
+    too large, a warning is printed and the largest allowed timestep is
+    returned instead.
+    """
+    if dt <= 0.0:
+        raise ValueError("dt must be positive.")
+    if N <= 0:
+        raise ValueError("N must be positive.")
+    if Gamma <= 0.0:
+        raise ValueError("Gamma must be positive.")
+    if safety_factor <= 0.0:
+        raise ValueError("safety_factor must be positive.")
+
+    max_dt = 1.0 / (safety_factor * N * Gamma)
+    if dt <= max_dt:
+        return float(dt)
+
+    print(
+        "Warning: proposed dt was too large; using dt="
+        f"{max_dt} instead of dt={dt} based on dt <= (N*Gamma)^(-1)/{safety_factor:.0f}."
+    )
+    return float(max_dt)
+
+
 def check_initial_sector_omega_ratio(
     sector_coeffs: Mapping[int, complex],
     Omega: float,

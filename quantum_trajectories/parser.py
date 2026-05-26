@@ -41,9 +41,10 @@ class TrajectorySnapshot:
 @dataclass
 class TrajectoryResult:
     N: int
-    gamma: float
+    Gamma: float
     phases: List[Phase]
     shifted_jump_operator: bool
+    t_eval: Array
     sectors: List[int]
     sector_multiplicities: Dict[int, int]
     final_sector_blocks: Dict[int, Array]
@@ -51,6 +52,8 @@ class TrajectoryResult:
     jump_times: List[float]
     jump_count: int
     sector_dimensions: Dict[int, int]
+    total_step_count: int = 0
+    non_precomputed_step_count: int = 0
 
 # -----------------------------------------------------------------------------
 # Ensambles

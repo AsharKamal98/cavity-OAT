@@ -16,7 +16,7 @@ class QutipFixedNjModel:
     N: int
     N_J: int
     j: float
-    gamma: float
+    Gamma: float
     shifted_jump_operator: bool
     unraveling_picture: str
     omega0: float
@@ -78,7 +78,7 @@ class OmegaCoeffFromPhases:
 
 def build_qutip_fixed_nj_model_from_phases(
     N: int,
-    gamma: float,
+    Gamma: float,
     phases: Sequence,
     *,
     shifted_jump_operator: bool = False,
@@ -92,7 +92,7 @@ def build_qutip_fixed_nj_model_from_phases(
     N
         Total atom number in the full three-level problem. The fixed two-level
         benchmark uses N_J = N//2.
-    gamma
+    Gamma
         Collective decay rate Gamma.
     phases
         Sequence with attributes .duration, .omega, .delta.
@@ -118,10 +118,10 @@ def build_qutip_fixed_nj_model_from_phases(
         raise ValueError("N must be positive.")
     if N % 2 != 0:
         raise ValueError("Need even N so that N_J = N/2 is integer.")
-    if shifted_jump_operator and gamma <= 0.0:
+    if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
-            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
-            "operator contains omega / gamma."
+            "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
+            "operator contains omega / Gamma."
         )
 
     initial_sector_coeffs = centered_sector_initial_coeffs(
@@ -152,8 +152,8 @@ def build_qutip_fixed_nj_model_from_phases(
             [-N_e, _delta_coeff],
         ]
         shifted_c_op = qt.QobjEvo([
-            np.sqrt(gamma) * Jm,
-            [1j / np.sqrt(gamma) * identity, omega_coeff_local],
+            np.sqrt(Gamma) * Jm,
+            [1j / np.sqrt(Gamma) * identity, omega_coeff_local],
         ])
         c_ops = [shifted_c_op]
         unraveling_picture = "shifted"
@@ -162,7 +162,7 @@ def build_qutip_fixed_nj_model_from_phases(
             [Jx, _omega_coeff],
             [-N_e, _delta_coeff],
         ]
-        c_ops = [np.sqrt(gamma) * Jm]
+        c_ops = [np.sqrt(Gamma) * Jm]
         unraveling_picture = "regular"
 
     # psi0 = qt.basis(int(2 * j + 1), 0)  # |m=-j> i.e. all active atoms in |down>
@@ -173,7 +173,7 @@ def build_qutip_fixed_nj_model_from_phases(
         N=N,
         N_J=N_J,
         j=j,
-        gamma=gamma,
+        Gamma=Gamma,
         shifted_jump_operator=shifted_jump_operator,
         unraveling_picture=unraveling_picture,
         omega0=Omega0,
@@ -257,7 +257,7 @@ def jump_rate_from_state(model: QutipFixedNjModel, state: qt.Qobj, t: float) -> 
 
 def simulate_fixed_nj_me_trajectory(
     N: int,
-    gamma: float,
+    Gamma: float,
     phases: Sequence,
     *,
     num_points: int = 600,
@@ -277,7 +277,7 @@ def simulate_fixed_nj_me_trajectory(
 
     model = build_qutip_fixed_nj_model_from_phases(
         N=N,
-        gamma=gamma,
+        Gamma=Gamma,
         phases=phases,
         shifted_jump_operator=shifted_jump_operator,
         sector_distribution=sector_distribution,
@@ -303,7 +303,7 @@ def simulate_fixed_nj_me_trajectory(
         "result": result,
         "model": model,
         "N": N,
-        "gamma": gamma,
+        "Gamma": Gamma,
         "ntraj": None,
         "tlist": tlist,
         "num_points": num_points,
@@ -313,7 +313,7 @@ def simulate_fixed_nj_me_trajectory(
 
 def simulate_fixed_nj_mc_trajectory(
     N: int,
-    gamma: float,
+    Gamma: float,
     phases: Sequence,
     *,
     num_points: int = 600,
@@ -355,7 +355,7 @@ def simulate_fixed_nj_mc_trajectory(
 
     model = build_qutip_fixed_nj_model_from_phases(
         N=N,
-        gamma=gamma,
+        Gamma=Gamma,
         phases=phases,
         shifted_jump_operator=shifted_jump_operator,
         sector_distribution=sector_distribution,
@@ -399,7 +399,7 @@ def simulate_fixed_nj_mc_trajectory(
         "result": result,
         "model": model,
         "N": N,
-        "gamma": gamma,
+        "Gamma": Gamma,
         "ntraj": ntraj,
         "tlist": tlist,
         "num_points": num_points,

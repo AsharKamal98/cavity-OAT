@@ -192,7 +192,7 @@ def theoretical_jump_rates_for_blocks(
     blocks: dict[int, Array],
     *,
     N: int,
-    gamma: float,
+    Gamma: float,
     omega: float,
     delta: float,
 ) -> dict:
@@ -212,7 +212,7 @@ def theoretical_jump_rates_for_blocks(
         }
 
     central_nj = N // 2
-    omega_crit = omega_c(central_nj, gamma)
+    omega_crit = omega_c(central_nj, Gamma)
     if omega_crit <= 0.0:
         raise ValueError("Omega_c must be positive for the theoretical jump-rate calculation.")
 
@@ -236,14 +236,14 @@ def theoretical_jump_rates_for_blocks(
 
     coeffs = _build_theoretical_jump_rate_coefficients(
         delta=delta,
-        Gamma=gamma,
+        Gamma=Gamma,
         omega_over_omega_c=sin_theta_tilde,
         N=N,
     )
     moments = _sz_moments_from_sector_probabilities(sector_probs, N=N)
     paper_raw = _theoretical_jump_rate_from_moments(
         coeffs=coeffs,
-        Gamma=gamma,
+        Gamma=Gamma,
         sz_mean=moments["S_z_mean"],
         sz2_mean=moments["S_z2_mean"],
     )
@@ -277,7 +277,7 @@ def theoretical_jump_rate_for_trajectory(result: TrajectoryResult) -> dict:
         approx = theoretical_jump_rates_for_blocks(
             snap.sector_blocks,
             N=result.N,
-            gamma=result.gamma,
+            Gamma=result.Gamma,
             omega=phase.omega,
             delta=phase.delta,
         )
@@ -317,10 +317,8 @@ def theoretical_jump_rate_for_ensemble(
     reference: str = "first",
 ) -> dict:
     """
-    Average the theory-based jump-rate calculation over an ensemble on a common grid.
-
-    Each trajectory is processed with the exact same theory evaluation used for
-    single trajectories, then interpolated to a common time grid and averaged.
+    Average the theory-based jump-rate calculation over an ensemble on the
+    shared MCWF t_eval grid.
     """
     if len(ensemble.trajectories) == 0:
         raise ValueError("Ensemble is empty.")
@@ -339,10 +337,15 @@ def theoretical_jump_rate_for_ensemble(
 
     for traj in ensemble.trajectories:
         approx = theoretical_jump_rate_for_trajectory(traj)
-        raw_list.append(_interp_series(approx["t"], approx["R_paper_raw"], t_ref))
-        sz_mean_list.append(_interp_series(approx["t"], approx["S_z_mean"], t_ref))
-        sz2_mean_list.append(_interp_series(approx["t"], approx["S_z2_mean"], t_ref))
-        sz_var_list.append(_interp_series(approx["t"], approx["S_z_var"], t_ref))
+        if len(approx["t"]) != len(t_ref) or not np.allclose(approx["t"], t_ref, atol=1e-12, rtol=0.0):
+            raise ValueError(
+                "All trajectories must share the same t_eval snapshot grid. "
+                "Run the ensemble through the common num_snapshots API."
+            )
+        raw_list.append(np.asarray(approx["R_paper_raw"], dtype=float))
+        sz_mean_list.append(np.asarray(approx["S_z_mean"], dtype=float))
+        sz2_mean_list.append(np.asarray(approx["S_z2_mean"], dtype=float))
+        sz_var_list.append(np.asarray(approx["S_z_var"], dtype=float))
 
     raw_arr = np.asarray(raw_list, dtype=float)
     sz_mean_arr = np.asarray(sz_mean_list, dtype=float)

@@ -21,6 +21,7 @@ from scipy.sparse import csc_matrix, diags
 from scipy.sparse.linalg import expm_multiply
 import multiprocessing as mp
 import time
+from tqdm.auto import tqdm
 
 
 # -----------------------------------------------------------------------------
@@ -34,12 +35,12 @@ _WORKER_STATE = None
 
 def _init_trajectory_worker(
     N,
-    gamma,
+    Gamma,
     phases,
     sector_coeffs,
     internal_sector_states,
     dt,
-    save_every,
+    num_snapshots,
     shifted_jump_operator,
     precomputed,
 ):
@@ -54,12 +55,12 @@ def _init_trajectory_worker(
 
     _WORKER_STATE = {
         "N": N,
-        "gamma": gamma,
+        "Gamma": Gamma,
         "phases": phases,
         "sector_coeffs": sector_coeffs,
         "internal_sector_states": internal_sector_states,
         "dt": dt,
-        "save_every": save_every,
+        "num_snapshots": num_snapshots,
         "shifted_jump_operator": shifted_jump_operator,
         "precomputed": precomputed,
     }
@@ -77,12 +78,12 @@ def _simulate_single_trajectory_worker(seed_sequence: np.random.SeedSequence) ->
 
     return simulate_single_trajectory(
         N=_WORKER_STATE["N"],
-        gamma=_WORKER_STATE["gamma"],
+        Gamma=_WORKER_STATE["Gamma"],
         phases=_WORKER_STATE["phases"],
         sector_coeffs=_WORKER_STATE["sector_coeffs"],
         internal_sector_states=_WORKER_STATE["internal_sector_states"],
         dt=_WORKER_STATE["dt"],
-        save_every=_WORKER_STATE["save_every"],
+        num_snapshots=_WORKER_STATE["num_snapshots"],
         seed_sequence=seed_sequence,
         shifted_jump_operator=_WORKER_STATE["shifted_jump_operator"],
         precomputed=_WORKER_STATE["precomputed"],
@@ -90,13 +91,13 @@ def _simulate_single_trajectory_worker(seed_sequence: np.random.SeedSequence) ->
 
 def run_trajectory_ensemble(
     N: int,
-    gamma: float,
+    Gamma: float,
     phases: Sequence[Phase],
     sector_coeffs: Mapping[int, complex],
     *,
     internal_sector_states: Optional[Mapping[int, Array]] = None,
     dt: float = 1e-3,
-    save_every: int = 1,
+    num_snapshots: int = 101,
     seed: Optional[int] = None,
     shifted_jump_operator: bool = False,
     ntraj: int,
@@ -123,6 +124,11 @@ def run_trajectory_ensemble(
         multiprocessing overhead, but chunksize=1 gives better load balancing
         if trajectories have very different numbers of jumps.
 
+    num_snapshots
+        Number of saved snapshots per trajectory. All trajectories use the same
+        internally constructed t_eval grid, so ensemble observables and
+        squeezing moments are aligned at identical times without interpolation.
+
     verbose
         If True, print setup timing such as precompute and multiprocessing pool
         startup. Defaults to False so batch analyses stay quiet.
@@ -131,10 +137,12 @@ def run_trajectory_ensemble(
     # Basic input validation
     if ntraj <= 0:
         raise ValueError("ntraj must be positive.")
-    if shifted_jump_operator and gamma <= 0.0:
+    if num_snapshots < 2:
+        raise ValueError("num_snapshots must be at least 2.")
+    if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
-            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
-            "operator contains omega / gamma."
+            "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
+            "operator contains omega / Gamma."
         )
 
     # Spawn one child SeedSequence per trajectory from a single parent. This
@@ -149,7 +157,7 @@ def run_trajectory_ensemble(
     t0 = time.perf_counter()
     precomputed = build_precomputed_trajectory_data(
         N=N,
-        gamma=gamma,
+        Gamma=Gamma,
         phases=phases,
         sector_coeffs=sector_coeffs,
         dt=dt,
@@ -166,21 +174,30 @@ def run_trajectory_ensemble(
     if n_processes is None or n_processes == 1:
         trajectories: List[TrajectoryResult] = []
 
-        for child_seed_sequence in seed_sequences:
+        for child_seed_sequence in tqdm(seed_sequences, desc="simulate trajectories"):
             result = simulate_single_trajectory(
                 N=N,
-                gamma=gamma,
+                Gamma=Gamma,
                 phases=phases,
                 sector_coeffs=sector_coeffs,
                 internal_sector_states=internal_sector_states,
                 dt=dt,
-                save_every=save_every,
+                num_snapshots=num_snapshots,
                 seed_sequence=child_seed_sequence,
                 shifted_jump_operator=shifted_jump_operator,
                 precomputed=precomputed,
             )
             trajectories.append(result)
 
+        total_steps = sum(traj.total_step_count for traj in trajectories)
+        non_precomputed_steps = sum(traj.non_precomputed_step_count for traj in trajectories)
+        avg_total_steps = total_steps / len(trajectories)
+        avg_non_precomputed_steps = non_precomputed_steps / len(trajectories)
+        print(
+            "Simulation step summary (avg per trajectory): "
+            f"total steps={avg_total_steps:.2f}, "
+            f"steps without precompute={avg_non_precomputed_steps:.2f}"
+        )
         return TrajectoryEnsemble(trajectories=trajectories, seeds=seed_keys)
 
     # -------------------------------------------------------------------------
@@ -201,12 +218,12 @@ def run_trajectory_ensemble(
         initializer=_init_trajectory_worker,
         initargs=(
             N,
-            gamma,
+            Gamma,
             phases,
             sector_coeffs,
             internal_sector_states,
             dt,
-            save_every,
+            num_snapshots,
             shifted_jump_operator,
             precomputed,
         ),
@@ -215,10 +232,25 @@ def run_trajectory_ensemble(
         if verbose:
             print(f"Pool startup: {n_processes} processes in {t1 - t0:.2f} seconds.")
 
-        trajectories = pool.map(
-            _simulate_single_trajectory_worker,
-            seed_sequences,
-            chunksize=chunksize,
+        trajectories = list(
+            tqdm(
+                pool.imap(
+                    _simulate_single_trajectory_worker,
+                    seed_sequences,
+                    chunksize=chunksize,
+                ),
+                total=len(seed_sequences),
+                desc="simulate trajectories",
+            )
         )
 
+    total_steps = sum(traj.total_step_count for traj in trajectories)
+    non_precomputed_steps = sum(traj.non_precomputed_step_count for traj in trajectories)
+    avg_total_steps = total_steps / len(trajectories)
+    avg_non_precomputed_steps = non_precomputed_steps / len(trajectories)
+    print(
+        "Simulation step summary (avg per trajectory): "
+        f"total steps={avg_total_steps:.2f}, "
+        f"steps without precompute={avg_non_precomputed_steps:.2f}"
+    )
     return TrajectoryEnsemble(trajectories=trajectories, seeds=seed_keys)

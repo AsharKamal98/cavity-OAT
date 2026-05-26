@@ -55,6 +55,6 @@ class ObservableSeries:
 @dataclass
 class AveragedResult:
     N: int
-    gamma: float
+    Gamma: float
     ntraj: int
     observables: ObservableSeries

@@ -23,7 +23,7 @@ def qutip_fixed_nj_observables(
     """
     result = sim_data["result"]
     N = sim_data["N"]
-    gamma = sim_data["gamma"]
+    Gamma = sim_data["Gamma"]
     ntraj = sim_data["ntraj"]
     t = np.asarray(sim_data["tlist"], dtype=float)
     model = sim_data["model"]
@@ -137,7 +137,7 @@ def qutip_fixed_nj_observables(
 
     return AveragedResult(
         N=N,
-        gamma=gamma,
+        Gamma=Gamma,
         ntraj=ntraj,
         observables=obs,
     )

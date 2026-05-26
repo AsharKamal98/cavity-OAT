@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from math import comb
+from math import comb, sqrt
 from typing import Dict, Mapping, Optional
 
 import numpy as np
@@ -78,7 +78,11 @@ def _sector_distribution_weight(N: int, Nj: int, sector_distribution: str) -> fl
     sector_distribution = validate_sector_distribution(sector_distribution)
     if sector_distribution == "square":
         return 1.0
-    return float(np.sqrt(comb(N, Nj)))
+    # `math.comb` returns a Python integer. For larger N, using NumPy's sqrt
+    # directly on that object can fail because the ufunc does not always cast
+    # arbitrary-precision ints the way we want. `math.sqrt` handles the
+    # combinatorial integer cleanly before we cast to float.
+    return float(sqrt(comb(N, Nj)))
 
 
 def centered_sector_initial_coeffs(

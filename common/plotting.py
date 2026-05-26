@@ -67,7 +67,7 @@ def plot_trajectory_angles_and_excitation(
     if show_phase1_ss:
         Nj_ref = result.N // 2
         Omega1 = phases[0].omega
-        theta_ss, phi_ss = phase1_ss_angles_for_nj(Nj_ref, Omega1, result.gamma)
+        theta_ss, phi_ss = phase1_ss_angles_for_nj(Nj_ref, Omega1, result.Gamma)
 
         if np.isfinite(theta_ss):
             flat_axes[0].hlines(
@@ -117,7 +117,7 @@ def plot_qutip_angles_and_excitation(
     N,
     output_path=None,
     show_phase1_ss=True,
-    gamma=None,
+    Gamma=None,
 ):
     tlist = np.asarray(qt_data["t"], dtype=float)
     Jx = np.asarray(qt_data["Jx"], dtype=float)
@@ -144,9 +144,9 @@ def plot_qutip_angles_and_excitation(
         ax.axvline(t_step2_end, linestyle="--", color="black", alpha=0.6)
         ax.grid(alpha=0.3)
 
-    if show_phase1_ss and gamma is not None:
+    if show_phase1_ss and Gamma is not None:
         Omega1 = phases[0].omega
-        theta_ss, phi_ss = phase1_ss_angles_for_nj(Nj, Omega1, gamma)
+        theta_ss, phi_ss = phase1_ss_angles_for_nj(Nj, Omega1, Gamma)
 
         if np.isfinite(theta_ss):
             flat_axes[0].hlines(

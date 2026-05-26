@@ -28,31 +28,44 @@ from quantum_trajectories.state_helpers import (
 # -----------------------------------------------------------------------------
 
 
+def build_t_eval_from_phases(phases: Sequence[Phase], num_snapshots: int) -> np.ndarray:
+    """
+    Construct the common saved-time grid for MCWF trajectories.
+
+    All trajectories in an ensemble use the same t_eval values so observables
+    and squeezing moments can be averaged at identical physical times.
+    """
+    if num_snapshots < 2:
+        raise ValueError("num_snapshots must be at least 2.")
+    total_time = float(sum(phase.duration for phase in phases))
+    return np.linspace(0.0, total_time, num_snapshots, dtype=float)
+
+
 def build_phase_jump_operator_for_sector(
     ops: SectorOperators,
     omega: float,
-    gamma: float,
+    Gamma: float,
     *,
     shifted_jump_operator: bool = False,
 ) -> csc_matrix:
     if not shifted_jump_operator:
         return ops.J_minus
 
-    if gamma <= 0.0:
+    if Gamma <= 0.0:
         raise ValueError(
-            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
-            "operator contains omega / gamma."
+            "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
+            "operator contains omega / Gamma."
         )
 
     identity = eye(ops.J_minus.shape[0], format="csc", dtype=np.complex128)
-    return (ops.J_minus + (1j * omega / gamma) * identity).tocsc()
+    return (ops.J_minus + (1j * omega / Gamma) * identity).tocsc()
 
 
 def heff_for_sector(
     ops: SectorOperators,
     omega: float,
     delta: float,
-    gamma: float,
+    Gamma: float,
     *,
     shifted_jump_operator: bool = False,
     jump_operator: Optional[csc_matrix] = None,
@@ -61,29 +74,29 @@ def heff_for_sector(
     Regular H_delta and regular jump operator from the paper:
         H_delta = Omega J_x - delta N_e,
         l = J_-,
-        H_eff = H_delta - i (gamma/2) J_+ J_-.
+        H_eff = H_delta - i (Gamma/2) J_+ J_-.
 
     In MCQT, between jumps the state evolves with the non-Hermitian effective Hamiltonian
         H_eff = H_sys - i/2 sum_l l^dagger l
     For the homogeneous collective decay, the only jump operator is J_-, so the sum reduces to J_+ J_-.
-        H_delta - i/2 gamma J_+ J_-,
+        H_delta - i/2 Gamma J_+ J_-,
     """
     if not shifted_jump_operator:
         H = omega * ops.J_x - delta * ops.N_e
-        Heff = H - 0.5j * gamma * ops.JpJm
+        Heff = H - 0.5j * Gamma * ops.JpJm
         return Heff.tocsc()
 
     if jump_operator is None:
         jump_operator = build_phase_jump_operator_for_sector(
             ops,
             omega,
-            gamma,
+            Gamma,
             shifted_jump_operator=True,
         )
 
     H = -delta * ops.N_e
     jump_dag_jump = (jump_operator.conjugate().transpose() @ jump_operator).tocsc()
-    Heff = H - 0.5j * gamma * jump_dag_jump
+    Heff = H - 0.5j * Gamma * jump_dag_jump
     return Heff.tocsc()
 
 
@@ -156,7 +169,7 @@ def apply_jump(psi_blocks: Sequence[Array], jump_operators_list: Sequence[csc_ma
 
 def build_precomputed_trajectory_data(
     N: int,
-    gamma: float,
+    Gamma: float,
     phases: Sequence[Phase],
     sector_coeffs: Mapping[int, complex],
     dt: float,
@@ -172,7 +185,7 @@ def build_precomputed_trajectory_data(
             build_phase_jump_operator_for_sector(
                 ops,
                 phase.omega,
-                gamma,
+                Gamma,
                 shifted_jump_operator=shifted_jump_operator,
             )
             for ops in ops_list
@@ -185,7 +198,7 @@ def build_precomputed_trajectory_data(
                 ops,
                 phase.omega,
                 phase.delta,
-                gamma,
+                Gamma,
                 shifted_jump_operator=shifted_jump_operator,
                 jump_operator=jump_operator,
             )
@@ -216,13 +229,13 @@ def build_precomputed_trajectory_data(
 
 def simulate_single_trajectory(
     N: int,
-    gamma: float,
+    Gamma: float,
     phases: Sequence[Phase],
     sector_coeffs: Mapping[int, complex],
     *,
     internal_sector_states: Optional[Mapping[int, Array]] = None,
     dt: float = 1e-3,
-    save_every: int = 1,
+    num_snapshots: int = 101,
     seed: int = 1234,
     seed_sequence: Optional[np.random.SeedSequence] = None,
     shifted_jump_operator: bool = False,
@@ -235,7 +248,7 @@ def simulate_single_trajectory(
     ----------
     N
         Total number of atoms.
-    gamma
+    Gamma
         Collective decay rate Gamma in the paper.
     phases
         Piecewise-constant protocol stages. For your requested three-stage run,
@@ -251,8 +264,11 @@ def simulate_single_trajectory(
         every populated sector starts in |n_e=0> (all active atoms in |down>).
     dt
         Base time step used for jump detection and propagation.
-    save_every
-        Save one snapshot every `save_every` accepted time steps.
+    num_snapshots
+        Number of saved wavefunction snapshots. The simulator constructs a
+        common output grid t_eval = linspace(0, total_time, num_snapshots) and
+        saves the state exactly at those times by splitting internal evolution
+        steps when needed.
     rng
         Optional NumPy random number generator.
 
@@ -263,16 +279,16 @@ def simulate_single_trajectory(
     """
     if N <= 0:
         raise ValueError("N must be positive.")
-    if gamma < 0.0:
-        raise ValueError("gamma must be non-negative.")
+    if Gamma < 0.0:
+        raise ValueError("Gamma must be non-negative.")
     if dt <= 0.0:
         raise ValueError("dt must be positive.")
-    if save_every <= 0:
-        raise ValueError("save_every must be >= 1.")
-    if shifted_jump_operator and gamma <= 0.0:
+    if num_snapshots < 2:
+        raise ValueError("num_snapshots must be at least 2.")
+    if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
-            "shifted_jump_operator=True requires gamma > 0 because the shifted jump "
-            "operator contains omega / gamma."
+            "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
+            "operator contains omega / Gamma."
         )
 
     if seed_sequence is None:
@@ -285,7 +301,7 @@ def simulate_single_trajectory(
     if precomputed is None:
         precomputed = build_precomputed_trajectory_data(
             N,
-            gamma,
+            Gamma,
             phases,
             sector_coeffs,
             dt,
@@ -298,6 +314,9 @@ def simulate_single_trajectory(
     phase_jump_operators = precomputed["phase_jump_operators"]
     phase_generators = precomputed["phase_generators"]
     phase_propagators = precomputed["phase_propagators"]
+
+    t_eval = build_t_eval_from_phases(phases, num_snapshots)
+    next_eval_idx = 1
 
     initial_blocks = build_initial_sector_state(N, sector_coeffs, internal_sector_states)
     psi_blocks = renormalize_psi_blocks([initial_blocks[Nj] for Nj in sector_list])
@@ -313,8 +332,30 @@ def simulate_single_trajectory(
 
     jump_times: List[float] = []
     current_time = 0.0
-    accepted_steps = 0
     threshold = rng.random()
+    # Count actual propagation calls. This lets the runtime diagnostic include
+    # bisection midpoint propagations and other variable-step fallbacks, not
+    # only the outer-loop step attempts.
+    total_step_count = 0
+    non_precomputed_step_count = 0
+
+    def maybe_save_snapshot() -> None:
+        nonlocal next_eval_idx
+        while next_eval_idx < len(t_eval) and current_time >= t_eval[next_eval_idx] - 1e-15:
+            if abs(current_time - t_eval[next_eval_idx]) > 1e-9:
+                raise RuntimeError(
+                    "Internal MCWF evolution missed a requested t_eval output time. "
+                    "This indicates the step-splitting logic failed."
+                )
+            snapshots.append(
+                TrajectorySnapshot(
+                    time=float(t_eval[next_eval_idx]),
+                    sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
+                    norm=np.sqrt(total_norm2_list(psi_blocks)),
+                    phase_index=phase_index,
+                )
+            )
+            next_eval_idx += 1
 
     for phase_index, phase in enumerate(phases):
         if phase.duration < 0.0:
@@ -328,33 +369,32 @@ def simulate_single_trajectory(
 
         phase_end = current_time + phase.duration
         while current_time < phase_end - 1e-15:
-            step = min(dt, phase_end - current_time)
+            next_eval_time = t_eval[next_eval_idx] if next_eval_idx < len(t_eval) else np.inf
+            step = min(dt, phase_end - current_time, next_eval_time - current_time)
             if abs(step - dt) <= 1e-15:
+                total_step_count += 1
                 trial = propagate_blocks_with_propagators(psi_blocks, full_step_propagators)
             else:
+                # Any step that is shorter than the base dt cannot use the
+                # precomputed full-step propagator and falls back to the
+                # variable-step propagation path instead.
+                total_step_count += 1
+                non_precomputed_step_count += 1
                 trial = propagate_blocks(psi_blocks, generators_list, step)
             trial_norm2 = total_norm2_list(trial)
 
             if trial_norm2 > threshold:
                 psi_blocks = trial
                 current_time += step
-                accepted_steps += 1
-
-                if accepted_steps % save_every == 0:
-                    snapshots.append(
-                        TrajectorySnapshot(
-                            time=current_time,
-                            sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-                            norm=np.sqrt(trial_norm2),
-                            phase_index=phase_index,
-                        )
-                    )
+                maybe_save_snapshot()
                 continue
 
             lo, hi = 0.0, step
             pre_blocks = [psi.copy() for psi in psi_blocks]
             for _ in range(5):
                 mid = 0.5 * (lo + hi)
+                total_step_count += 1
+                non_precomputed_step_count += 1
                 mid_state = propagate_blocks(pre_blocks, generators_list, mid)
                 if total_norm2_list(mid_state) > threshold:
                     lo = mid
@@ -362,6 +402,8 @@ def simulate_single_trajectory(
                     hi = mid
 
             tau = hi
+            total_step_count += 1
+            non_precomputed_step_count += 1
             psi_blocks = propagate_blocks(pre_blocks, generators_list, tau)
             current_time += tau
 
@@ -369,18 +411,12 @@ def simulate_single_trajectory(
             psi_blocks = apply_jump(psi_blocks, jump_operators_list)
             jump_times.append(current_time)
             threshold = rng.random()
-
-            snapshots.append(
-                TrajectorySnapshot(
-                    time=current_time,
-                    sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-                    norm=1.0,
-                    phase_index=phase_index,
-                )
-            )
+            maybe_save_snapshot()
 
             remainder = step - tau
             if remainder > 1e-15:
+                total_step_count += 1
+                non_precomputed_step_count += 1
                 trial = propagate_blocks(psi_blocks, generators_list, remainder)
                 trial_norm2 = total_norm2_list(trial)
                 if trial_norm2 <= threshold:
@@ -388,18 +424,27 @@ def simulate_single_trajectory(
                 else:
                     psi_blocks = trial
                     current_time += remainder
-                    accepted_steps += 1
-                    if accepted_steps % save_every == 0:
-                        snapshots.append(
-                            TrajectorySnapshot(
-                                time=current_time,
-                                sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-                                norm=np.sqrt(trial_norm2),
-                                phase_index=phase_index,
-                            )
-                        )
+                    maybe_save_snapshot()
 
     psi_blocks = renormalize_psi_blocks(psi_blocks)
+    if next_eval_idx < len(t_eval):
+        if abs(current_time - t_eval[next_eval_idx]) > 1e-9:
+            raise RuntimeError(
+                "Final MCWF time does not match the last requested t_eval point."
+            )
+        snapshots.append(
+            TrajectorySnapshot(
+                time=float(t_eval[next_eval_idx]),
+                sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
+                norm=1.0,
+                phase_index=max(len(phases) - 1, 0),
+            )
+        )
+        next_eval_idx += 1
+
+    if next_eval_idx != len(t_eval):
+        raise RuntimeError("Did not save all requested MCWF t_eval snapshots.")
+
     if not snapshots or abs(snapshots[-1].time - current_time) > 1e-12:
         snapshots.append(
             TrajectorySnapshot(
@@ -412,9 +457,10 @@ def simulate_single_trajectory(
 
     return TrajectoryResult(
         N=N,
-        gamma=gamma,
+        Gamma=Gamma,
         phases=list(phases),
         shifted_jump_operator=shifted_jump_operator,
+        t_eval=t_eval,
         sectors=sector_list,
         sector_multiplicities=multiplicities,
         final_sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
@@ -422,4 +468,6 @@ def simulate_single_trajectory(
         jump_times=jump_times,
         jump_count=len(jump_times),
         sector_dimensions=dims,
+        total_step_count=total_step_count,
+        non_precomputed_step_count=non_precomputed_step_count,
     )
