@@ -76,15 +76,10 @@ def plot_trajectory_angles_and_excitation(
                 xmax=t_step1_end,
                 linestyle=":",
                 alpha=0.9,
-                label=r"phase-1 ss ($N_J=N/2$)",
-            )
-            flat_axes[1].hlines(
-                y=phi_ss,
-                xmin=0.0,
-                xmax=t_step1_end,
-                linestyle=":",
-                alpha=0.9,
-                label=r"phase-1 ss ($\phi=\pi/2$)",
+                label=(
+                    r"$\delta = 0$ ss, "
+                    r"$\cos\tilde{\Theta}_J=\sqrt{1-(\Omega/\Omega_c)^2}$"
+                ),
             )
 
     flat_axes[0].set_xlabel(r"$\Gamma t$")
@@ -155,15 +150,10 @@ def plot_qutip_angles_and_excitation(
                 xmax=t_step1_end,
                 linestyle=":",
                 alpha=0.9,
-                label=r"phase-1 ss ($N_J=N/2$)",
-            )
-            flat_axes[1].hlines(
-                y=phi_ss,
-                xmin=0.0,
-                xmax=t_step1_end,
-                linestyle=":",
-                alpha=0.9,
-                label=r"phase-1 ss",
+                label=(
+                    r"$\delta = 0$ ss, "
+                    r"$\cos\tilde{\Theta}_J=\sqrt{1-(\Omega/\Omega_c)^2}$"
+                ),
             )
 
     flat_axes[0].set_xlabel(r"$\Gamma t$")

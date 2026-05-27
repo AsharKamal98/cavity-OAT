@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 import numpy as np
 
 from common.utils import active_manifold_angles
-from common.utils import phase_change_times
+from common.utils import phase_change_times, phase1_ss_angles_for_nj
 from common.parser import ObservableSeries
 from quantum_trajectories.aggregator import expected_collective_components, trajectory_observables
 from quantum_trajectories.operator_helpers import build_sector_ops
@@ -529,6 +529,7 @@ def generalized_squeezing_for_trajectory(
             xi2_gen,
             lambda_min,
             N_c,
+            excited_fraction_active,
             theta_J,
             phi_J,
             theta_S,
@@ -539,6 +540,7 @@ def generalized_squeezing_for_trajectory(
     lambda_min = np.full_like(t, np.nan, dtype=float)
     covariance_eigvals = np.full((len(t), 4), np.nan, dtype=float)
     n_c_expect = np.full_like(t, np.nan, dtype=float)
+    excited_fraction_active = np.full_like(t, np.nan, dtype=float)
     theta_j = np.zeros_like(t, dtype=float)
     phi_j = np.zeros_like(t, dtype=float)
     theta_s = np.zeros_like(t, dtype=float)
@@ -549,6 +551,13 @@ def generalized_squeezing_for_trajectory(
         norm2 = total_norm2(blocks)
         if norm2 <= tol:
             continue
+
+        _, _, _, ne_expect = expected_collective_components(blocks)
+        n_j_expect = sum(
+            Nj * float(np.vdot(psi, psi).real) for Nj, psi in blocks.items()
+        ) / norm2
+        if n_j_expect > tol:
+            excited_fraction_active[k] = ne_expect / n_j_expect
 
         theta_j[k], phi_j[k] = _single_snapshot_j_angles(blocks, tol=tol)
         dressed_one, _ = _dressed_basis_states(theta_j[k], phi_j[k])
@@ -634,6 +643,7 @@ def generalized_squeezing_for_trajectory(
         "lambda_min": lambda_min,
         "covariance_eigvals": covariance_eigvals,
         "N_c": n_c_expect,
+        "excited_fraction_active": excited_fraction_active,
         "theta_J": theta_j,
         "phi_J": phi_j,
         "theta_S": theta_s,
@@ -680,7 +690,7 @@ def generalized_squeezing_for_ensemble(
     averaged_observables
         Optional precomputed ensemble observable averages on the same t_eval
         grid. If supplied and its time grid matches the ensemble snapshots
-        exactly, the squeezing code reuses its Jx, Jy, Jz, and N_e series
+        exactly, the squeezing code reuses its Jx, Jy, Jz, N_e, and N_j series
         instead of recomputing trajectory_observables(...) for every
         trajectory.
     """
@@ -695,6 +705,7 @@ def generalized_squeezing_for_ensemble(
     lambda_min = np.full_like(t, np.nan, dtype=float)
     covariance_eigvals = np.full((len(t), 4), np.nan, dtype=float)
     n_c_expect = np.full_like(t, np.nan, dtype=float)
+    excited_fraction_active = np.full_like(t, np.nan, dtype=float)
     theta_j = np.zeros_like(t, dtype=float)
     phi_j = np.zeros_like(t, dtype=float)
     theta_s = np.zeros_like(t, dtype=float)
@@ -718,6 +729,7 @@ def generalized_squeezing_for_ensemble(
         jy_mean = np.asarray(averaged_observables.Jy, dtype=float)
         jz_mean = np.asarray(averaged_observables.Jz, dtype=float)
         ne_mean = np.asarray(averaged_observables.N_e, dtype=float)
+        nj_mean = np.asarray(averaged_observables.N_j, dtype=float)
     else:
         per_traj_obs = _map_with_optional_pool(
             _trajectory_observables_worker,
@@ -735,8 +747,12 @@ def generalized_squeezing_for_ensemble(
         jy_mean = np.mean(np.asarray([obs.Jy for obs in per_traj_obs], dtype=float), axis=0)
         jz_mean = np.mean(np.asarray([obs.Jz for obs in per_traj_obs], dtype=float), axis=0)
         ne_mean = np.mean(np.asarray([obs.N_e for obs in per_traj_obs], dtype=float), axis=0)
+        nj_mean = np.mean(np.asarray([obs.N_j for obs in per_traj_obs], dtype=float), axis=0)
     if verbose:
         print(f"xi timing: basic observable alignment finished in {time.perf_counter() - t0:.3f} s")
+
+    valid_nj = nj_mean > tol
+    excited_fraction_active[valid_nj] = ne_mean[valid_nj] / nj_mean[valid_nj]
 
     t0 = time.perf_counter()
     for k in range(nsnaps):
@@ -824,6 +840,7 @@ def generalized_squeezing_for_ensemble(
         "lambda_min": lambda_min,
         "covariance_eigvals": covariance_eigvals,
         "N_c": n_c_expect,
+        "excited_fraction_active": excited_fraction_active,
         "theta_J": theta_j,
         "phi_J": phi_j,
         "theta_S": theta_s,
@@ -876,22 +893,48 @@ def plot_generalized_xi(
     eigvals = np.asarray(xi_data["covariance_eigvals"], dtype=float)
     eigvals_plot = np.where(eigvals > 0.0, eigvals, np.nan)
     t_step1_end, t_step2_end = phase_change_times(phases)
+    n_total = result.trajectories[0].N if isinstance(result, TrajectoryEnsemble) else result.N
+    sector_list = result.trajectories[0].sectors if isinstance(result, TrajectoryEnsemble) else result.sectors
+    dN = max(abs(int(Nj) - (n_total // 2)) for Nj in sector_list) if sector_list else 0
+    Gamma_ref = result.trajectories[0].Gamma if isinstance(result, TrajectoryEnsemble) else result.Gamma
+    theta_ss, _ = phase1_ss_angles_for_nj(n_total // 2, phases[0].omega, Gamma_ref)
 
     if ax is None:
-        fig, axes = plt.subplots(1, 3, figsize=(17, 4.5), sharex=False)
+        fig, axes = plt.subplots(2, 2, figsize=(14, 9.0), sharex=False)
+        axes = axes.ravel()
     else:
         axes = np.asarray(ax)
-        if axes.size != 3:
+        if axes.size != 4:
             raise ValueError(
-                "plot_generalized_xi(..., ax=...) expects three axes for the "
-                "squeezing, eigenvalue, and N_c panels."
+                "plot_generalized_xi(..., ax=...) expects four axes for the "
+                "squeezing, eigenvalue, N_c, and excited-fraction panels."
             )
         fig = axes.flat[0].figure
         axes = axes.ravel()
 
-    axes[0].plot(xi_data["t"], xi_data["xi2_gen_db"], linewidth=1.8, label=r"$10\log_{10}(\xi^2_{\rm gen})$")
+    axes[0].plot(
+        xi_data["t"],
+        xi_data["xi2_gen_db"],
+        linewidth=1.8,
+        label=(
+            r"$10\log_{10}(\xi^2)$, "
+            r"$\xi^2 = \frac{N\lambda_{\min}(C)}{\langle N_c/2\rangle^2}$"
+        ),
+    )
+    if np.isfinite(theta_ss):
+        xi2_ss = np.cos(theta_ss)
+        if xi2_ss > 0.0:
+            xi2_ss_db = 10.0 * np.log10(xi2_ss)
+            axes[0].hlines(
+                y=xi2_ss_db,
+                xmin=0.0,
+                xmax=t_step1_end,
+                linestyle=":",
+                alpha=0.9,
+                label=r"$\delta = 0,\ \xi^2 = \cos\tilde{\Theta}_J$",
+            )
     axes[0].set_xlabel("time")
-    axes[0].set_ylabel(r"$10\log_{10}(\xi^2_{\rm gen})$ [dB]")
+    axes[0].set_ylabel(r"$\xi^2$ [dB]")
     axes[0].set_title(title)
     axes[0].grid(alpha=0.3)
     axes[0].legend()
@@ -904,13 +947,12 @@ def plot_generalized_xi(
     ]
     for idx, curve_label in enumerate(eigen_labels):
         axes[1].plot(xi_data["t"], eigvals_plot[:, idx], linewidth=1.6, label=curve_label)
-    n_total = result.trajectories[0].N if isinstance(result, TrajectoryEnsemble) else result.N
     axes[1].axhline(
         y=n_total / 4.0,
         linestyle="--",
         color="black",
         alpha=0.8,
-        label="unsqueezed state",
+        label=r"squeezed state ($\lambda_a = N/4$)",
     )
     axes[1].set_xlabel("time")
     axes[1].set_ylabel("Covariance eigenvalues")
@@ -925,13 +967,37 @@ def plot_generalized_xi(
         linestyle="--",
         color="black",
         alpha=0.8,
-        label=r"$N_c = N$ (coherent state)",
+        label=r"squeezed state ($N_c = N$)",
     )
     axes[2].set_xlabel("time")
     axes[2].set_ylabel(r"$\langle N_c\rangle$")
     axes[2].set_title(r"Mean active population $\langle N_c\rangle$")
     axes[2].grid(alpha=0.3)
+    axes[2].ticklabel_format(axis="y", style="plain", useOffset=False)
+    axes[2].yaxis.get_major_locator().set_params(integer=True)
     axes[2].legend()
+
+    axes[3].plot(
+        xi_data["t"],
+        np.asarray(xi_data["excited_fraction_active"], dtype=float),
+        linewidth=1.8,
+        label=r"$\langle e\rangle=\langle N_e\rangle/\langle N_J\rangle$",
+    )
+    if np.isfinite(theta_ss):
+        excited_fraction_ss = 0.5 * (1.0 - np.cos(theta_ss))
+        axes[3].hlines(
+            y=excited_fraction_ss,
+            xmin=0.0,
+            xmax=t_step1_end,
+            linestyle=":",
+            alpha=0.9,
+            label=r"$\delta=0,\ P_e=\sin^2(\tilde{\Theta}_J/2)$",
+        )
+    axes[3].set_xlabel("time")
+    axes[3].set_ylabel(r"$\langle e\rangle$")
+    axes[3].set_title(r"Active-manifold excited fraction $\langle e\rangle$")
+    axes[3].grid(alpha=0.3)
+    axes[3].legend()
 
     for axis in axes:
         axis.axvline(t_step1_end, linestyle="--", color="black", alpha=0.6)
@@ -940,7 +1006,11 @@ def plot_generalized_xi(
     if output_path is not None:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.suptitle(f"Squeezing Dynamics (N={n_total}, dN={dN})", y=0.965)
+        fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
         fig.savefig(output_path, dpi=200, bbox_inches="tight")
+        return xi_data, fig, axes
 
-    fig.tight_layout()
+    fig.suptitle(f"Squeezing Dynamics (N={n_total}, dN={dN})", y=0.965)
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
     return xi_data, fig, axes
