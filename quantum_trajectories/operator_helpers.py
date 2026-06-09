@@ -1,15 +1,50 @@
-from quantum_trajectories.parser import (
-    SectorOperators,
-)
+from __future__ import annotations
+
+from functools import lru_cache
+from math import comb
+from typing import Optional, Tuple
 
 import numpy as np
-from math import comb
-from scipy.sparse import diags
+from scipy.sparse import csc_matrix, diags, eye, kron
+
+from quantum_trajectories.parser import SectorKey, SectorOperators
 
 
-# -----------------------------------------------------------------------------
-# Basic sector construction
-# -----------------------------------------------------------------------------
+def is_inhomogeneous_sector_key(sector_key: SectorKey) -> bool:
+    return isinstance(sector_key, tuple)
+
+
+def split_sector_key(sector_key: SectorKey) -> Tuple[int, ...]:
+    if isinstance(sector_key, tuple):
+        return tuple(int(v) for v in sector_key)
+    return (int(sector_key),)
+
+
+def total_active_atoms_in_sector(sector_key: SectorKey) -> int:
+    return int(sum(split_sector_key(sector_key)))
+
+
+def omega2_from_weighted_average(omega1: float, N1: int, N2: int, *, tol: float = 1e-12) -> float:
+    """
+    Choose omega2 so the physical atom-number weighted mean coupling is one.
+
+    The convention is
+
+        N1 * omega1 + N2 * omega2 = N1 + N2.
+
+    This gives a single fixed omega2 for the whole inhomogeneous run, instead
+    of changing omega2 from one group-resolved sector to another.  If group 2
+    has no atoms, omega2 never multiplies an active operator; return 1.0 to
+    keep downstream metadata finite.
+    """
+    if N1 < 0 or N2 < 0:
+        raise ValueError("N1 and N2 must be non-negative.")
+    if N1 + N2 <= 0:
+        raise ValueError("At least one coupling group must contain atoms.")
+    if abs(N2) <= tol:
+        return 1.0
+    return float((N1 + N2 - float(omega1) * N1) / N2)
+
 
 def sector_multiplicity(N: int, Nj: int) -> int:
     """
@@ -21,6 +56,21 @@ def sector_multiplicity(N: int, Nj: int) -> int:
     return comb(N, Nj)
 
 
+def two_group_sector_multiplicity(N1: int, N2: int, Nj1: int, Nj2: int) -> int:
+    """
+    Degeneracy of the two-group sector (Nj1, Nj2).
+
+    The physical groups are fixed, so this counts how many atoms are active
+    inside each group separately.
+    """
+    if Nj1 < 0 or Nj2 < 0 or Nj1 > N1 or Nj2 > N2:
+        raise ValueError(
+            f"Invalid two-group sector ({Nj1}, {Nj2}) for group sizes N1={N1}, N2={N2}."
+        )
+    return comb(N1, Nj1) * comb(N2, Nj2)
+
+
+@lru_cache(maxsize=None)
 def build_sector_ops(Nj: int) -> SectorOperators:
     """
     Collective two-level operators on the permutationally symmetric Dicke basis
@@ -29,13 +79,9 @@ def build_sector_ops(Nj: int) -> SectorOperators:
     dim = Nj + 1
     ne = np.arange(dim, dtype=float)
 
-    # J_+ |n_e> = sqrt[(Nj - n_e)(n_e + 1)] |n_e + 1>
     jplus_vals = np.sqrt((Nj - ne[:-1]) * (ne[:-1] + 1.0))
-
-    # J_- |n_e> = sqrt[n_e (Nj - n_e + 1)] |n_e - 1>
     jminus_vals = np.sqrt(ne[1:] * (Nj - ne[1:] + 1.0))
 
-    # IMPORTANT: offsets are opposite of what you had
     J_plus = diags(jplus_vals, offsets=-1, shape=(dim, dim), dtype=np.complex128).tocsc()
     J_minus = diags(jminus_vals, offsets=+1, shape=(dim, dim), dtype=np.complex128).tocsc()
 
@@ -52,4 +98,112 @@ def build_sector_ops(Nj: int) -> SectorOperators:
         J_y=J_y,
         N_e=N_e,
         JpJm=JpJm,
+        sector_key=Nj,
+        Nj_groups=(Nj,),
+        omega_groups=(1.0,),
+        J_x_drive=J_x,
+        A_weighted=J_minus,
+        AdagA_weighted=JpJm,
+        N_e_groups=(N_e,),
+        J_x_groups=(J_x,),
+        J_y_groups=(J_y,),
     )
+
+
+@lru_cache(maxsize=None)
+def build_two_group_sector_ops(
+    Nj1: int,
+    Nj2: int,
+    omega1: float,
+    N1: int,
+    N2: int,
+) -> SectorOperators:
+    """
+    Build cached reduced operators for one two-group active-manifold sector.
+
+    The basis is the product Dicke basis |n_{e,1}, n_{e,2}> with dimension
+    (Nj1 + 1)(Nj2 + 1). Group 2 uses a single fixed omega2 chosen from the
+    physical group sizes:
+
+        N1 * omega1 + N2 * omega2 = N1 + N2.
+    """
+    if Nj1 < 0 or Nj2 < 0:
+        raise ValueError("Two-group sector sizes must be non-negative.")
+    if Nj1 > N1 or Nj2 > N2:
+        raise ValueError(
+            f"Sector ({Nj1}, {Nj2}) exceeds physical group sizes N1={N1}, N2={N2}."
+        )
+
+    omega2 = omega2_from_weighted_average(omega1, N1, N2)
+    ops1 = build_sector_ops(Nj1)
+    ops2 = build_sector_ops(Nj2)
+
+    I1 = eye(Nj1 + 1, format="csc", dtype=np.complex128)
+    I2 = eye(Nj2 + 1, format="csc", dtype=np.complex128)
+
+    J1_plus = kron(ops1.J_plus, I2, format="csc")
+    J1_minus = kron(ops1.J_minus, I2, format="csc")
+    J1_x = kron(ops1.J_x, I2, format="csc")
+    J1_y = kron(ops1.J_y, I2, format="csc")
+    N_e1 = kron(ops1.N_e, I2, format="csc")
+
+    J2_plus = kron(I1, ops2.J_plus, format="csc")
+    J2_minus = kron(I1, ops2.J_minus, format="csc")
+    J2_x = kron(I1, ops2.J_x, format="csc")
+    J2_y = kron(I1, ops2.J_y, format="csc")
+    N_e2 = kron(I1, ops2.N_e, format="csc")
+
+    J_plus = (J1_plus + J2_plus).tocsc()
+    J_minus = (J1_minus + J2_minus).tocsc()
+    J_x = (J1_x + J2_x).tocsc()
+    J_y = (J1_y + J2_y).tocsc()
+    N_e = (N_e1 + N_e2).tocsc()
+    A_weighted = (omega1 * J1_minus + omega2 * J2_minus).tocsc()
+    J_x_drive = (omega1 * J1_x + omega2 * J2_x).tocsc()
+    AdagA_weighted = (A_weighted.conjugate().transpose() @ A_weighted).tocsc()
+
+    return SectorOperators(
+        Nj=Nj1 + Nj2,
+        J_plus=J_plus,
+        J_minus=J_minus,
+        J_x=J_x,
+        J_y=J_y,
+        N_e=N_e,
+        JpJm=(J_plus @ J_minus).tocsc(),
+        sector_key=(Nj1, Nj2),
+        Nj_groups=(Nj1, Nj2),
+        omega_groups=(omega1, omega2),
+        J_x_drive=J_x_drive,
+        A_weighted=A_weighted,
+        AdagA_weighted=AdagA_weighted,
+        N_e_groups=(N_e1, N_e2),
+        J_x_groups=(J1_x, J2_x),
+        J_y_groups=(J1_y, J2_y),
+    )
+
+
+def build_sector_ops_for_key(
+    sector_key: SectorKey,
+    *,
+    omega_1: Optional[float] = None,
+    N1: Optional[int] = None,
+    N2: Optional[int] = None,
+) -> SectorOperators:
+    if isinstance(sector_key, tuple):
+        if len(sector_key) != 2:
+            raise ValueError("Only two-group inhomogeneous sectors are currently supported.")
+        if omega_1 is None:
+            raise ValueError("omega_1 must be provided for inhomogeneous sector keys.")
+        if N1 is None or N2 is None:
+            raise ValueError(
+                "N1 and N2 must be provided for inhomogeneous sector keys so omega_2 "
+                "can be fixed from the physical group sizes."
+            )
+        return build_two_group_sector_ops(
+            int(sector_key[0]),
+            int(sector_key[1]),
+            float(omega_1),
+            int(N1),
+            int(N2),
+        )
+    return build_sector_ops(int(sector_key))

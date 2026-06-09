@@ -167,7 +167,7 @@ def validated_mcwf_dt(
 
 
 def check_initial_sector_omega_ratio(
-    sector_coeffs: Mapping[int, complex],
+    sector_coeffs: Mapping[object, complex],
     Omega: float,
     Gamma: float,
     *,
@@ -183,7 +183,10 @@ def check_initial_sector_omega_ratio(
     if not sector_coeffs:
         raise ValueError("sector_coeffs must contain at least one populated sector.")
 
-    min_nj = min(int(Nj) for Nj in sector_coeffs)
+    min_nj = min(
+        int(sum(sector_key)) if isinstance(sector_key, tuple) else int(sector_key)
+        for sector_key in sector_coeffs
+    )
     omega_crit = omega_c(min_nj, Gamma)
 
     if omega_crit <= 0.0:

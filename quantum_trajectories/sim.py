@@ -7,12 +7,17 @@ from scipy.sparse import csc_matrix, eye
 from scipy.sparse.linalg import expm, expm_multiply
 
 from quantum_trajectories.operator_helpers import (
-    build_sector_ops,
+    build_sector_ops_for_key,
+    omega2_from_weighted_average,
     sector_multiplicity,
+    split_sector_key,
+    total_active_atoms_in_sector,
+    two_group_sector_multiplicity,
 )
 from quantum_trajectories.parser import (
     Array,
     Phase,
+    SectorKey,
     SectorOperators,
     TrajectoryResult,
     TrajectorySnapshot,
@@ -48,8 +53,21 @@ def build_phase_jump_operator_for_sector(
     *,
     shifted_jump_operator: bool = False,
 ) -> csc_matrix:
+    """
+    Build the reduced-basis jump operator for one sector and one protocol phase.
+
+    In the regular picture, the jump operator is simply
+        l = J_-.
+
+    In the shifted picture used for the cavity-output formulation, it becomes
+        l = J_- + i Omega / Gamma.
+
+    Here `ops` contains the reduced operators for a fixed Nj sector, so the
+    returned matrix acts only within that sector's (Nj + 1)-dimensional basis.
+    """
+    unshifted_jump = ops.A_weighted if ops.A_weighted is not None else ops.J_minus
     if not shifted_jump_operator:
-        return ops.J_minus
+        return unshifted_jump
 
     if Gamma <= 0.0:
         raise ValueError(
@@ -57,8 +75,8 @@ def build_phase_jump_operator_for_sector(
             "operator contains omega / Gamma."
         )
 
-    identity = eye(ops.J_minus.shape[0], format="csc", dtype=np.complex128)
-    return (ops.J_minus + (1j * omega / Gamma) * identity).tocsc()
+    identity = eye(unshifted_jump.shape[0], format="csc", dtype=np.complex128)
+    return (unshifted_jump + (1j * omega / Gamma) * identity).tocsc()
 
 
 def heff_for_sector(
@@ -71,6 +89,8 @@ def heff_for_sector(
     jump_operator: Optional[csc_matrix] = None,
 ) -> csc_matrix:
     """
+    Construct the effective Hamiltonian for a given sector.
+
     Regular H_delta and regular jump operator from the paper:
         H_delta = Omega J_x - delta N_e,
         l = J_-,
@@ -82,8 +102,10 @@ def heff_for_sector(
         H_delta - i/2 Gamma J_+ J_-,
     """
     if not shifted_jump_operator:
-        H = omega * ops.J_x - delta * ops.N_e
-        Heff = H - 0.5j * Gamma * ops.JpJm
+        drive_op = ops.J_x_drive if ops.J_x_drive is not None else ops.J_x
+        decay_term = ops.AdagA_weighted if ops.AdagA_weighted is not None else ops.JpJm
+        H = omega * drive_op - delta * ops.N_e
+        Heff = H - 0.5j * Gamma * decay_term
         return Heff.tocsc()
 
     if jump_operator is None:
@@ -104,7 +126,7 @@ def jump_for_sector(jump_operator: csc_matrix, psi: Array) -> Array:
     return jump_operator.dot(psi)
 
 
-def blocks_list_to_dict(sector_list: Sequence[int], psi_blocks: Sequence[Array]) -> Dict[int, Array]:
+def blocks_list_to_dict(sector_list: Sequence[SectorKey], psi_blocks: Sequence[Array]) -> Dict[SectorKey, Array]:
     return {Nj: psi.copy() for Nj, psi in zip(sector_list, psi_blocks)}
 
 
@@ -112,7 +134,7 @@ def total_norm2_list(psi_blocks: Sequence[Array]) -> float:
     return float(sum(np.vdot(psi, psi).real for psi in psi_blocks))
 
 
-def renormalize_blocks(blocks: Dict[int, Array]) -> Dict[int, Array]:
+def renormalize_blocks(blocks: Dict[SectorKey, Array]) -> Dict[SectorKey, Array]:
     nrm = np.sqrt(total_norm2(blocks))
     if nrm == 0.0:
         raise RuntimeError("Wavefunction has zero norm.")
@@ -171,15 +193,56 @@ def build_precomputed_trajectory_data(
     N: int,
     Gamma: float,
     phases: Sequence[Phase],
-    sector_coeffs: Mapping[int, complex],
+    sector_coeffs: Mapping[SectorKey, complex],
     dt: float,
     *,
     shifted_jump_operator: bool = False,
+    omega_1: Optional[float] = None,
+    N1: Optional[int] = None,
+    N2: Optional[int] = None,
 ) -> Dict[str, Any]:
-    sector_list = sorted(sector_coeffs.keys())
-    ops_list = [build_sector_ops(Nj) for Nj in sector_list]
-    multiplicities = {Nj: sector_multiplicity(N, Nj) for Nj in sector_list}
-    dims = {Nj: Nj + 1 for Nj in sector_list}
+    # Sorted list of populated strong-symmetry sectors, e.g. [N//2 - 1, N//2, N//2 + 1].
+    sector_list = sorted(
+        sector_coeffs.keys(),
+        key=lambda key: split_sector_key(key),
+    )
+    has_inhomogeneous_sectors = any(isinstance(sector_key, tuple) for sector_key in sector_list)
+    if has_inhomogeneous_sectors:
+        if omega_1 is None:
+            raise ValueError("omega_1 must be provided for inhomogeneous sector coefficients.")
+        if N1 is None or N2 is None:
+            raise ValueError(
+                "N1 and N2 must be provided for inhomogeneous sector coefficients."
+            )
+        if int(N1) + int(N2) != N:
+            raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
+        N1 = int(N1)
+        N2 = int(N2)
+
+    # One reduced-basis operator bundle per sector:
+    # [SectorOperators(Nj_0), SectorOperators(Nj_1), ...].
+    ops_list = [
+        build_sector_ops_for_key(
+            sector_key,
+            omega_1=omega_1,
+            N1=N1,
+            N2=N2,
+        )
+        for sector_key in sector_list
+    ]
+    # Sector multiplicity lookup, e.g. {500: ...} or {(250, 250): ...}.
+    multiplicities = {
+        sector_key: (
+            sector_multiplicity(N, int(sector_key))
+            if not isinstance(sector_key, tuple)
+            else two_group_sector_multiplicity(N1, N2, int(sector_key[0]), int(sector_key[1]))
+        )
+        for sector_key in sector_list
+    }
+    # Reduced Hilbert-space dimension in each sector: Nj + 1 or (Nj1 + 1)(Nj2 + 1).
+    dims = {sector_key: ops.J_minus.shape[0] for sector_key, ops in zip(sector_list, ops_list)}
+    # Phase- and sector-resolved jump operators:
+    # phase_jump_operators[phase_index][sector_index] = l_{phase,Nj}.
     phase_jump_operators = [
         [
             build_phase_jump_operator_for_sector(
@@ -192,6 +255,8 @@ def build_precomputed_trajectory_data(
         ]
         for phase in phases
     ]
+    # Phase- and sector-resolved non-Hermitian generators:
+    # phase_generators[phase_index][sector_index] = H_eff^{(phase,Nj)}.
     phase_generators = [
         [
             heff_for_sector(
@@ -206,19 +271,21 @@ def build_precomputed_trajectory_data(
         ]
         for phase, jump_operators_list in zip(phases, phase_jump_operators)
     ]
+    # Precomputed full-dt propagators:
+    # phase_propagators[phase_index][sector_index] = exp(-i H_eff dt).
     phase_propagators = [
         [expm((-1j * generator) * dt).tocsc() for generator in generators_list]
         for generators_list in phase_generators
     ]
 
     return {
-        "sector_list": sector_list,
-        "ops_list": ops_list,
-        "multiplicities": multiplicities,
-        "dims": dims,
-        "phase_jump_operators": phase_jump_operators,
-        "phase_generators": phase_generators,
-        "phase_propagators": phase_propagators,
+        "sector_list": sector_list,  # [Nj_0, Nj_1, ...]
+        "ops_list": ops_list,  # [SectorOperators(Nj_0), SectorOperators(Nj_1), ...]
+        "multiplicities": multiplicities,  # {Nj: sector multiplicity}
+        "dims": dims,  # {Nj: reduced sector dimension = Nj + 1}
+        "phase_jump_operators": phase_jump_operators,  # [phase][sector] -> l_{phase,Nj}
+        "phase_generators": phase_generators,  # [phase][sector] -> H_eff^{(phase,Nj)}
+        "phase_propagators": phase_propagators,  # [phase][sector] -> exp(-i H_eff dt)
     }
 
 
@@ -231,15 +298,18 @@ def simulate_single_trajectory(
     N: int,
     Gamma: float,
     phases: Sequence[Phase],
-    sector_coeffs: Mapping[int, complex],
+    sector_coeffs: Mapping[SectorKey, complex],
     *,
-    internal_sector_states: Optional[Mapping[int, Array]] = None,
+    internal_sector_states: Optional[Mapping[SectorKey, Array]] = None,
     dt: float = 1e-3,
     num_snapshots: int = 101,
     seed: int = 1234,
     seed_sequence: Optional[np.random.SeedSequence] = None,
     shifted_jump_operator: bool = False,
     precomputed: Optional[Dict[str, Any]] = None,
+    omega_1: Optional[float] = None,
+    N1: Optional[int] = None,
+    N2: Optional[int] = None,
 ) -> TrajectoryResult:
     """
     Quantum-trajectory simulation in the direct-sum strong-symmetry basis.
@@ -269,6 +339,10 @@ def simulate_single_trajectory(
         common output grid t_eval = linspace(0, total_time, num_snapshots) and
         saves the state exactly at those times by splitting internal evolution
         steps when needed.
+    omega_1, N1, N2
+        Inhomogeneous-coupling metadata.  Tuple sector keys (Nj1, Nj2) require
+        these values so the solver can use one fixed group-2 coupling,
+        N1 * omega_1 + N2 * omega_2 = N1 + N2.
     rng
         Optional NumPy random number generator.
 
@@ -291,6 +365,19 @@ def simulate_single_trajectory(
             "operator contains omega / Gamma."
         )
 
+    has_inhomogeneous_sectors = any(isinstance(sector_key, tuple) for sector_key in sector_coeffs)
+    if has_inhomogeneous_sectors:
+        if omega_1 is None:
+            raise ValueError("omega_1 must be provided for inhomogeneous sector coefficients.")
+        if N1 is None or N2 is None:
+            raise ValueError(
+                "N1 and N2 must be provided for inhomogeneous sector coefficients."
+            )
+        if int(N1) + int(N2) != N:
+            raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
+        N1 = int(N1)
+        N2 = int(N2)
+
     if seed_sequence is None:
         seed_seq = np.random.SeedSequence(seed).spawn(1)[0]
     else:
@@ -306,6 +393,9 @@ def simulate_single_trajectory(
             sector_coeffs,
             dt,
             shifted_jump_operator=shifted_jump_operator,
+            omega_1=omega_1,
+            N1=N1,
+            N2=N2,
         )
 
     sector_list = precomputed["sector_list"]
@@ -455,6 +545,12 @@ def simulate_single_trajectory(
             )
         )
 
+    omega_2 = (
+        omega2_from_weighted_average(float(omega_1), int(N1), int(N2))
+        if has_inhomogeneous_sectors
+        else None
+    )
+
     return TrajectoryResult(
         N=N,
         Gamma=Gamma,
@@ -468,6 +564,10 @@ def simulate_single_trajectory(
         jump_times=jump_times,
         jump_count=len(jump_times),
         sector_dimensions=dims,
+        omega_1=omega_1,
+        omega_2=omega_2,
+        N1=N1,
+        N2=N2,
         total_step_count=total_step_count,
         non_precomputed_step_count=non_precomputed_step_count,
     )

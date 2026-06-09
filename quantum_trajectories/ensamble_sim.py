@@ -9,6 +9,7 @@ from quantum_trajectories.sim import (
 from quantum_trajectories.parser import (
     Array,
     Phase,
+    SectorKey,
     TrajectoryEnsemble,
     TrajectoryResult
 )
@@ -43,6 +44,9 @@ def _init_trajectory_worker(
     num_snapshots,
     shifted_jump_operator,
     precomputed,
+    omega_1,
+    N1,
+    N2,
 ):
     """
     Initialize one multiprocessing worker.
@@ -63,6 +67,9 @@ def _init_trajectory_worker(
         "num_snapshots": num_snapshots,
         "shifted_jump_operator": shifted_jump_operator,
         "precomputed": precomputed,
+        "omega_1": omega_1,
+        "N1": N1,
+        "N2": N2,
     }
 
 
@@ -87,19 +94,25 @@ def _simulate_single_trajectory_worker(seed_sequence: np.random.SeedSequence) ->
         seed_sequence=seed_sequence,
         shifted_jump_operator=_WORKER_STATE["shifted_jump_operator"],
         precomputed=_WORKER_STATE["precomputed"],
+        omega_1=_WORKER_STATE["omega_1"],
+        N1=_WORKER_STATE["N1"],
+        N2=_WORKER_STATE["N2"],
     )
 
 def run_trajectory_ensemble(
     N: int,
     Gamma: float,
     phases: Sequence[Phase],
-    sector_coeffs: Mapping[int, complex],
+    sector_coeffs: Mapping[SectorKey, complex],
     *,
-    internal_sector_states: Optional[Mapping[int, Array]] = None,
+    internal_sector_states: Optional[Mapping[SectorKey, Array]] = None,
     dt: float = 1e-3,
     num_snapshots: int = 101,
     seed: Optional[int] = None,
     shifted_jump_operator: bool = False,
+    omega_1: Optional[float] = None,
+    N1: Optional[int] = None,
+    N2: Optional[int] = None,
     ntraj: int,
     n_processes: Optional[int] = None,
     chunksize: int = 1,
@@ -128,6 +141,10 @@ def run_trajectory_ensemble(
         Number of saved snapshots per trajectory. All trajectories use the same
         internally constructed t_eval grid, so ensemble observables and
         squeezing moments are aligned at identical times without interpolation.
+
+    omega_1, N1, N2
+        Inhomogeneous-coupling metadata for tuple sector keys.  The group-2
+        coupling is derived once from N1 * omega_1 + N2 * omega_2 = N1 + N2.
 
     verbose
         If True, print setup timing such as precompute and multiprocessing pool
@@ -162,6 +179,9 @@ def run_trajectory_ensemble(
         sector_coeffs=sector_coeffs,
         dt=dt,
         shifted_jump_operator=shifted_jump_operator,
+        omega_1=omega_1,
+        N1=N1,
+        N2=N2,
     )
     t1 = time.perf_counter()
     if verbose:
@@ -186,6 +206,9 @@ def run_trajectory_ensemble(
                 seed_sequence=child_seed_sequence,
                 shifted_jump_operator=shifted_jump_operator,
                 precomputed=precomputed,
+                omega_1=omega_1,
+                N1=N1,
+                N2=N2,
             )
             trajectories.append(result)
 
@@ -226,6 +249,9 @@ def run_trajectory_ensemble(
             num_snapshots,
             shifted_jump_operator,
             precomputed,
+            omega_1,
+            N1,
+            N2,
         ),
     ) as pool:
         t1 = time.perf_counter()

@@ -36,16 +36,30 @@ Read this whenever the task involves formulas, implementation, observables, or p
 
 Use this for coding tasks involving Hamiltonians, jump operators, phase protocols, squeezing, or comparison to analytics.
 
-### `docs/paper_theory_notes.md`
+### `docs/paper_inhomogeneous_couplings.md`
 
-Read this when writing longer theory explanations or when the task requires conceptual accuracy:
-- Strong vs weak symmetry.
-- Why coherences between `N_J` sectors survive.
-- Why detuning causes collective dephasing.
-- How the effective OAT picture emerges.
-- How single-particle decoherence enters.
+Read this whenever the task involves inhomogeneous couplings, weighted collective jumps, split active-manifold groups, or comparing homogeneous vs inhomogeneous MCWF simulations:
 
-Use this for drafting text, documentation, theory summaries, or explaining results.
+* Two-group active-manifold sectors ((N_{J,1},N_{J,2})).
+* Product Dicke basis states (|n_{e,1},n_{e,2}\rangle).
+* Group-resolved operators (J_{1,\pm}), (J_{2,\pm}), (N_{e,1}), (N_{e,2}).
+* Drive replacement
+  [
+  \Omega J_x \rightarrow \Omega(\omega_1J_{1,x}+\omega_2J_{2,x}).
+  ]
+* Input convention: pass (N_1), (N_2), and (\omega_1), then set (\omega_2=(N-N_1\omega_1)/N_2) so \(N_1\omega_1+N_2\omega_2=N\).
+* Weighted collective jump
+  [
+  A=\omega_1J_{1,-}+\omega_2J_{2,-}.
+  ]
+* Shifted weighted jump
+  [
+  l=A+i\frac{\Omega}{\Gamma}.
+  ]
+* Performance requirements: precompute two-group operators, jump operators, generators, and propagators; do not rebuild sparse Kronecker products in the MCWF time loop.
+* Validation requirements: when one group is empty, recover the current homogeneous one-group implementation within numerical tolerance. The homogenous code path can be changed to run the inhomogenous code path, only if it can be guranteed that the runtime won't increase for e.g. NJ1 = 0.
+
+Use this before modifying Hamiltonian construction, jump operators, sector keys, basis construction, precomputation, observables, or trajectory propagation for inhomogeneous coupling. Keep the homogeneous code path working unchanged.
 
 ### `docs/paper_appendix_notes.md`
 

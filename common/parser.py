@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -41,6 +41,12 @@ class ObservableSeries:
     sx: Array
     sy: Array
     sz: Array
+
+    Jx_drive: Optional[Array] = None
+    Jx_groups: Optional[Tuple[Array, ...]] = None
+    Jy_groups: Optional[Tuple[Array, ...]] = None
+    Jz_groups: Optional[Tuple[Array, ...]] = None
+    N_e_groups: Optional[Tuple[Array, ...]] = None
 
     Jx_std: Optional[Array] = None
     Jy_std: Optional[Array] = None

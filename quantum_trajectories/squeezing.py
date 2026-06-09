@@ -535,6 +535,12 @@ def generalized_squeezing_for_trajectory(
             theta_S,
             phi_S.
     """
+    if any(isinstance(sector_key, tuple) for sector_key in result.sectors):
+        raise NotImplementedError(
+            "Generalized squeezing is currently implemented only for the "
+            "homogeneous one-group strong-symmetry sectors. It should not be "
+            "used automatically for inhomogeneous two-group trajectories."
+        )
     t = np.asarray([snap.time for snap in result.snapshots], dtype=float)
     xi2_gen = np.full_like(t, np.nan, dtype=float)
     lambda_min = np.full_like(t, np.nan, dtype=float)
@@ -694,6 +700,15 @@ def generalized_squeezing_for_ensemble(
         instead of recomputing trajectory_observables(...) for every
         trajectory.
     """
+    if any(
+        any(isinstance(sector_key, tuple) for sector_key in traj.sectors)
+        for traj in ensemble.trajectories
+    ):
+        raise NotImplementedError(
+            "Generalized squeezing is currently implemented only for the "
+            "homogeneous one-group strong-symmetry sectors. It should not be "
+            "used automatically for inhomogeneous two-group trajectories."
+        )
     if len(ensemble.trajectories) == 0:
         raise ValueError("Ensemble is empty.")
 

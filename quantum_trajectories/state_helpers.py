@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from math import comb, sqrt
-from typing import Dict, Mapping, Optional
+from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
 
-from quantum_trajectories.parser import Array
+from quantum_trajectories.operator_helpers import split_sector_key, total_active_atoms_in_sector
+from quantum_trajectories.parser import Array, SectorKey
 
 
 SUPPORTED_SECTOR_DISTRIBUTIONS = {"square", "binomial"}
@@ -54,7 +55,7 @@ def down_state_in_sector(Nj: int) -> Array:
     return psi
 
 
-def normalize_sector_coefficients(coeffs: Mapping[int, complex]) -> Dict[int, complex]:
+def normalize_sector_coefficients(coeffs: Mapping[SectorKey, complex]) -> Dict[SectorKey, complex]:
     """
     Normalize a dictionary of sector coefficients to have unit norm.
 
@@ -152,15 +153,174 @@ def centered_sector_initial_coeffs(
 
 # -----------------------------------------------------------------------------
 
-def total_norm2(blocks: Mapping[int, Array]) -> float:
+def _valid_group_resolved_pairs_for_total_sector(
+    total_nj: int,
+    N1: int,
+    N2: int,
+) -> list[tuple[int, int]]:
+    """
+    Return all valid (Nj1, Nj2) pairs with Nj1 + Nj2 = total_nj.
+    """
+    pairs: list[tuple[int, int]] = []
+    nj1_min = max(0, total_nj - N2)
+    nj1_max = min(N1, total_nj)
+    for Nj1 in range(nj1_min, nj1_max + 1):
+        Nj2 = total_nj - Nj1
+        if 0 <= Nj2 <= N2:
+            pairs.append((Nj1, Nj2))
+    return pairs
+
+
+def _group_resolved_binomial_probability_weight(N1: int, N2: int, Nj1: int, Nj2: int) -> float:
+    """
+    Unnormalized probability weight for one group-resolved sector.
+
+    For the product state ((|u> + |d>) / sqrt(2))^N this is proportional to
+    binom(N1, Nj1) * binom(N2, Nj2).
+    """
+    return float(comb(N1, Nj1) * comb(N2, Nj2))
+
+
+def centered_group_resolved_sector_initial_coeffs(
+    N: int,
+    dN: int,
+    N1: int,
+    N2: int,
+    *,
+    sector_distribution: str = "square",
+) -> Dict[tuple[int, int], complex]:
+    """
+    Build a normalized superposition of two-group sectors centered around N/2.
+
+    The returned dictionary uses the low-level inhomogeneous representation
+
+        {(Nj1, Nj2): coeff}
+
+    where Nj1 and Nj2 are the active-manifold atom numbers in groups 1 and 2.
+
+    The selected total active-manifold sectors are
+
+        N_J in {N/2 - dN, ..., N/2 + dN},
+
+    and for each selected total N_J the helper includes every valid pair
+    (Nj1, Nj2) satisfying
+
+        Nj1 + Nj2 = N_J,
+        0 <= Nj1 <= N1,
+        0 <= Nj2 <= N2.
+
+    Distribution options
+    --------------------
+    binomial
+        Use amplitudes proportional to
+            sqrt(binom(N1, Nj1) * binom(N2, Nj2)),
+        then normalize over only the selected window.
+
+    square
+        Keep equal total probability for each selected total N_J sector, but
+        split that total-sector probability across the valid (Nj1, Nj2) pairs
+        using the conditional binomial distribution within the fixed total N_J.
+    """
+    if N < 0:
+        raise ValueError("N must be non-negative.")
+    if N1 < 0 or N2 < 0:
+        raise ValueError("N1 and N2 must be non-negative.")
+    if N1 + N2 != N:
+        raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
+    if dN < 0:
+        raise ValueError("dN must be >= 0.")
+    if N % 2 != 0:
+        raise ValueError("This helper assumes even N so the center is exactly N/2.")
+
+    sector_distribution = validate_sector_distribution(sector_distribution)
+
+    center = N // 2
+    total_sector_list = list(range(center - dN, center + dN + 1))
+    total_sector_list = [total_nj for total_nj in total_sector_list if 0 <= total_nj <= N]
+    if not total_sector_list:
+        raise ValueError("No valid total N_J sectors selected.")
+
+    valid_pairs_by_total: dict[int, list[tuple[int, int]]] = {
+        total_nj: _valid_group_resolved_pairs_for_total_sector(total_nj, N1, N2)
+        for total_nj in total_sector_list
+    }
+    valid_pairs_by_total = {
+        total_nj: pairs for total_nj, pairs in valid_pairs_by_total.items() if pairs
+    }
+    if not valid_pairs_by_total:
+        raise ValueError("No valid group-resolved sectors found in the selected total-N_J window.")
+
+    # TEMPORARY DEBUG TEST DISABLED:
+    # Uncomment this block to keep only one (Nj1, Nj2) tuple for each selected
+    # total N_J sector while debugging single group-resolved sectors.
+    #
+    # valid_pairs_by_total = {
+    #     total_nj: [
+    #         min(
+    #             pairs,
+    #             key=lambda pair: abs(pair[0] - (total_nj * N1 / N)),
+    #         )
+    #     ]
+    #     for total_nj, pairs in valid_pairs_by_total.items()
+    # }
+
+    coeffs: Dict[tuple[int, int], complex] = {}
+
+    if sector_distribution == "binomial":
+        for pairs in valid_pairs_by_total.values():
+            for Nj1, Nj2 in pairs:
+                coeffs[(Nj1, Nj2)] = float(
+                    sqrt(_group_resolved_binomial_probability_weight(N1, N2, Nj1, Nj2))
+                )
+        return normalize_sector_coefficients(coeffs)
+
+    # "square": equal total probability over the selected total-N_J sectors,
+    # then conditional binomial splitting within each total sector.
+    total_sector_probability = 1.0 / len(valid_pairs_by_total)
+    for total_nj, pairs in valid_pairs_by_total.items():
+        conditional_weights = {
+            pair: _group_resolved_binomial_probability_weight(N1, N2, pair[0], pair[1])
+            for pair in pairs
+        }
+        conditional_norm = float(sum(conditional_weights.values()))
+        if conditional_norm <= 0.0:
+            raise ValueError(f"Conditional weight for total N_J={total_nj} is zero.")
+        for pair, weight in conditional_weights.items():
+            probability = total_sector_probability * (weight / conditional_norm)
+            coeffs[pair] = float(np.sqrt(probability))
+
+    return normalize_sector_coefficients(coeffs)
+
+
+# -----------------------------------------------------------------------------
+
+def total_norm2(blocks: Mapping[SectorKey, Array]) -> float:
     return float(sum(np.vdot(psi, psi).real for psi in blocks.values()))
+
+
+def _two_group_down_state_in_sector(Nj1: int, Nj2: int) -> Array:
+    """
+    Product state |n_{e,1}=0, n_{e,2}=0> in the two-group basis.
+    """
+    psi = np.zeros((Nj1 + 1) * (Nj2 + 1), dtype=np.complex128)
+    psi[0] = 1.0
+    return psi
+
+
+def _expected_internal_shape(sector_key: SectorKey) -> Tuple[int, ...]:
+    groups = split_sector_key(sector_key)
+    if len(groups) == 1:
+        return (groups[0] + 1,)
+    if len(groups) == 2:
+        return ((groups[0] + 1) * (groups[1] + 1),)
+    raise ValueError("Only one-group and two-group sectors are currently supported.")
 
 
 def build_initial_sector_state(
     N: int,
-    sector_coeffs: Mapping[int, complex],
-    internal_sector_states: Optional[Mapping[int, Array]] = None,
-) -> Dict[int, Array]:
+    sector_coeffs: Mapping[SectorKey, complex],
+    internal_sector_states: Optional[Mapping[SectorKey, Array]] = None,
+) -> Dict[SectorKey, Array]:
     """
     Build the initial wavefunction written as a dictionary {Nj: psi_Nj}, where
     psi_Nj is the symmetric Dicke vector on the |n_e> basis for that sector.
@@ -172,25 +332,34 @@ def build_initial_sector_state(
     states multiplied by the normalized sector coefficient for that N_J.
     """
     coeffs = normalize_sector_coefficients(sector_coeffs)
-    blocks: Dict[int, Array] = {}
+    blocks: Dict[SectorKey, Array] = {}
 
-    for Nj, coeff in coeffs.items():
-        if Nj < 0 or Nj > N:
-            raise ValueError(f"Invalid sector Nj={Nj} for N={N}.")
+    for sector_key, coeff in coeffs.items():
+        groups = split_sector_key(sector_key)
+        Nj_total = total_active_atoms_in_sector(sector_key)
+        if Nj_total < 0 or Nj_total > N:
+            raise ValueError(f"Invalid sector {sector_key} for N={N}.")
 
-        if internal_sector_states is None or Nj not in internal_sector_states:
-            local = down_state_in_sector(Nj)
+        if internal_sector_states is None or sector_key not in internal_sector_states:
+            if len(groups) == 1:
+                local = down_state_in_sector(groups[0])
+            elif len(groups) == 2:
+                local = _two_group_down_state_in_sector(groups[0], groups[1])
+            else:
+                raise ValueError("Only one-group and two-group sectors are currently supported.")
         else:
-            local = np.asarray(internal_sector_states[Nj], dtype=np.complex128).copy()
-            if local.shape != (Nj + 1,):
+            local = np.asarray(internal_sector_states[sector_key], dtype=np.complex128).copy()
+            expected_shape = _expected_internal_shape(sector_key)
+            if local.shape != expected_shape:
                 raise ValueError(
-                    f"Internal state for Nj={Nj} must have shape ({Nj+1},), got {local.shape}."
+                    f"Internal state for sector {sector_key} must have shape {expected_shape}, "
+                    f"got {local.shape}."
                 )
             local_norm = np.linalg.norm(local)
             if local_norm == 0.0:
-                raise ValueError(f"Internal state for Nj={Nj} has zero norm.")
+                raise ValueError(f"Internal state for sector {sector_key} has zero norm.")
             local /= local_norm
 
-        blocks[Nj] = coeff * local
+        blocks[sector_key] = coeff * local
 
     return blocks
