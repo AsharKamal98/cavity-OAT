@@ -130,6 +130,80 @@ def Omega0_from_N_Gamma(N: int, Gamma: float) -> float:
     return 0.465 * N * Gamma
 
 
+def Omega_Gamma_from_cavity_parameters(
+    epsilon: float,
+    g_c: float,
+    kappa: float,
+    N_J: int,
+    delta: float = 0.0,
+    *,
+    bad_cavity_factor: float = 10.0,
+    round_digits: int = 6,
+) -> Tuple[float, float]:
+    """
+    Convert driven-cavity parameters to the effective spin-model parameters.
+
+    From the cavity-elimination notes,
+
+        Omega = 4 * epsilon * g_c / kappa,
+        Gamma = 4 * g_c**2 / kappa.
+
+    The bad-cavity approximation assumes
+
+        kappa >> sqrt(N_J) * g_c, delta.
+
+    Since ``>>`` is not a sharp mathematical threshold, ``bad_cavity_factor``
+    sets the requested scale separation. The default requires
+
+        kappa >= bad_cavity_factor * max(sqrt(N_J) * |g_c|, |delta|).
+
+    If the check fails, the function prints the offending values and exits the
+    current run with ``SystemExit(1)`` so notebook cells can stop immediately.
+    """
+    if g_c <= 0.0:
+        raise ValueError("g_c must be positive.")
+    if kappa <= 0.0:
+        raise ValueError("kappa must be positive.")
+    if N_J < 0:
+        raise ValueError("N_J must be non-negative.")
+    if bad_cavity_factor <= 0.0:
+        raise ValueError("bad_cavity_factor must be positive.")
+    if round_digits < 0:
+        raise ValueError("round_digits must be non-negative.")
+
+    Omega = 4.0 * epsilon * g_c / kappa
+    Gamma = 4.0 * g_c**2 / kappa
+
+    collective_coupling_scale = np.sqrt(float(N_J)) * abs(g_c)
+    detuning_scale = abs(delta)
+    bad_cavity_scale = max(collective_coupling_scale, detuning_scale)
+    required_kappa = bad_cavity_factor * bad_cavity_scale
+
+    value_fmt = f".{round_digits}g"
+    print(
+        "Cavity-derived effective parameters: "
+        f"Omega={Omega:{value_fmt}}, Gamma={Gamma:{value_fmt}}"
+    )
+    print(
+        "Bad-cavity check: "
+        f"kappa={kappa:{value_fmt}}, "
+        f"sqrt(N_J)*g_c={collective_coupling_scale:{value_fmt}}, "
+        f"|delta|={detuning_scale:{value_fmt}}, "
+        f"required kappa>={required_kappa:{value_fmt}} "
+        f"(factor={bad_cavity_factor:{value_fmt}})."
+    )
+
+    if kappa < required_kappa:
+        print(
+            "Bad-cavity limit not satisfied; exiting before using the "
+            "adiabatically eliminated spin model."
+        )
+        raise SystemExit(1)
+
+    print("Bad-cavity limit satisfied.")
+    return float(Omega), float(Gamma)
+
+
 def validated_mcwf_dt(
     dt: float,
     N: int,

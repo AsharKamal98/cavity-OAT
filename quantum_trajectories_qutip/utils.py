@@ -1,5 +1,6 @@
 from common.parser import Phase
 from common.utils import (
+    Omega_Gamma_from_cavity_parameters,
     active_manifold_angles,
     default_three_phase_protocol,
     omega_c,
@@ -9,6 +10,7 @@ from common.utils import (
 
 __all__ = [
     "Phase",
+    "Omega_Gamma_from_cavity_parameters",
     "active_manifold_angles",
     "default_three_phase_protocol",
     "omega_c",

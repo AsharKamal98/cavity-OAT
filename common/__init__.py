@@ -6,6 +6,7 @@ from common.plotting import (
     plot_trajectory_angles_and_excitation,
 )
 from common.utils import (
+    Omega_Gamma_from_cavity_parameters,
     active_manifold_angles,
     check_initial_sector_omega_ratio,
     default_three_phase_protocol,
@@ -24,6 +25,7 @@ __all__ = [
     "plot_paper_jump_rate_comparison",
     "plot_qutip_angles_and_excitation",
     "plot_trajectory_angles_and_excitation",
+    "Omega_Gamma_from_cavity_parameters",
     "active_manifold_angles",
     "check_initial_sector_omega_ratio",
     "default_three_phase_protocol",

@@ -1,0 +1,553 @@
+
+
+This supplemental material is organized as follows: In Sec.~\ref{sec:cavity}, we present the full atom-cavity model and adiabatically eliminate the cavity mode to derive the spin model of the main text. In Sec.~\ref{sec:MFT}, we investigate the mean-field theory behavior of the two-level system. In Sec.~\ref{sec:coherence}, we describe the formalism of weak and strong symmetry breaking in open quantum systems and discuss the preservation of the $\hat S$ coherences in our protocol from three perspectives.  
+In Sec.~\ref{sec:weak}, we discuss the weak drive limit of our protocol, where the excited state can be adiabatically eliminated. In Sec.~\ref{sec:HP}, we implement the generalized Holstein-Primakoff approximation and derive effective Hamiltonian and dephasing dynamics beyond the adiabatic $\delta$ regime. In Sec.~\ref{sec:decoherence}, we optimize the squeezing in the presence of single-particle decoherence and compare this to other typical optical cavity squeezing protocols. 
+
+\section{Cavity Model}
+\label{sec:cavity}
+
+Here, we discuss the behavior of the cavity photons, which have been adiabatically eliminated in the main text. To understand how their behavior is related to the spin model, we reconsider the full cavity-spin model
+\begin{subequations}
+\begin{equation}
+    \partial_t \hat \rho = -i [\hat H, \hat \rho] + \kappa (\hat a \hat \rho \hat a^\dagger - \frac{1}{2} \{ \hat a^\dagger \hat a, \hat \rho \}),
+\end{equation}
+\begin{equation}
+    \hat H = i \epsilon (\hat a^\dagger - \hat a) - \delta \hat N_e + g_c (\hat a \hat J^+ + \hat a^\dagger \hat J^-),
+\end{equation}
+\end{subequations}
+where $\kappa$ represents the rate of photon leakage and the Tavis-Cummings term $g_c (\hat a \hat J^+ + \hat a^\dagger \hat J^-)$ describes the atom-photon interaction with single-photon Rabi frequency $2 g_c$. Here, we have assumed that the cavity is coherently driven via $\epsilon$, which we show leads to the drive in the spin model. Below, we also discuss how driving the spins directly modifies the analysis.
+
+The mean-field dynamics for $\hat a, \hat J^-$ are given by
+\begin{subequations}
+\begin{equation}
+    \partial_t \langle \hat a \rangle  =  \epsilon + i g_c \langle \hat J^-\rangle  - \frac{\kappa}{2} \langle \hat a\rangle,
+\end{equation}
+\begin{equation}
+    \partial_t \langle \hat J^- \rangle = - i \delta \langle \hat J^- \rangle + 2i g_c \langle \hat a \rangle \langle \hat J_z \rangle,
+\end{equation}
+\end{subequations}
+whose cavity steady-state solution is 
+\begin{equation}
+     \langle \hat a\rangle = \frac{\epsilon + i g_c \langle \hat J^- \rangle}{\kappa/2}.
+\end{equation}
+In the bad cavity limit $\kappa \gg \sqrt{N_J}g_c, \delta$, we can adiabatically eliminate the cavity by replacing it with its expectation value for the spin equations of motion, comparing to the corresponding mean-field spin dynamics of the main text
+\begin{equation}
+    \partial_t \langle \hat J^- \rangle = - i \delta \langle \hat J^- \rangle + \frac{4 i \epsilon g_c}{\kappa} \hat J_z - \frac{4 g_c^2}{\kappa} \langle \hat J_z \rangle \hat \langle J^- \rangle = - i \delta \langle \hat J^- \rangle + i \Omega \hat J_z - \Gamma \langle \hat J_z \rangle \langle \hat J^- \rangle, 
+\end{equation}
+which allows us to identify $\Omega = 4 \epsilon g_c/\kappa$ and $\Gamma = 4g_c^2/\kappa$. Hence we find the cavity steady state may also be expressed
+\begin{equation}
+\label{eq:aMF}
+    \langle \hat a \rangle = i \frac{g_c}{\kappa/2}(\langle \hat J^-\rangle + i\Omega/\Gamma).
+\end{equation}
+This takes a value of 0 in the spin-polarized phase when $\delta = 0$, corresponding to the absence of photons. Because this holds for all values of $N_J$, this implies conservation of coherences in the steady state due to the environment's inability to distinguish the different values of $N_J$ for the spins.
+
+Note that if the spins were driven directly, the constant term would be dropped in the above expression, and the cavity coherence would likewise be shifted to a constant, non-zero value $-2 g_c \Omega/(\kappa \Gamma)$, again independent of $N_J$. 
+
+\section{Mean field theory}
+\label{sec:MFT}
+
+In this section, we determine the steady-state behavior of the two-level system using mean-field theory. As in the main text, we utilize a Schwinger boson approach, where $\hat d, \hat e$ denote the annihilation operators for $|{\downarrow}\rangle$ and $|e\rangle$ with corresponding mean-field values $d = e^{i \omega_Bt} \langle \hat d \rangle, e = e^{i \omega_Bt}  \langle \hat e \rangle$, with $\omega_B$ denoting the rotating frame associated with the non-trivial Berry phase. The resulting mean-field equations are
+\begin{subequations}
+    \begin{gather}
+    \label{eq:MFTg}
+        \partial_t d = - i \frac{\Omega}{2} e + i \omega_B d + \frac{\Gamma}{2} |e|^2 d = 0,\\
+    \label{eq:MFTe}
+        \partial_t e = - i \frac{\Omega}{2} d + i (\delta + \omega_B) e - \frac{\Gamma}{2} |d|^2 e = 0,
+    \end{gather}
+\end{subequations}
+where we have assumed a drive in the $x$-direction as in $\hat H_\delta$ of the main text.
+
+First, we identify $\omega_B$. Subtracting the $\Omega$ terms from each side and multiplying these two equations, we find
+\begin{equation}
+    \frac{\Omega^2}{4} = \left[ \frac{\Gamma}{2} |e|^2 + i \omega_B\right] \left[ \frac{\Gamma}{2} |d|^2 - i (\delta + \omega_B) \right].
+\end{equation}
+Noting that we have assumed $\Omega$ to be real without loss of generality, the two terms on the RHS have opposite complex phases, enforcing the condition
+\begin{equation}
+    \frac{|e|^2}{|d|^2} = \frac{\omega_B}{\delta + \omega_B},
+\end{equation}
+whose solution is readily solved
+\begin{equation}
+    \omega_B= \delta \frac{|e|^2}{|d|^2-|e|^2} = \frac{\delta}{2 \cos \theta_J} - \frac{\delta}{2},
+\end{equation}
+where we have used the fact that $|e|^2 = N \sin^2\frac{\theta_J}{2}, |d|^2 = N \cos^2 \frac{\theta_J}{2}$ on the Bloch sphere.
+
+Next, we identify the steady-state values of $e, d$. We multiply Eq.~(\ref{eq:MFTg}) by $d^*$ and the complex conjugate of Eq.~(\ref{eq:MFTe}) by $e$ and subtract the two, finding
+\begin{subequations}
+    \begin{equation}
+        i \Omega e d^* = i \delta |e|^2 + i \omega_B(|d|^2 + |e|^2) + \Gamma |d|^2 |e|^2,
+    \end{equation}
+    \begin{equation}
+        \frac{\Omega}{2}  e^{-i \phi_J} \sin \theta_J=  \frac{\delta}{2} \sin \theta_J\tan \theta_J - i \frac{N_J \Gamma}{4} \sin^2 \theta_J,
+    \end{equation}
+\end{subequations}
+where $e^* d = \langle \hat J^+ \rangle = \frac{N_J}{2} e^{i \phi_J} \sin \theta_J$.
+Considering the real and imaginary parts separately, we find
+\begin{subequations}
+    \begin{equation}
+        \Omega \cot \theta_J\cos \phi_J = \delta,
+    \end{equation}
+    \begin{equation}
+        \frac{\Omega}{2} \sin \phi_J = \frac{N_J \Gamma}{4} \sin \theta_J,
+    \end{equation}
+\end{subequations}
+from which $\theta_J, \phi_J$ may be identified. For the particular case of $\delta = 0$, we have $\sin \theta_J= 2 \Omega/N_J \Gamma = \Omega/\Omega_c$, $\phi_J = \pi/2$, as anticipated. 
+
+
+\section{Coherence preservation}
+\label{sec:coherence}
+
+In this section, we discuss the preservation of coherences. First, we discuss the formal definition of weak and strong symmetries and discuss the implications for the Liouvillian structure and the effect of this structure for spontaneous symmetry breaking. Second, we show this preservation under mean-field theory using Schwinger bosons. Third, we analytically show that for the observables of interest, all relevant coherences are preserved when the drive is turned off.
+
+\subsection{Strong symmetry breaking}
+
+To understand the distinction between weak and strong symmetries, it is helpful to reconsider the dynamics from the perspective of the full system-environment Hamiltonian, which takes the general form
+\begin{equation}
+    \hat H_{SE} = \hat H_S + \hat H_E + \hat V, \qquad \hat V = \sum_i \hat L_i \otimes \hat E_i,
+\end{equation}
+where $\hat H_S$ ($\hat H_E$) is the system (environment) Hamiltonian while $V$ is the interaction between the two composed of a product of system operators ($\hat L_i$) and environment operators ($\hat E_i$), and we have anticipated that the system operators in $\hat V$ will give rise to the Lindblad operators, which can always be expressed in a traceless, orthogonal basis.
+Throughout, we only consider symmetries with separable unitary transformations, i.e., $\hat U = \hat U_S \otimes \hat U_E$, which commute with the full Hamiltonian $[\hat H_{SE}, \hat U] = 0$. In deriving the Liouvillian dynamics of the system, the environment is traced out. We can thus distinguish two relevant scenarios for symmetries of $H_{SE}$ that affect system: (i) The symmetry acts on both system and environment and (ii) The symmetry acts on only the system (i.e., $\hat U_E$ is the identity). 
+
+In (i), information about the symmetry sectors and their conserved quantities is lost when the environment is traced out and $\hat U_E$ is no longer accessible, so the conservation law can at most be satisfied in the system after ensemble/trajectory averaging. 
+In (ii), no information about the symmetry is lost when the environment is traced out since $\hat U_E$ is the identity, so the corresponding conserved quantity must be conserved on an individual trajectory level within a given symmetry sector of the system. From this, we can understand (i) as corresponding to weak symmetries of the Liouvillian, while (ii) corresponds to strong symmetries, although we remark that the Hamiltonian framework here can be extended beyond Liouvillian dynamics \cite{Manzano2018}. Recently, connections and equivalencies have further been identified between the distinction of weak/strong symmetries and symmetries of Hamiltonians in the presence of disorder \cite{Ma2023a,Ma2023b}. Specifically, the concept of an average symmetry emerges in disordered systems when the symmetry is violated for any individual realization but is restored upon ensemble averaging of many realizations. The disorder averaging is thus analogous to the trajectory averaging of a weak symmetry and vice-versa.
+
+With this in mind, we can see the implications of these two scenarios on the Liouvillian 
+\begin{equation}
+    \partial_t \hat \rho = \mathcal{L}(\hat \rho), \qquad
+    \mathcal{L}(\cdot) \equiv -i[\hat H_S,(\cdot)] + \sum_i \hat L_i(\cdot) \hat L_i^\dagger - \frac{1}{2} \{\hat L_i^\dagger \hat L_i, (\cdot)\}
+\end{equation} 
+where $\hat L_i$ are the Lindblad jump operators, and $\hat A \equiv \hat U_S$ is the corresponding symmetry operator of the system. Since $\mathcal{L}$ is a superoperator, we denote its action on a generic operator via inserting the operator anywhere $(\cdot)$ occurs. 
+Thus in the case of (i), a weak symmetry, since $\hat U_S \hat V \hat U_S^\dagger \neq \hat V$ (the action of $\hat U_E$ is necessary for commutation), we have $[\hat L_i, \hat A] \neq 0$. Nevertheless, although we do not prove it here,  the Lindblad operators can always be expressed in a new basis such that the action of the unitary is only to apply a phase shift to the $\hat L_i$, $\hat A \hat L_i \hat A^\dagger = e^{i \phi} \hat L_i$,. 
+Since unlike in $\hat H_{SE}$, the Lindblad operators appear in pairs,  the combined transformation of both can leave the Liouvillian itself invariant given that the phase from $\hat L_i$ and $\hat L_i^\dagger$ cancel. 
+We thus define the symmetry superoperator $\mathcal{A}(\cdot) = \hat A (\cdot) \hat A^\dagger$ in order to capture the fact that both jump operators must transform under $\hat A$, where the symmetry of $\mathcal{L}$ is now captured by its commutation with the symmetry superoperator $[\mathcal{L},\mathcal{A}] \equiv \mathcal{L}(\mathcal{A}(\cdot)) - \mathcal{A}(\mathcal{L}(\cdot)) = 0$. The parentheses in this notation indicate the order of the action of superoperators, e.g., $\mathcal{L}(\mathcal{A}(\cdot))$ indicates that we apply $\mathcal{A}$ then $\mathcal{L}$ to the generic operator in $(\cdot)$. If the operators are vectorized, the superoperators can be expressed as matrices, in which case this commutation relation reduces to the usual definition in terms of matrices. 
+
+
+Like for a Hamiltonian, $\mathcal{L}$ is block diagonal in the symmetry sectors of $\mathcal{A}$ for a weak symmetry after vectorizing $\hat \rho$, 
+\begin{equation}
+    \mathcal{L} = \left(
+    \begin{array}{ccc}
+    \mathcal{L}_1 &  & 0 \\
+     & \ddots &  \\
+    0 &  & \mathcal{L}_{n} 
+    \end{array}
+    \right),
+\end{equation}
+where $n$ is the number of symmetry sectors.
+There is always a single block with eigenvalue 1 containing all operators with non-vanishing trace, denoted $\mathcal{L}_1$, while the remaining sectors are all composed of traceless operators. For example, for two symmetry sectors of $\hat A$ $|a \rangle, |b \rangle$, e.g., parity, there are two symmetry sectors of $\mathcal{A}$  (see Ref.~\cite{Buca2012} for a generic number of symmetry sectors). The first, corresponding to $\mathcal{L}_1$, includes operators of the form $|a \rangle \langle a|, |b \rangle \langle b|$, and have eigenvalue 1 (the two phases from the symmetry operator on each side cancel), and all operators (and thus density matrices) with nonzero trace are in this sector since the other sectors involve bras and kets of different symmetry sectors. The second, corresponding to $\mathcal{L}_2$, includes operators of the form $|a\rangle \langle b|, |b \rangle \langle a|$, all of which are traceless and have conjugate eigenvalues other than 1 (the two phases do not cancel). In principle $|a\rangle \langle b|, |b \rangle \langle a|$ can define two conjugate symmetry sectors, but since they are equivalent we may combine them into one. 
+
+While the generic conditions on the uniqueness of the steady state, particularly in the thermodynamic limit, are complicated in general (see, e.g., Ref.~\cite{Zhang2024} for an overview), for most typical open quantum systems with only a weak symmetry we expect that $\mathcal{L}_1$ will always have a 0 eigenoperator corresponding to a steady state at any system size and for any system parameters. Moreover, we expect that in the thermodynamic limit, when spontaneous symmetry breaking of the weak symmetry occurs, at least one of the $\mathcal{L}_{i>1}$ realizes a traceless 0 eigenoperator, as in the example investigated in Ref.~\cite{Lieu2020}.
+This is analogous to the transverse-field Ising model, where the ground state is symmetric (eigenvalue 1) for a finite system, while the antisymmetric (eigenvalue $-1$) ground state becomes degenerate only in the thermodynamic limit. 
+
+In the case of (ii), a strong symmetry, we have $[\hat L_i, \hat A] = 0$. This means either of the pairs of jump operators in the master equation can be transformed while leaving the master equation invariant. Therefore, in contrast to the weak symmetry we can instead define \textit{two} symmetry superoperators $\mathcal{A}_l(\cdot) \equiv \hat A(\cdot)$, $\mathcal{A}_r (\cdot) \equiv (\cdot) \hat A^\dagger$, both of which satisfy $[\mathcal{L}, \mathcal{A}_{l/r}] = 0$ and correspond to transformations on operators on either the left or right hand side of the Liouvillian.
+
+If there are $n$ symmetry sectors of $\hat A$, then these two symmetry superoperators block diagonalize $\mathcal{L}$ into $n^2$ blocks. Without loss of generality, we can consider two sectors $|a_1\rangle, |a_2\rangle$ denoting all states with eigenvalues $a_1, a_2$ (e.g., eigenvalues of $e^{i \hat N_J/N}$). We may thus write 
+\begin{equation}
+    \mathcal{L} = \left(
+    \begin{array}{cccc}
+    \mathcal{L}_{11} &  &  & 0 \\
+     & \mathcal{L}_{22} &  &  \\
+     &  &\mathcal{L}_{12} &   \\
+    0 &  &  & \mathcal{L}_{21}
+    \end{array}
+    \right),
+\end{equation}
+where the blocks correspond to the spaces $|a_1\rangle \langle a_1|,|a_2\rangle \langle a_2|,|a_1\rangle \langle a_2|$, and $|a_2\rangle \langle a_1|$, in order. In this case, both $\mathcal{L}_{11}$ and $\mathcal{L}_{22}$ have non-vanishing trace, and both will possess eigenoperators with eigenvalue 0 for most typical open quantum systems which exhibit steady states. This is a manifestation of the conservation law for any individual trajectory: if the system is initialized in one symmetry sector, it must remain there. This indicates that there are generally multiple steady states even for typical finite systems, one for each sector, as recently observed experimentally \cite{Li2023}. The eventual projection into a given symmetry sector on an individual trajectory level has been termed dissipative freezing \cite{SanchezMunoz2019} and can be understood as arising due to a weak measurement of the symmetry. We remark that the behavior of trajectories in the unbroken symmetry phase, such as for dissipative freezing, depends on the precise unraveling. For example, while a weak measurement and a dephasing term can have equivalent Liouvillian dynamics, if the unraveling for the dephasing is achieved through white noise on a Hamiltonian term, there will be no such projection. 
+
+Going beyond the unbroken symmetry phase, we expect spontaneous symmetry breaking of the strong symmetry to correspond to $\mathcal{L}_{12},\mathcal{L}_{21}$ (which are equivalent) obtaining an eigenoperator with 0 eigenvalue in the thermodynamic limit, as in Ref.~\cite{Lieu2020}. Since these correspond to coherences between $|a_1\rangle$ and $|a_2\rangle$, symmetry breaking indicates the preservation of coherences in the steady state, as captured by its association with passive error correction \cite{Lieu2020,Liu2023}, which has likewise enabled the extension of symmetry protected topological phases in open quantum systems \cite{deGroot2022} and the investigation of the effect of the type of symmetry on criticality in these systems \cite{Minganti2023}. This feature of the strong symmetry thus corresponds to the emergence of a decoherence free subspace or a more general noiseless subsystem \cite{Lidar1998, Knill2000, Albert2014, Lieu2020} and enables the near-preservation and generation of the different relative Berry phases throughout the protocol. 
+
+
+\subsection{Mean field theory}
+
+The additional coherences of interest are $\hat u^\dagger \hat g, \hat u^\dagger \hat e$, where $\hat u$ denotes the collective annihilation operator for the $|{\uparrow}\rangle$ state with corresponding mean-field value $u = \langle \hat u \rangle$. Since $\hat u$ commutes with the Hamiltonian and jump operator, we find $\partial_t u = 0$. Hence, we find
+\begin{equation}
+    \partial_t \langle \hat u^\dagger \hat d \rangle_{\text{MF}} = u^* \partial_t d, \qquad \partial_t \langle \hat u^\dagger \hat e \rangle_{\text{MF}} =  u^* \partial_t e,
+\end{equation}
+indicating that the evolution of the coherences within $\hat S$ are determined purely by those of $\hat J$ at the mean-field level. Moreover, if we look at the magnitude of these two coherences $\mathcal{U} \equiv (\hat u^\dagger \hat d, \hat u^\dagger \hat e)$, we find
+\begin{equation}
+    \partial_t |\langle \mathcal{U} \rangle_{\text{MF}} |^2 = |u|^2 \partial_t (|d|^2+|e|^2) = |u|^2 \partial_t N = 0,
+\end{equation}
+indicating these coherences are preserved under mean-field theory and only change their phase information. As a result, their evolution is otherwise determined entirely by $d, e$. In the spin-polarized phase, they relax to a steady-state value while maintaining the original coherence of the initial state up to deterministic phase factors. In the mixed phase, the modified Rabi oscillations impart themselves on these coherences as well. This mirrors the two-level model, where these oscillations are a consequence of the conservation of $\hat J^2$, which implies mean-field conservation of $\langle \hat J_x \rangle_{\text{MF}}^2 + \langle \hat J_y \rangle_{\text{MF}}^2 + \langle \hat J_z \rangle_{\text{MF}}^2$, preventing mean-field theory from directly capturing the loss of coherence in the steady state. Thus these oscillations in the three-level coherences imply a similar loss of coherence in the steady state.
+
+\subsection{Turning off the drive}
+
+Next, we discuss the preservation of coherence when the drive is turned off. While we expect that the results here qualitatively hold for any quenches of $\Omega$ within the spin-polarized phase for $\delta \to 0$, the case of no drive can be solved exactly for any initial density matrix. 
+
+First, we note that only coherences between states with an equal number of $|e\rangle$ excitations can be preserved in the $|{\uparrow}\rangle, |{\downarrow}\rangle$ manifold because the recycling term in the Lindbladian always removes excitations from both the ket and the bra simultaneously. Physically, if two states emit different numbers of photons, then they are perfectly distinguished, preventing the conservation of any coherence. Writing our states in the permutationally symmetric basis $|n_{\downarrow}, n_{\uparrow}, n_e \rangle$, where $n_\mu$ denotes the number of atoms in $|\mu\rangle$, we find
+\begin{subequations}
+\begin{equation}
+    \Gamma^{-1} \partial_t \langle \mathcal{C}_{n_e} \rangle =  w_{n_e+1} \langle \mathcal{C}_{n_e} \rangle - W_{n_e} \langle \mathcal{C}_{n_e} \rangle, \qquad \mathcal{C}_{n_e} \equiv |n_{\downarrow}, n_{\uparrow}, n_e \rangle \langle n_{\downarrow}', n_{\uparrow}', n_e |
+\end{equation}
+\begin{equation}
+    w_{n_e} \equiv \sqrt{(n_{\downarrow}+1) n_e  (n_{\downarrow}' + 1) n_e} , \qquad W_{n_e} \equiv \frac{(n_{\downarrow}+1) n_e + (n_{\downarrow}' + 1) n_e}{2}
+\end{equation}
+\end{subequations}
+where we have dropped $n_{\updownarrow}$ labels in $\mathcal{C}_{n_e}$ for simplicity. Thus a coherence with $n_e$ excitations decay at rate $W_{n_e}$ while gaining coherence from the corresponding $n_e+1$ excitation coherence at a rate $w_{n_e+1}$. We remark that $w_{n_e}$ and $W_{n_e}$ are the geometric and arithmetic means of the superradiant decay rates (in units of $\Gamma$) of the bra and ket with $n_e$ excitations.
+
+The full rate equation is expressed
+\begin{equation}
+    \Gamma^{-1} \partial_t \vec{\mathcal{C}} = 
+    \left(
+    \begin{array}{cccc}
+        \ddots & \ddots & \ddots & \vdots \\
+        \ddots & -W_{2} & \ddots & 0 \\
+        \ddots & w_2 & -W_1 & 0 \\
+        \cdots & 0 & w_1 & 0
+    \end{array}
+    \right) \vec{\mathcal{C}}, \qquad \vec{\mathcal{C}} \equiv ( \cdots, \mathcal{C}_2, \mathcal{C}_1, \mathcal{C}_0)^T.
+\end{equation}
+Since we are interested in the steady state, we identify the left ($\vec{u}_i$) and right ($\vec{v}_i$) eigenvectors with 0 eigenvalue $W_0 = 0$
+\begin{subequations}
+\begin{equation}
+    \vec{v}_0 = (0, \cdots, 0, 1),
+\end{equation}
+\begin{equation}
+    \vec{u}_0 = ( \cdots, \beta_2 \beta_1, \beta_1, 1), \qquad \beta_{n_e} \equiv \frac{w_{n_e}}{W_{n_e}},
+\end{equation}
+\end{subequations}
+which satisfy the orthogonality condition $\vec{u}_i \cdot \vec{v}_j = \delta_{ij}$. We identify the final coherence $\mathcal{C}_0$ by noting that if $\vec{\mathcal{C}}(t) = \sum_{n_e} a_{n_e} \vec{v}_{n_e} e^{-W_{n_e} t}$, then the orthogonality condition implies $\mathcal{C}_0 (t \to \infty) = a_0 = \vec{u}_0 \cdot \vec{\mathcal{C}}(0)$. From this, we see that the $\beta_{n_e} \leq 1$ thus represent the fraction of the $n_e$ coherence which is converted into $n_e - 1$ coherence. Given the arithmetic and geometric mean form of $w$ and $W$, we see that $\beta$ represents a measurement of the equivalence of the superradiant decay rates, i.e., their distinguishability. Expanding $\beta_{n_e}$ in powers of $n_{\downarrow} - n_{\downarrow}' = N_J - N_J'$, noting $n_{\downarrow} = N_J - n_e$,
+\begin{subequations}
+\begin{equation}
+    \beta_{n_e} \approx 1 - \frac{(N_J - N_J')^2}{8 (N_J - n_e+1)^2},
+\end{equation}
+\begin{equation}
+    \prod_{n_e' = 1}^{n_e} \beta_{n_e'} \approx 1 - \sum_{n_e' = 1}^{n_e}\frac{(N_J - N_J')^2}{8 (N_J - n_e+1)^2} \approx 1 -\frac{(N_J-N_J')^2}{8} \int_0^{n_e} \frac{dx}{(N_J - x)^2} = 1 - \frac{n_e}{8 N_J (N_J - n_e)} (N_J-N_J')^2.
+\end{equation}
+\end{subequations}
+From this, we see that if $(N_J - N_J)' \ll \mathcal{O}(\sqrt{N})$, the fraction of coherences with $n_e$ excitations that survives converges to 1 for large $N$. Since spin squeezing in the $|{\uparrow}\rangle,|{\downarrow}\rangle$ manifold only depends on coherences between $|N_J - N_J'| \leq 2$, we expect nearly perfect transfer of the spin squeezing after the drive is turned off.
+
+
+\section{Weak drive limit}
+\label{sec:weak}
+
+In this section, we derive the effective Hamiltonian and jump operator in the limit of weak drive. In this limit, the excited state $|e\rangle$ can be adiabatically eliminated, leaving only the effective dynamics of the ground-state manifold. To do so, we utilize a perturbative approach applicable to dissipative systems \cite{Reiter2012}. Furthermore, we will consider the role of collective interactions on the model which arise due to a detuning $\Delta$ of the cavity from the atomic transition. The corresponding Hamiltonian is
+\begin{equation}
+    \hat H = \Omega \hat J_x - \delta \hat N_e + \chi \hat J^\dagger \hat J, \qquad \hat l = \hat J^-, \qquad \chi = \frac{g_c^2}{\Delta^2+\kappa^2/4} \Delta, \qquad \Gamma_{\Delta} = \frac{g_c^2}{\Delta^2+\kappa^2/4} \kappa, 
+\end{equation}
+where $2 g_c$ is the single-photon Rabi frequency of the $|{\downarrow}\rangle \to |e\rangle$ transition and $\kappa$ is the decay rate of the cavity. Here, we have introduced $\Gamma_{\Delta}$ to distinguish it from the superradiant decay rate $\Gamma = \Gamma_{\Delta = 0}$ of the main text, where $\Delta = 0$.
+
+To lowest non-trivial (second-) order, this results in the general expressions for effective Hamiltonian and jump operator 
+\begin{subequations}
+\begin{equation}
+    \hat H_\updownarrow \approx - \frac{1}{2} \hat V_- [\hat H_{{{\text{NH}}}}^{-1} + (\hat H_{{{\text{NH}}}}^\dagger)^{-1}]\hat V_+, \qquad \hat l_\updownarrow = \hat l \hat H_{{{\text{NH}}}}^{-1} \hat V_+,
+\end{equation}
+\begin{equation}
+    \hat H_{\text{NH}} \equiv \hat H_e - \frac{i}{2} \hat l^\dagger \hat l,
+\end{equation}
+\end{subequations}
+where $\hat V^+ = \Omega/2 \hat J^+$ and its conjugate are the perturbative terms and $\hat H_e$ encodes the excited-state energies relative to the coupled ground state. Here, we see that the non-Hermitian $\hat{H}_{\text{NH}}^{-1} + H.c.$ replaces the usual inverse energy difference in conventional Hamiltonian perturbation theory while incorporating the non-zero linewidths of the bare Hamiltonian's eigenstates.
+
+For the three-level model and fixed $N_J$, the non-Hermitian Hamiltonian takes the form
+\begin{subequations}
+\begin{equation}
+    \hat H_{{{\text{NH}}}} = -\delta \left(\frac{N_J}{2} + \hat J_z\right) - \left(\chi + i \frac{\Gamma_\Delta}{2} \right) \hat J^+ \hat J^- = -\delta \left(\frac{N_J}{2} + \hat J_z\right) - \left(\chi + i \frac{\Gamma_\Delta}{2} \right) \left[ \hat J^2 - \hat J_z^2 + \hat J_z \right].
+\end{equation}
+\end{subequations}
+Since we are interested in the weak drive limit where all atoms are in the ground-state manifold, we restrict our focus to the state $|J = N_J/2, m_J = -N_J /2\rangle$, where $J$ and $m_J$ are the total and azimuthal quantum numbers of $\hat{\mathbf{J}}$. Thus we find the resulting (complex) Stark shift in this limit to be
+\begin{equation}
+    \hat J^- \hat H_{{\text{NH}}}^{-1} \hat J^+ |N_J/2,-N_J/2 \rangle = -\frac{N_J}{\delta +(\chi + i \frac{\Gamma_\Delta}{2}) N_J} |N_J/2,-N_J/2 \rangle,
+\end{equation}
+which is non-linear in $N_J$ when $\delta \neq 0$. Both $\chi, \Gamma_\Delta$ give rise to nonlinear fluctuations (in $N_J$) to the Stark shifts in a similar way, although $\Gamma_\Delta$ does so via the linewidths.
+
+In the weak drive limit, we restore fluctuations in $N_J$ according to $\hat{N}_J \equiv N/2 - \hat{S}_{\updownarrow,z}$, where $\updownarrow$ denotes the $|{\uparrow},{\downarrow}\rangle$ manifold, resulting in the following effective Hamiltonian and jump operator
+\begin{equation}
+\begin{aligned}
+    \hat H_{\updownarrow} &~= \frac{\Omega^2}{4} \frac{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})] (N/2-\hat{S}_{\updownarrow,z})}{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})]^2+\frac{\Gamma_\Delta^2}{4} (N/2-\hat{S}_{\updownarrow,z})^2}, \\
+    \hat l_{\updownarrow} &~= -\frac{\Omega}{2}\frac{N/2-\hat{S}_{\updownarrow,z}}{\delta +(\chi + i \frac{\Gamma_\Delta}{2}) (N/2-\hat{S}_{\updownarrow,z})}
+    \\ &~ = -\frac{\Omega}{2} \left( -\frac{\delta \hat{S}_{\updownarrow,z}}{[\delta + (\chi + i \Gamma_\Delta/2) N/2][ \delta + (\chi + i \Gamma_\Delta/2) (N/2 - S_{\updownarrow,z})]}  + \frac{N/2}{\delta + (\chi + i \Gamma_\Delta/2)N/2}\right).
+\end{aligned}
+\end{equation}
+Here, we note that there is a constant term in the jump operator, which can give rise to unitary dynamics in combination with the operator part of the jump operator. For a jump operator $C + \hat O$, this corresponds to a Hamiltonian term $\Gamma_\Delta (C \hat O^\dagger - C^* \hat O)/2i$. Absorbing the effect of the constant term into the Hamiltonian, we find
+\begin{subequations}
+\begin{align}
+    \hat H_{\updownarrow} &~ = \frac{\Omega^2}{4} \frac{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})] (N/2-\hat{S}_{\updownarrow,z})}{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})]^2+\frac{\Gamma_\Delta^2}{4} (N/2-\hat{S}_{\updownarrow,z})^2}\left(1 - \frac{N \Gamma_\Delta^2 \delta \hat S_{\updownarrow,z} /4 }{[\delta+ \chi (N/2+\hat S_{\updownarrow,z})] [ (\delta +N \chi/2)^2 + (N \Gamma_\Delta/4)^2] }\right),\\
+    \hat l_{\updownarrow} &~ = \frac{\Omega}{2} \left( \frac{\delta \hat{S}_{\updownarrow,z}}{[\delta + (\chi + i \Gamma_\Delta/2) N/2][ \delta + (\chi + i \Gamma_\Delta/2) (N/2 - S_{\updownarrow,z})]}\right).
+\end{align}
+\end{subequations}
+
+Finally, we can expand both in powers of $\hat S_{\updownarrow,z}$ when assuming an equal superposition of the ground states ($\langle \hat S_{\updownarrow,z} \rangle = 0$). Expanding to second order in the master equation (second order in the Hamiltonian and first order in the jump operator), we find
+\begin{subequations}
+    \begin{align}
+        \hat H_{\updownarrow} &~ \approx \frac{N \Omega^2 (\delta + N \chi/2) }{8| \delta + N \chi/2 + i N \Gamma_\Delta/4|^2} - \frac{ \delta \Omega^2 }{4 | \delta + N \chi/2 + i N \Gamma_\Delta/4|^2} \hat S_{\updownarrow,z} - \frac{ \delta \Omega^2 (N \Gamma_\Delta^2/16 +  \delta \chi/2 + N \chi^2/4) }{2 |\delta + N \chi/2 + i N \Gamma_\Delta /4|^4} \hat S_{\updownarrow,z}^2 \\
+        \hat l_{\updownarrow} &~ \approx  \frac{\delta \Omega }{2[ \delta + (\chi + i \Gamma_\Delta/2) N/2]^2}\hat S_{\updownarrow,z},
+    \end{align}
+\end{subequations}
+whose ratio of OAT to collective dephasing rates is
+\begin{equation}
+    \frac{2 (\delta \chi/2 + N \chi^2/4 + N\Gamma_\Delta^2/16)}{\delta \Gamma_\Delta},
+\end{equation}
+which approaches $\chi/\Gamma_\Delta = \Delta/\kappa$ in the limit of large $\delta$ and $N g_c^2 /(4 \delta \kappa)$ in the limit of near-resonant drive. In the limit $\chi = 0, \delta \to 0$, we find agreement with the Berry phase derivations of the previous section.
+
+\section{Holstein-Primakoff}
+\label{sec:HP}
+
+In this section, we derive the Holstein-Primakoff Hamiltonian and jump operator. To do so, we utilize the transformation 
+\begin{equation}
+    \left( 
+    \begin{array}{c}
+    \hat c^\dagger \\
+    \hat s^\dagger \\
+    \hat \jmath^\dagger 
+    \end{array} 
+    \right)
+    = 
+    \left(
+    \begin{array}{ccc}
+         \sqrt{f_J} \cos \frac{\tilde{\theta}_J}{2} & \sqrt{f_J} e^{-i \tilde{\phi}_J} \sin \frac{\tilde{\theta}_J}{2} & \sqrt{f_{\uparrow}} \\
+         -\sqrt{f_{\uparrow}} \cos \frac{\tilde{\theta}_J}{2} & -\sqrt{f_{\uparrow}} e^{- i \tilde{\phi}_J} \sin \frac{\tilde{\theta}_J}{2} & \sqrt{f_J}\\
+         \sin \frac{\tilde{\theta}_J}{2} & -e^{i \tilde{\phi}_J} \cos \frac{\tilde{\theta}_J}{2} & 0
+    \end{array} \right)
+    \left(
+    \begin{array}{c}
+        \hat d_{\tilde{\omega}_B}^\dagger \\
+        \hat{e}_{\tilde{\omega}_B}^\dagger \\
+        \hat u^\dagger     
+    \end{array}
+    \right),
+\end{equation}
+where $\hat c$ captures the mean-field steady state, $\hat \jmath$ the quantum fluctuations of the $\hat J$ Bloch sphere, and $\hat s$ the fluctuations of the $\hat S$ Bloch sphere. Here, the $\tilde{\omega}_B$ subscripts denote that we are in the rotating frame $\hat e_{\tilde{\omega}_B} = e^{i \tilde{\omega}_B t} \hat e, ~\hat d_{\tilde{\omega}_B} = e^{i \tilde{\omega}_B t} \hat d$, which introduces an additional Hamiltonian term $-\tilde{\omega}_B(\hat{e}^\dagger_{\tilde{\omega}_B} \hat{e}_{\tilde{\omega}_B} + \hat{d}^\dagger_{\tilde{\omega}_B} \hat{d}_{\tilde{\omega}_B})$. We also assumed without loss of generality that $\varphi = 0$ on the $\hat S$ Bloch sphere.
+
+Expressing the Hamiltonian and jump operator in terms of $\hat c, \hat s, \hat \jmath$, we implement a generalized Holstein-Primakoff transformation according to the substitution $\hat c \to \sqrt{N - \hat{s}^\dagger \hat s - \hat{\jmath}^\dagger \hat \jmath}$, which we truncate at quadratic order in the Hamiltonian and first order in the jump operator. 
+It is convenient to relate the quadratures of $\hat s, \hat \jmath$ to spin operators
+\begin{subequations}
+   \begin{gather}
+        \sum_i  \frac{|0_i \rangle \langle 0_i| - |1_i \rangle\langle 1_i|}{2} \equiv
+       \hat S_z \approx  \sqrt{\frac{N}{2}} \hat x_s, \qquad
+        \sum_i \frac{|0_i \rangle \langle 1_i| - |1_i \rangle \langle 0_i|}{2i} 
+       \equiv \hat S_y \approx -\sqrt{\frac{N}{2}} \hat p_s, \\
+       \hat J_y \cos \tilde{\phi}_J - \hat J_x \sin \tilde{\phi}_J \approx \sqrt{\frac{f_J N}{2}} \hat p_j, \qquad
+       (\hat J_x \cos \tilde{\phi}_J + \hat J_y \sin \tilde{\phi}_J ) \cos \tilde{\theta}_J + \hat J_z \sin \tilde{\theta}_J \approx -\sqrt{\frac{f_J N}{2}} \hat x_j
+   \end{gather}
+\end{subequations}
+where we have chosen $f_J = f_{\uparrow} = 1/2$ so the steady state points in the $x$-direction on the $\hat S$ Bloch sphere. Here we see that the quadratures of the bosons directly correspond to fluctuations perpendicular to the Bloch vector on the $\hat S, \hat J$ Bloch spheres.
+We further note that because nearly all population of the $J$ states is in the $|1\rangle$ state, $\hat S_z \approx (\hat N_{\uparrow} - \hat N_J)/2$, with both proportional to $\hat x_s$ at linear order in the Holstein-Primakoff expansion. Since the strong symmetry implies conservation of $\hat N_{\uparrow} - \hat N_{J}$, $\hat x_s$ will commute with both Hamiltonian and jump operator at the order we consider. 
+
+Here, we note that as a result of this transformation, the jump operator takes the form $C + \hat O$ for some constant $C$ and operator $\hat O$ like in the weak drive limit. We can remove the constant term from the jump operator by shifting its effect to the Hamiltonian via an additional term $\Gamma (C \hat{O}^\dagger - C^* \hat O)/2i$.
+In the new basis following the Holstein-Primakoff approximation, we identify the effective quadratic Hamiltonian
+\begin{subequations}
+\begin{multline}
+    \hat H_{\text{HP}} \approx -\frac{\delta}{\cos \tilde{\theta}_J} \hat \jmath^\dagger \hat \jmath + \left[\sqrt{\frac{f_J N}{2}} \hat p_j - \sqrt{f_{\uparrow}} \frac{\hat s^\dagger \hat \jmath - \hat \jmath^\dagger \hat s}{2i} \right] \left( \frac{f_J N \Gamma}{2} \sin \tilde{\theta}_J - \Omega \sin \tilde{\phi}_J \right) +\\
+    \left[\frac{f_J }{2}(N-\hat{s}^\dagger \hat s - \hat{\jmath}^\dagger \hat \jmath) - \sqrt{\frac{f_J f_{\uparrow} N}{2}} \hat x_s  + \frac{f_{\uparrow}}{2} \hat s^\dagger \hat s -\frac{1}{2} \hat \jmath^\dagger \hat \jmath \right] \sin \tilde{\theta}_J  \left( \Omega \cos \tilde{\phi}_J - \delta \tan \tilde{\theta}_J \right) + \\
+    \left[-\sqrt{\frac{ f_J N}{2}}  \hat x_j  + \sqrt{f_{\uparrow}} \frac{\hat s^\dagger \hat \jmath + \hat \jmath^\dagger \hat s}{2}\right] \cos \tilde{\theta}_J  \left( \Omega \cos \tilde{\phi}_J - \delta \tan \tilde{\theta}_J \right),
+\end{multline}
+\begin{equation}
+    \hat H_{\text{HP}} \approx -\frac{\delta}{\cos \tilde{\theta}_J} \hat \jmath^\dagger \hat \jmath,
+\end{equation}
+\end{subequations}
+where most terms go to zero according to the mean field equations.
+To linear order (quadratic in the master equation), the jump operator is
+\begin{equation}
+    \hat l_{\text{HP}} \approx -e^{- i \tilde{\phi}_J} \sqrt{\frac{f_J N}{2}}\left(\hat x_j \cos \tilde{\theta}_J + i \hat p_j + \sqrt{f_{\uparrow}} \hat x_s \sin \tilde{\theta}_J \right).
+\end{equation}
+As anticipated, the Hamiltonian and jump operator both commute with $\hat x_s$ as a consequence of the strong symmetry.
+
+Next, we will derive the effective Hamiltonian and jump operators for only the $\hat s$ boson by adiabatically eliminating $\hat \jmath$. The equation of motion for $ \hat \jmath $ is
+\begin{equation}
+    \partial_t \hat \jmath \approx \left(i \delta \sec \tilde{\theta}_J - \frac{f_J N \Gamma}{2} \cos \tilde{\theta}_J \right) \hat \jmath  - \frac{f_J N \Gamma \sin \tilde{\theta}_J}{2}  \sqrt{\frac{f_{\uparrow}}{2}} \hat x_s.
+\end{equation}
+Here, we note that the above equation implies that $\hat \jmath$ will relax quickly to its steady state value, justifying the adiabatic elimination of it. By setting the evolution to 0 and solving for $\hat \jmath$, we make the substitution
+\begin{equation}
+    \hat \jmath \to \frac{f_J N \Gamma \sin \tilde{\theta}_J}{2 i \delta \sec \tilde{\theta}_J - f_J N \Gamma \cos \tilde{\theta}_J} \sqrt{\frac{f_{\uparrow}}{2}} \hat x_s,
+\end{equation}
+which results in the new Hamiltonian and jump operator
+\begin{subequations}
+    \begin{equation}
+        \hat H_{\text{HP+AE}} \approx -\frac{\delta}{2 \cos \tilde{\theta}_J} \frac{ f_\uparrow f_J^2 N^2 \Gamma^2 \sin^2 \tilde{\theta}_J}{f_J^2 N^2 \Gamma^2 \cos^2 \tilde{\theta}_J + 4 \delta^2 \sec^2 \tilde{\theta}_J} \hat{x}_s^2,
+    \end{equation}
+    \begin{equation}
+        \hat{l}_{\text{HP+AE}} \approx 2 e^{-i \tilde{\phi}_J} \sqrt{\frac{f_J f_{\uparrow} N}{2}} \frac{\delta \tan \tilde{\theta}_J (i f_J N \Gamma - 2 \delta \sec \tilde{\theta}_J) }{f_J^2 N^2 \Gamma^2 \cos^2 \tilde{\theta}_J + 4 \delta^2 \sec^2 \tilde{\theta}_J} \hat x_s.
+    \end{equation}
+\end{subequations}
+Here, the Hamiltonian gives rise to shearing dynamics in the $\hat s$ boson in the $\hat p_s$ direction while the jump operator leads to dephasing. 
+
+With this expression, we can use the associated timescales to self-consistently ensure that the adiabatic elimination is justified. Since the relaxation of $\hat \jmath$ is set by $f_J N \Gamma \cos \tilde{\theta}_J$, the squeezing dynamics should occur on timescales longer than this. Assuming we keep $\delta/N \Gamma$ fixed while varying $N$, then the Hamiltonian dynamics of $\hat H_{\text{AE}}$ scales like $N \Gamma$ while the OAT rate will have no $N$-dependence. Since the timescale of optimal squeezing scales slower than $N^{-2/3}$ (see Sec.~\ref{sec:decoherence}), the squeezing dynamics will be slower than the relaxational timescale of $\hat \jmath$, which scales like $N^{-1}$, for sufficiently large $N$. The precise condition for the validity of adiabatic elimination for any finite $N$ will depend on the choices of $\cos \tilde{\theta}_J$ and $\delta$ due to critical slowing down and higher-order effects beyond what we have considered here.
+
+The relative rates of shearing to dephasing is given by
+\begin{equation}
+     \frac{ f_J N \Gamma \cos \tilde{\theta}_J}{ 4 |\delta|} \frac{f_J^2 N^2 \Gamma^2 \cos^2 \tilde{\theta}_J + 4 \delta^2 \sec^2 \tilde{\theta}_J^2}{f_J^2 N^2 \Gamma^2+4 \delta^2 \sec^2 \tilde{\theta}_J }, 
+\end{equation}
+which is maximized in the limit $f_J N \Gamma \cos^2 \tilde{\theta}_J \gg 2\delta$. In this limit, the effective Hamiltonian and jump operator can be simplified to
+\begin{subequations}
+    \begin{equation}
+        \hat H_{\text{HP+AE}}\approx - \delta f_{\uparrow} \frac{\sin^2 \tilde{\theta}_J}{2 \cos^3 \tilde{\theta}_J} \hat x_s^2,
+    \end{equation}
+    \begin{equation}
+        \hat l_{\text{HP+AE}} \approx 2 i \delta e^{- i \tilde{\phi}_J} \sqrt{\frac{f_J f_{\uparrow} N}{2}} \frac{\sin \tilde{\theta}_J}{ f_J N \Gamma \cos^3 \tilde{\theta}_J} \hat x_s.
+    \end{equation}
+\end{subequations}
+The effective $\hat S$ dynamics in both cases can be obtained via the mapping $\hat x_s \to \sqrt{\frac{2}{N}} \hat S_z$ as in the main text, and we find the OAT in the small $\delta$ limit is consistent with the effective Hamiltonians derived from both the Berry phase and the weak drive limit. The linear term (in $\hat S_z$) is not present since we are in the corresponding rotating frame defined by $\tilde{\omega}_B$ already. We similarly find agreement with the effective dephasing derived via $N_J$ fluctuations in the End Matter and in the weak drive limit.
+
+
+\section{Single-particle decoherence}
+\label{sec:decoherence}
+
+In this section, we derive the scaling behavior of the optimal squeezing and the corresponding squeezing time in the presence of single-particle decoherence. As in the main text, we focus on the cases of spontaneous emission and single-particle dephasing separately. Here, we use a short-time, perturbative expansion of the time evolution of $\xi^2$ based on the exact solution of the dynamics \cite{Chu2021}.
+
+Before proceeding, we first consider the behavior in the absence of decoherence. For an OAT Hamiltonian $-\check{\chi} \hat S_z^2$, we find
+\begin{equation}
+    \xi^2(t) \approx \frac{1}{N^2 \check{\chi}^2 t^2} + \frac{N^2 \check{\chi}^4 t^4}{6}.
+\end{equation}
+Minimizing this in time, we find
+\begin{equation}
+    \xi^2_{\text{opt}} = \frac{3^{2/3}}{2 N^{2/3}}, \qquad
+    \check{\chi} t_{\text{opt}} = \frac{3^{1/6}}{N^{2/3}},
+\end{equation}
+accurately capturing the usual scaling for OAT dynamics. 
+
+Beyond OAT dynamics, our protocol also undergoes collective decoherence. For collective decoherence (jump operator $\hat{S}_z$) at rate $\check{\Gamma}$, we find \cite{Schleier-Smith2010,Lewis-Swan2018,Chu2021,Baamara2022}
+\begin{equation}
+    \xi^2(t) \approx \frac{1 + N \check{\Gamma} t}{N^2 \check{\chi}^2 t^2} + \frac{N^2 \check{\chi}^4 t^4}{6}.
+\end{equation}
+Assuming $N \check \Gamma t_{\text{opt}} \gg 1$, we optimize the squeezing, finding
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{5 (\check{\Gamma}/\check{\chi})^{4/5}}{2^{9/5}\times 3^{1/5}N^{2/5}}, \qquad t_{\text{opt}} \approx \frac{(3/2)^{1/5}(\check \Gamma/ \check \chi)^{1/5}}{\check \chi N^{3/5}},
+\end{equation}
+so the scaling depends on how we scale $\check \Gamma/\check \chi$. 
+
+As discussed in Sec.~\ref{sec:HP}, $\check \Gamma/\check \chi$ is minimized for $2 \delta \sec \tilde{\theta}_J \ll f_J N \Gamma \cos \tilde{\theta}_J$, thus allowing for the greatest amount of squeezing. Working in this limit and taking $f_J = f_{\uparrow} = 1/2$, corresponding to the equator in the $\hat S$ Bloch sphere, we find
+\begin{equation}
+    \check{\chi} = \frac{ \delta \sin^2 \tilde{\theta}_J}{2 N \cos^3 \tilde{\theta}_J}, \qquad \check{\Gamma} = \frac{4 \delta^2 \sin^2 \tilde{\theta}_J}{N^2 \Gamma^2 \cos^6 \tilde{\theta}_J} \Gamma, \qquad \frac{\check{\Gamma}}{\check{\chi}} = \frac{8 \delta}{N \Gamma \cos^3 \tilde{\theta}_J}.
+\end{equation}
+If we fix $\check \Gamma/\check \chi \equiv a N^\beta$, then we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{ 5 a^{4/5}}{2^{9/5} \times 3^{1/5} N^{\alpha}}, \qquad \Gamma t_{\text{opt}} \approx \frac{16 (3/2)^{1/5}}{a^{4/5} \sin^2 \tilde{\theta}_J N^{1-\alpha}},
+\end{equation}
+where we have defined $\alpha \equiv (2-4 \beta)/5$. Here, we see explicitly the tradeoff in varying both $\alpha$ and $a$, with $\xi^2_{\text{opt}} \Gamma t_{\text{opt}} \sin^2 \tilde{\theta}_J \approx 20/N$, independent of $a$, as well as the role of $\sin^2 \tilde{\theta}_J$ in the squeezing timescale. Furthermore, we note that it is only sensible to consider $2/3 \geq \alpha > 0$, corresponding to $ -1/3 \leq \beta \leq 1/2$, as we cannot achieve better than OAT scaling and we do not consider non-scalable squeezing. Since we can always ensure $\check \Gamma/\check \chi \to 0$ by taking $\delta \to 0$, then any of these scaling behaviors can be achieved with the caveat that the total squeezing is always constrained by OAT squeezing, which limits the choice of $a$ for a given $N, \alpha$, and that we satisfy the approximations used to derive the squeezing dynamics (adiabatic elimination of $\hat \jmath$ and relevance of higher-order terms near criticality). 
+
+\subsection{Spontaneous emission}
+\label{sec:SE}
+
+First, we consider the optimal squeezing in the presence of (effective) spontaneous emission in the $\hat S$ Bloch sphere. As discussed in the main text, the optimal squeezing occurs in the limit of weak drive. In light of this, we will utilize the OAT and collective dephasing rates derived in Sec.~\ref{sec:weak}. 
+\begin{equation}
+    \check{\chi} = \frac{\delta \Omega^2 (\delta \chi/2 + N \chi^2/4 + N \Gamma_\Delta^2/16)}{2 |\delta + (\chi + i \Gamma_\Delta/2)N/2|^4}, \qquad \check{\Gamma_\Delta} = \frac{\delta^2 \Omega^2 \Gamma_\Delta}{4 |\delta + (\chi + i \Gamma_\Delta/2)N/2|^4}.
+\end{equation}
+In the weak drive limit, we further find
+\begin{equation}
+    \gamma_- = \gamma_{e \uparrow} \sin^2 \frac{\tilde{\theta}_J}{2} \approx \frac{\Omega^2/4}{|\delta + (\chi + i \Gamma_\Delta/2)N/2|^2} \gamma_{e \uparrow}.
+\end{equation}
+To simplify the analysis, we will focus on two limits $\delta^2 \gg N^2 (\chi^2 + \Gamma_\Delta^2/4)/4$ and $\delta^2 \ll N^2 (\chi^2 + \Gamma_\Delta^2/4)/4$.
+
+The limit $\delta^2 \gg N^2 (\chi^2 + \Gamma_\Delta^2/4)/4$ corresponds to far off-resonant drive. In this limit, we have
+\begin{equation}
+    \check{\chi} \approx \chi \sin^2 \frac{\tilde{\theta}_J}{2}, \qquad \check{\Gamma} \approx \Gamma_\Delta \sin^2 \frac{\tilde{\theta}_J}{2},
+\end{equation}
+and so the OAT rate is just the original two-level rate normalized by the excited state population while the collective decoherence rate is similarly the two-level collective dissipation rate renormalized by the excited state population. The detuning only enters by determining this excited state population. Defining $\tau \equiv t \sin^2 \frac{\tilde{\theta}_J}{2}$, we find
+\begin{equation}
+    \xi^2(\tau) \approx \frac{1 + N \Gamma_\Delta \tau}{N^2 \chi^2 \tau^2} + \frac{N^2 \chi^4 \tau^4}{6} + \frac{2}{3} \gamma_{e \uparrow} \tau.
+\end{equation}
+Optimizing the squeezing with respect to $\Delta$ and $\tau$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3}}{2 N^{2/3}} + \frac{4 \sqrt{2/3}}{\sqrt{N \Gamma/\gamma_{e \uparrow}}} , \qquad \gamma_{e \uparrow} t_{\text{opt}} \approx \frac{\sqrt{6}}{ \sin^2 \frac{\tilde{\theta}_J}{2}  \sqrt{ N \Gamma /\gamma_{e \uparrow}}}, \qquad \Delta_{ \text{opt}} \approx \pm \frac{\sqrt{\Gamma/\gamma_{e \uparrow}} 3^{1/3}N^{1/6}}{ \sqrt{2}} \frac{\kappa}{2},
+\end{equation}
+where we assume we are in a limit where $\Delta^2 \gg \kappa^2/4$ (which requires $ N^{1/3} \gg \gamma_{e \uparrow}/\Gamma$) for the optimization and note that the optimized values are expressed in terms of $\Gamma$ rather than $\Gamma_\Delta$. The squeezing will be reduced when this limit is not realized.
+Logarithmic corrections can be obtained by going beyond linear approximations (in time) of the sources of decoherence. We note that the scaling of $\Delta_{\text{opt}}$ with $N$ can be increased to $\Delta_{\text{opt}} \sim (N \Gamma/\gamma_{e \uparrow})^{1/4} \kappa$ without (strongly) modifying the optimal scaling of the squeezing and squeezing time. Increasing the detuning modifies the scaling of the unitary OAT component of $\xi^2_{\text{opt}}$ from $N^{-2/3}$ to $N^{-1/2}$, so it at most modifies the coefficient of the dominant term. This can be utilized to ensure that $\Delta \gg \kappa$ is achieved.
+
+The limit $\delta^2 \ll N^2 (\chi^2 + \Gamma^2/4)/4$ corresponds to near-resonant drive as in the main text and is described by
+\begin{equation}
+    \check{\chi} \approx  \frac{2 \delta }{N} \sin^2 \frac{\tilde{\theta}_J}{2}, \qquad \check{\Gamma} \approx \frac{\delta^2 \Gamma_\Delta}{N^2 \chi^2/4+N^2 \Gamma_\Delta^2/16} \sin^2 \frac{\tilde{\theta}_J}{2} = \frac{ 4 \delta^2 \kappa}{N^2 g_c^2} \sin^2 \frac{\tilde{\theta}_J}{2},
+\end{equation}
+where again the excited state population determines the overall time scale of the dynamics and we absorb it via $\tau$. 
+Interestingly, we see that $\Delta$ does not play a role in this limit beyond its effect on the excited state population, indicating that there is no benefit (or detriment) from having elastic interactions. We can understand this as a consequence of the fact that, as we note in the End Matter, the Berry phase depends only on $\cos \tilde{\theta}_J$ and is otherwise independent of $\chi$. Optimizing the squeezing with respect to time and $\delta$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx  \frac{3^{2/3}}{2 N^{2/3}} + \frac{4 \sqrt{2/3}}{\sqrt{N \Gamma/\gamma_{e \uparrow}}} , \qquad \gamma_{e \uparrow} t_{\text{opt}} \approx \frac{\sqrt{6}}{ \sin^2 \frac{\tilde{\theta}_J}{2} \sqrt{N \Gamma/ \gamma_{e \uparrow}}}, \qquad \delta_{\text{opt}} \approx \pm \frac{\sqrt{\Gamma/\gamma_{e \uparrow}} N^{5/6}}{3^{1/3} \sqrt{2} } \frac{\gamma_{e \uparrow}}{2},
+\end{equation}
+where we can see that the scaling of $\delta$ is consistent with the limit we have considered and again we have expressed the results in terms of $\Gamma$ rather than $\Gamma_\Delta$. Logarithmic corrections can again be obtained by going beyond linear approximations (in time) of the sources of decoherence. Like for the dispersive regime, we may also modify the scaling of $\delta_{\text{opt}}$ to $\delta_{\text{opt}} \sim (N \Gamma/\gamma_{e \uparrow})^{3/4} \gamma_{e \uparrow}$ without changing the dominant scaling terms in the squeezing and squeezing times beyond a change to its coefficient. In contrast to the dispersive regime, here the relevant detuning becomes smaller. Remarkably, we also find the exact same optimal squeezing and squeezing time in both limits, implying that our protocol can potentially be extended to approaches where a weak drive and far off-resonant cavity were assumed, allowing them to go beyond the weak drive limit as well, subject to concerns of metastability in certain regions of the phase diagram \cite{Barberena2019}.
+
+\subsection{Single-particle dephasing}
+
+Next, we consider the optimal squeezing in the presence of single-particle dephasing. Unlike for spontaneous emission, we assume that the corresponding rate $\gamma_d$ is independent of the population. In this case, the squeezing dynamics is approximately
+\begin{equation}
+    \xi^2(t) \approx e^{\gamma_d t}\left(\frac{e^{\gamma_d t} + N \check{\Gamma} t}{N^2 \check{\chi}^2 t^2} + \frac{N^2 \check{\chi}^4 t^4}{6} \right).
+\end{equation}
+For $f_J = f_{\uparrow} = 1/2$ in the limit $\delta \ll N \Gamma \cos^2 \tilde{\theta}_J$ where optimal squeezing occurs, we have
+\begin{equation}
+    \check{\chi} = \frac{ \delta \sin^2 \tilde{\theta}_J}{2 N \cos^3 \tilde{\theta}_J}, \qquad \check{\Gamma} = \frac{4 \delta^2 \sin^2 \tilde{\theta}_J}{N^2 \Gamma^2 \cos^6 \tilde{\theta}_J} \Gamma, \qquad \frac{\check{\Gamma}}{\check{\chi}} = \frac{8 \delta}{N \Gamma \cos^3 \tilde{\theta}_J}.
+\end{equation}
+We see that both the OAT and the collective dephasing scale with $\sin^2 \tilde{\theta}_J$, indicating faster squeezing rates, and thus improved squeezing, can be obtained closer to criticality, although there are diminishing returns. Depending on the strength of $\gamma_d$, we identify two different optimal squeezing behaviors. For weak $\gamma_d \ll (3 e)^{2/3} N^{1/3} \sin^2 \tilde{\theta}_J \Gamma/32$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3}}{2 N^{2/3}} + \frac{4 \sqrt{10 \gamma_d/\Gamma}}{3^{1/6} N^{5/6} \sin \tilde{\theta}_J}, \qquad \gamma_d t_{\text{opt}} \approx \frac{ 8 \times 3^{1/6}}{\sqrt{10 \Gamma /\gamma_d} N^{1/6} \sin \tilde{\theta}_J }, \qquad \delta_{\text{opt}} \approx \pm \sqrt{\frac{5 N \Gamma \gamma_d}{8}} \frac{\cos^3 \tilde{\theta}_J}{\sin \tilde{\theta}_J} ,
+\end{equation}
+corresponding to ideal OAT squeezing, albeit at a slower rate. Here, we see that the optimal squeezing does not depend strongly on $\tilde{\theta}_J$, although the time scale and optimal detuning do.
+
+For strong $\gamma_d \gg (3 e)^{2/3} N^{1/3} \sin^2 \tilde{\theta}_J \Gamma/32$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3} }{2 N^{2/3}} e^{4/3} + \frac{16 e \gamma_d}{N \Gamma \sin^2 \tilde{\theta}_J} , \qquad \gamma_d t_{\text{opt}} = 1, \qquad \delta_{\text{opt}} \approx \pm \frac{2 \times (3 e)^{1/6} N^{1/3} \cos^3 \tilde{\theta}_J }{\sin^2 \tilde{\theta}_J} \gamma_d,
+\end{equation}
+which will exhibit OAT scaling with an additional prefactor of $e^{5/3}(1+f_d)$, where $\gamma_d \equiv f_d \times (3 e)^{2/3} N^{1/3} \sin^2 \tilde{\theta}_J \Gamma/32$. Here, we see that the optimal squeezing time is simply the inverse of the dephasing rate, while the optimal squeezing is weakly dependent on $\sin^2 \tilde{\theta}_J$. In the main text, the example of $N= 10^6, \gamma_d = 100 \Gamma$ is nearly in this limit, which is why we found a time scale that was largely fixed as we moved away from the critical point while the squeezing itself was reduced. 
+ 
+\subsection{Competing single-particle decoherence}
+
+Finally, we consider scenarios where both sources of single-particle decoherence are present. Depending on the relative strength of both sources and the particular parameters, there will be a competition in terms of which is most relevant. When spontaneous emission is most dominant, the optimal squeezing will occur at weak drives with a finite detuning and $\xi^2_{\text{opt}} \propto 1/\sqrt{N}$. In contrast, when single-particle dephasing is most dominant, the optimal squeezing will occur near criticality with small detuning and $\xi^2_{\text{opt}}$. Hence when both are equally relevant, the optimal drive and detuning will be between these two extremes. In this section, we will determine when one or the other is dominant. 
+
+In order to proceed, we must consider spontaneous emission beyond the weak drive limit. Using the values of $\check \chi, \check \Gamma$ obtained from adiabatic elimination of the HP equations, we find
+\begin{equation}
+\begin{gathered}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3}}{2 N^{2/3}} + \frac{8 \sqrt{(1-\cos \tilde{\theta}_J)}}{\sin \tilde{\theta}_J \sqrt{3 N \Gamma /\gamma_{e \uparrow}} }, \qquad \gamma_{e \uparrow} t_{\text{opt}} \approx \frac{4 \sqrt{3}}{  \sin \tilde{\theta}_J \sqrt{ (1+\cos \tilde{\theta}_J) N  \Gamma / \gamma_{e \uparrow}}}, \\
+    \delta_{\text{opt}} \approx \pm \frac{\cos^3 \tilde{\theta}_J \sqrt{(1- \cos \tilde{\theta}_J)  \Gamma/ \gamma_{e \uparrow}} N^{5/6}}{3^{1/3} \sin \tilde{\theta}_J} \frac{\gamma_{e \uparrow}}{2}
+\end{gathered}
+\end{equation}
+We find that when $\cos \tilde{\theta}_J \to 1$, the squeezing is minimized and we recover the weak drive behavior, as anticipated. 
+
+To determine the competition between both sources of decoherence, we determine where these optimal squeezing values (for fixed $\tilde{\theta}_J$) are the same for both spontaneous emission and for dephasing, indicating that the modification to the squeezing is the same for both decoherence processes. A more sophisticated approach might involve re-optimizing $\xi^2$ with the shift from the single-particle decoherence-free protocol doubled, although our less sophisticated approach will be sufficient in determining when one or the other is dominant, and thus whether we consider weak drive, critical drive, or somewhere in the middle.
+
+For $f_d \ll 1$, the optimal squeezing values for the two scenarios are equal when
+\begin{equation}
+     \cos \tilde{\theta}_J \approx 1- \frac{15 }{2 \times 3^{1/3}  N^{2/3}} \frac{\gamma_d}{\gamma_{e \uparrow}},
+\end{equation}
+This equation is only valid for $0 \leq \cos \tilde{\theta}_J \leq 1$, so when $\gamma_d/\gamma_{e \uparrow} \ll 2 \times 3^{1/3} N^{2/3}/15$, we expect spontaneous emission to dominate and the optimal squeezing to occur at weak drive. In the opposite limit, we expect single-particle dephasing to dominate and the optimal squeezing to occur near criticality. This further requires $ \Gamma/\gamma_{e \uparrow} \sin^2 \tilde{\theta}_J \gg 64 (N/(3e)^2)^{1/3}/15$ to ensure $f_d \ll 1$. For the parameters in the main text, this requires $\Gamma/\gamma_{e \uparrow} \sin^2 \tilde{\theta}_J \gg 105$, which is not realized. 
+
+For $f_d \gg 1$, the optimal squeezing values for the two scenarios are equal when
+\begin{equation}
+\label{eq:optdecse}
+    \sin^2 \frac{\tilde{\theta}_J}{2} \cos \frac{\tilde{\theta}_J}{2} \approx \frac{2 e }{\sqrt{2 N \Gamma/\gamma_{e \uparrow}}} \frac{\gamma_d}{\gamma_{e \uparrow}},
+\end{equation}
+where we have utilized the fact that the OAT scaling terms are small for $f_d \gg 1$. Since the left-hand side varies from $2/(3 \sqrt{3})$ at criticality to 0 at weak drive, for $\gamma_d/\gamma_{e \uparrow} \gg  \sqrt{ N \Gamma/\gamma_{e \uparrow}}/(3 \sqrt{6} e)$, we predict single-particle decoherence to dominate and the optimal squeezing to occur near criticality. In the opposite limit $\gamma_d/\gamma_{e \uparrow} \ll \sqrt{ N \Gamma/\gamma_{e \uparrow}}/(3 \sqrt{6} e)$, we predict spontaneous emission to dominate and the optimal squeezing to occur at weak drive. When $\gamma_d/\gamma_{e \uparrow} \sim \sqrt{ N \Gamma/\gamma_{e \uparrow}}/(3 \sqrt{6} e)$, we predict both single-particle decoherence terms to be comparably relevant, and the optimal parameters will occur somewhere between the two extremes. For $\gamma_{e \uparrow} = \Gamma, N = 10^6$ as in the main text, this corresponds to $\gamma_d/\gamma_{e \uparrow} \sim 50$, hence the optimal drive occurring between the two extremes when $\gamma_d = 100 \Gamma$. Similar scaling emerges when comparing the optimal squeezing times or detunings, which both give the same result as one another. Hence we can also look at where the optimal detunings intersect for the two individual sources of single-particle decoherence, although this intersection will only be a very approximate estimate of the actual optimal parameters. 
+
+\subsection{Comparison to other protocols}
+
+In this section, we compare the scaling of the squeezing and squeezing time to other common approaches to the generation of spin squeezing in optical cavities. We focus only on the case of intrinsic sources of decoherence due to spontaneous emission, i.e., $\gamma_{e \downarrow} \sin^2 \frac{\tilde{\theta}_J}{2}$. However, as discussed in the main text, the ability of our protocol to go beyond the weak excitation regime and accelerate the squeezing dynamics provides a means of mitigating the effect of external dephasing sources when the squeezing is to be generated directly on the clock transition, as in the example level scheme of the main text. While the squeezing dynamics in all cases can be accelerated by generating it on transitions which couple more strongly to the cavity, this introduces the additional complication of transferring the spin squeezing to a clock transition, thereby introducing additional sources of noise. In all cases, we neglect overall timescales while keeping this fact in mind. We likewise neglect most constant coefficients for the optimal $\xi^2_{\text{opt}}$, which depend on the precise implementation and are typically comparable for all protocols. 
+
+The protocols we consider are as follows:
+\begin{itemize}
+    \item (OAT) One-axis twisting $\hat H = \hat S_z^2$. We compare our protocol to the related protocol in the dispersive, weak excitation regime, see Sec.~\ref{sec:SE} or Ref.~\cite{Barberena2023b} for details about the squeezing optimization.
+    \item (QND) Quantum non-demolition measurement utilizes a measurement jump operator $\hat l = \hat S_z$. In this approach, the emitted cavity light from the jump operator $\hat l$ is measured, providing a non-demolition measurement of $\hat S_z$, which reduces the variance in $\hat S_z$ at the cost of quantum backaction in $\langle \hat S_z \rangle$. Unlike the other protocols, this approach is non-unitary, and its performance depends strongly on the detection efficiency $\eta$. See Ref.~\cite{Barberena2023b} for details about the protocol and squeezing optimization as well as a discussion of the minimal $\eta$ necessary for QND to outperform OAT in the dispersive, weak-excitation regime.
+    \item (TAT) Two-axis twisting $\hat H = \hat S_z^2 - \hat S_x^2$. In this approach, an additional counter-twisting term is introduced. In the absence of decoherence, TAT realizes Heisenberg squeezing $\xi^2 \sim 1/N$ along with accelerated squeezing dynamics due to the generation of an unstable saddle-point in the mean-field dynamics of the Bloch vector. See Ref.~\cite{Borregaard2017a} for details about the protocol and squeezing optimization.
+    \item (TnT) Twist-and-turn $\hat H = \hat S_z^2 + \Omega \hat S_x$. In this approach, an additional drive term is added to mimic the instability like in TAT and accelerate the squeezing dynamics, although Heisenberg scaling is not realized. See Refs.~\cite{Muessel2015,Hu2017,Barberena2022} for details about the protocol and squeezing optimization.
+\end{itemize}
+
+In Table \ref{tab:protocols}, we summarize the scaling behavior of the spin squeezing and squeezing times in the presence of intrinsic sources of decoherence due to spontaneous emission. We note that like for our protocol, OAT and QND both exhibit different scaling depending on the effective form of the decoherence. This is a consequence of the fact that single-particle dephasing commutes with the associated dynamics and, more importantly, primarily modifies the anti-squeezed quadrature, leading to a reduced impact on the spin squeezing. For both TAT and TnT, this no longer holds, and both effective spin flips and dephasing impact the squeezing in similar ways. We also report several squeezing values realized experimentally in optical cavities.
+
+\begin{table}[h]
+\centering
+\def\arraystretch{1}
+\setlength\tabcolsep{2.4mm}
+\begin{tabular}{ccccc}
+\toprule
+\toprule
+ & \multirow{2}{*}{Decoherence} & \multirow{2}{*}{$\xi^2_{\text{opt}}$} & \multirow{2}{*}{$\gamma_e t_{\text{opt}}$} & Experiment \\
+ & & & & ($N$ , $\xi^2$) \\
+\midrule
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{\shortstack{Our \\ Protocol}} & Spin Flips & $\frac{1}{\sqrt{NC}}$ & $\frac{1}{\sqrt{NC}}$ & (1000, $-8.2$ dB) [Simulation]\\
+\cmidrule{2-4}
+& Dephasing & $\frac{1}{N^{2/3}}$ & $\frac{1}{N^{2/3}}$ & (1000, $-14$ dB) [Simulation] \\
+\midrule
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{OAT} & Spin Flips & $\frac{1}{\sqrt{NC}}$ & $\frac{1}{\sqrt{NC}}$ & 
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{($5 \times 10^4, -5.6$ dB) \cite{Leroux2010}, \hspace{3.2cm}} \\
+\cmidrule{2-4}
+& Dephasing & $\frac{1}{N^{2/3}}$ & $\frac{1}{N^{2/3}}$ & \hspace{3.2cm} ($1500, -6.5$ dB) \cite{Braverman2019} \\
+\midrule
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{QND} & Spin Flips & $\frac{1}{\sqrt{NC}}$ & $\frac{1}{\sqrt{NC}}$ & \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{($5 \times 10^4$, $-3$ dB) \cite{Schleier-Smith2010a}, ($5 \times 10^5, -20$ dB) \cite{Hosten2016}, \hspace{3.4cm}} \\
+\cmidrule{2-4}
+& Dephasing & $\frac{e}{\eta N}\frac{C}{1+C}$ & $\frac{1}{1+C}$ & \hspace{6.8cm} ($5 \times 10^4$, $-18$ dB) \cite{Cox2016}\\
+\midrule
+TAT & Either & $\frac{1}{\sqrt{NC}}$ & $\frac{\log \sqrt{NC}}{\sqrt{NC}}$ & Recently implemented without measured squeezing in Ref.~\cite{Luo2024}.\\
+\midrule
+TnT & Either & $\frac{1}{\sqrt{NC}}$ & $\frac{\log \sqrt{NC}}{\sqrt{NC}}$ & (200, $-2$/$-4$ dB) \cite{Li2023a}* \\
+ \bottomrule
+ \bottomrule
+\end{tabular}
+\caption{Comparison of typical squeezing protocols for optical cavities and associated experimental realizations. $C \equiv 4 g_c^2/\kappa \gamma_e$ is the single-atom cooperativity, where $\gamma_e$ is the spontaneous emission rate of $|e\rangle$, and $\eta$ is the detection efficiency of the emitted cavity light. Experimental squeezing entries split between two rows exhibit both forms of single-particle decoherence. *Spin squeezing was measured for only a single suboptimal (in time) point; $-4$ dB represents the expected squeezing based on Ref.~\cite{Li2023a}'s numerical simulations, which show good agreement with the experimental data. \label{tab:protocols}}
+\end{table}
+
+
+
+Finally, we remark that our approach could be naturally extended to incorporate QND by measuring the emitted cavity light to weakly measure $\hat S_z$, whereby an analysis similar to Ref.~\cite{Barberena2023b}, which considered the weak excitation regime, could be implemented to determine when OAT- or QND-dominated squeezing is optimal for our approach. 
+

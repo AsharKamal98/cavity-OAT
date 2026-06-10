@@ -1,0 +1,171 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.7em}
+
+\title{Dephasing Diagnostics from Bloch-Vector Length}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Purpose}
+
+Use this note whenever implementing or modifying diagnostics intended to visualize dephasing in custom MCWF results.
+
+For any averaging over different \(N_J\) sectors, group-resolved sectors, or trajectory ensembles, follow \texttt{docs/instructions/bloch\_vector\_averaging.tex}. This file only adds the dephasing-specific rule that the averaged vector length is computed after the relevant vector components have been averaged.
+
+\section*{Goal}
+
+Visualize dephasing by plotting the length of the ensemble-averaged effective \(S\)-Bloch vector:
+
+\begin{equation}
+\left|\langle \mathbf S(t)\rangle_{\rm ens}\right|
+=
+\sqrt{
+\langle S_x(t)\rangle_{\rm ens}^2+
+\langle S_y(t)\rangle_{\rm ens}^2+
+\langle S_z(t)\rangle_{\rm ens}^2
+}.
+\end{equation}
+
+Dephasing is loss of ensemble phase coherence. In a collective-spin picture, it appears as shrinkage of this averaged vector.
+
+\section*{Core Averaging Rule}
+
+Always average the vector components first, then compute the length:
+
+\begin{equation}
+\left|\langle \mathbf S(t)\rangle_{\rm ens}\right|
+=
+\sqrt{
+\langle S_x(t)\rangle_{\rm ens}^2+
+\langle S_y(t)\rangle_{\rm ens}^2+
+\langle S_z(t)\rangle_{\rm ens}^2
+}.
+\end{equation}
+
+Do not average per-trajectory lengths:
+
+\begin{equation}
+\frac{1}{N_{\rm traj}}
+\sum_r
+\left|\mathbf S_r(t)\right|.
+\end{equation}
+
+The latter measures the typical conditioned-trajectory spin length, not ensemble dephasing.
+
+\section*{Recommended API}
+
+Implement this as standalone post-processing, for example:
+
+\begin{verbatim}
+plot_dephasing_bloch_lengths(
+    result,
+    *,
+    normalize=True,
+    axes=None,
+    output_path=None,
+)
+\end{verbatim}
+
+The function should accept both \texttt{TrajectoryResult} and \texttt{TrajectoryEnsemble}.
+
+For a single trajectory, compute the vector length from that trajectory's saved observables. For an ensemble, average \(S_x,S_y,S_z\) over trajectories on the shared \texttt{t\_eval} grid before computing the length.
+
+Do not modify MCWF propagation unless the required observables are genuinely unavailable.
+
+\section*{Homogeneous Results}
+
+For homogeneous simulations, plot one curve:
+
+\begin{equation}
+\left|\langle \mathbf S_{\rm total}(t)\rangle\right|.
+\end{equation}
+
+Use the existing effective-\(S\) observable or moment-extraction path if one exists. Do not invent a second convention for \(S_x,S_y,S_z\).
+
+If effective-\(S\) observables are not available, add only the minimal support needed to compute and post-process them.
+
+\section*{Inhomogeneous Results}
+
+For two-group inhomogeneous simulations, plot one figure with three curves: total, group 1, and group 2.
+
+For groups \(a=1,2\),
+
+\begin{equation}
+\left|\langle \mathbf S_a(t)\rangle\right|
+=
+\sqrt{
+\langle S_{x,a}(t)\rangle^2+
+\langle S_{y,a}(t)\rangle^2+
+\langle S_{z,a}(t)\rangle^2
+}.
+\end{equation}
+
+For the total curve, sum components first:
+
+\begin{equation}
+S_{x,\rm total}=S_{x,1}+S_{x,2},
+\qquad
+S_{y,\rm total}=S_{y,1}+S_{y,2},
+\qquad
+S_{z,\rm total}=S_{z,1}+S_{z,2}.
+\end{equation}
+
+Then compute
+
+\begin{equation}
+\left|\langle \mathbf S_{\rm total}(t)\rangle\right|
+=
+\sqrt{
+\langle S_{x,\rm total}(t)\rangle^2+
+\langle S_{y,\rm total}(t)\rangle^2+
+\langle S_{z,\rm total}(t)\rangle^2
+}.
+\end{equation}
+
+If group-resolved effective-\(S\) observables are unavailable, add the minimal support needed to compute them. Keep the diagnostic standalone.
+
+\section*{Normalization}
+
+If \texttt{normalize=True}, divide by the appropriate maximum or reference spin length used elsewhere in the code.
+
+Prefer existing normalization conventions. If no convention exists, use
+
+\begin{equation}
+S_{\max}=\frac{N}{2}
+\end{equation}
+
+for total homogeneous or effective-spin length, and
+
+\begin{equation}
+S_{{\max},a}=\frac{N_a}{2}
+\end{equation}
+
+for group-resolved inhomogeneous curves. Document any different active/effective population convention explicitly.
+
+\section*{Optional Relative-Phase Diagnostic}
+
+If group angles are already available, it is useful to also plot
+
+\begin{equation}
+\Delta\phi(t)=\phi_1(t)-\phi_2(t).
+\end{equation}
+
+This can help distinguish relative dephasing between groups from dephasing within each group.
+
+\section*{Interpretation}
+
+\begin{itemize}
+\item If the total length shrinks, ensemble coherence is being lost.
+\item If the total length shrinks while group-resolved lengths remain large, the dominant effect is likely relative dephasing between groups.
+\item If group-resolved lengths also shrink, there is dephasing within the groups as well.
+\end{itemize}
+
+\end{document}

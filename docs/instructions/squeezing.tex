@@ -1,0 +1,286 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.7em}
+
+\title{Instruction: Implement Generalized Three-Level Squeezing Parameter}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+Construct the generalized three-level squeezing parameter for the custom MCWF
+code. The goal is to compute \(\xi^2_{\rm gen}(t)\) at each saved timestep after
+the simulation has run.
+
+The squeezing calculation should preferably be implemented as a standalone
+post-processing function that takes the simulation result or observable output as
+input. If it is simpler, it may be integrated into the observable function, but
+it must be optional via a boolean flag, since this calculation may be expensive
+and is not always needed.
+
+If additional per-timestep data must be saved for this calculation, add a
+boolean flag such as \texttt{save\_squeezing\_data} or
+\texttt{compute\_generalized\_squeezing}.
+
+\section*{Per-timestep calculation}
+
+At each timestep, do the following.
+
+\subsection*{1. Define the effective dressed state \(|1\rangle\)}
+
+Work in the single-particle basis
+
+\begin{equation}
+(|u\rangle, |d\rangle, |e\rangle).
+\end{equation}
+
+Use the ansatz
+
+\begin{equation}
+|1\rangle =
+0|u\rangle
++
+\cos\frac{\theta_J}{2}|d\rangle
++
+e^{-i\phi_J}\sin\frac{\theta_J}{2}|e\rangle.
+\end{equation}
+
+Here \(\theta_J,\phi_J\) should be found by comparing this ansatz to the
+simulation state at the current timestep. Follow the active-manifold
+Bloch-vector averaging convention in:
+
+\begin{verbatim}
+docs/instructions/bloch_vector_averaging.tex
+\end{verbatim}
+
+Reuse \texttt{active\_manifold\_angles} where appropriate.
+
+\subsection*{2. Define the instantaneous mean direction \(|c\rangle\)}
+
+Use the ansatz
+
+\begin{equation}
+|c\rangle
+=
+\cos\frac{\theta_S}{2}|u\rangle
++
+e^{-i\phi_S}\sin\frac{\theta_S}{2}|1\rangle.
+\end{equation}
+
+Here \(\theta_S,\phi_S\) should be found by comparing this ansatz to the
+instantaneous effective \(S\)-Bloch vector of the simulation state. The angles
+\(\theta_J,\phi_J\) appearing inside \(|1\rangle\) are the angles found in step
+1.
+
+In the explicit \((u,d,e)\) basis,
+
+\begin{equation}
+|c\rangle =
+\begin{pmatrix}
+\cos(\theta_S/2) \\
+e^{-i\phi_S}\sin(\theta_S/2)\cos(\theta_J/2) \\
+e^{-i(\phi_S+\phi_J)}\sin(\theta_S/2)\sin(\theta_J/2)
+\end{pmatrix}.
+\end{equation}
+
+\subsection*{3. Define the \(J\)-fluctuation direction \(|j\rangle\)}
+
+Using the \(J\)-angles found in step 1, construct the state orthogonal to
+\(|1\rangle\) inside the \((d,e)\) manifold:
+
+\begin{equation}
+|j\rangle =
+0|u\rangle
+-
+\sin\frac{\theta_J}{2}|d\rangle
++
+e^{-i\phi_J}\cos\frac{\theta_J}{2}|e\rangle.
+\end{equation}
+
+In vector form:
+
+\begin{equation}
+|j\rangle =
+\begin{pmatrix}
+0 \\
+-\sin(\theta_J/2) \\
+e^{-i\phi_J}\cos(\theta_J/2)
+\end{pmatrix}.
+\end{equation}
+
+\subsection*{4. Define the \(S\)-fluctuation direction \(|s\rangle\)}
+
+Using the \(S\)-angles from step 2 and the \(J\)-angles from step 1, construct
+
+\begin{equation}
+|s\rangle =
+-\sin\frac{\theta_S}{2}|u\rangle
++
+e^{-i\phi_S}\cos\frac{\theta_S}{2}|1\rangle.
+\end{equation}
+
+In the \((u,d,e)\) basis,
+
+\begin{equation}
+|s\rangle =
+\begin{pmatrix}
+-\sin(\theta_S/2) \\
+e^{-i\phi_S}\cos(\theta_S/2)\cos(\theta_J/2) \\
+e^{-i(\phi_S+\phi_J)}\cos(\theta_S/2)\sin(\theta_J/2)
+\end{pmatrix}.
+\end{equation}
+
+The three states \(|c\rangle,|j\rangle,|s\rangle\) should form an orthonormal
+single-particle basis up to numerical precision.
+
+\subsection*{5. Construct the four local fluctuation operators}
+
+Construct the four \(3\times3\) single-particle operators:
+
+\begin{equation}
+o_1 =
+\frac{|c\rangle\langle j|+|j\rangle\langle c|}{2},
+\end{equation}
+
+\begin{equation}
+o_2 =
+\frac{|c\rangle\langle j|-|j\rangle\langle c|}{2i},
+\end{equation}
+
+\begin{equation}
+o_3 =
+\frac{|c\rangle\langle s|+|s\rangle\langle c|}{2},
+\end{equation}
+
+\begin{equation}
+o_4 =
+\frac{|c\rangle\langle s|-|s\rangle\langle c|}{2i}.
+\end{equation}
+
+Then construct the corresponding collective operators
+
+\begin{equation}
+O_a = \sum_i o_a^{(i)},
+\qquad a=1,2,3,4.
+\end{equation}
+
+Do not construct full \(3^N\)-dimensional tensor-product operators unless
+absolutely necessary. Use the existing reduced \((N_J,n_e)\) basis and exploit
+symmetry. Each collective operator should be represented as a sparse operator
+acting on the reduced simulation basis.
+
+If possible, construct \(O_a\) from precomputed collective one-body transition
+operators
+
+\begin{equation}
+A_{\mu\nu}=\sum_i |\mu_i\rangle\langle \nu_i|,
+\qquad
+\mu,\nu\in\{u,d,e\}.
+\end{equation}
+
+Then
+
+\begin{equation}
+O_a =
+\sum_{\mu,\nu}
+(o_a)_{\mu\nu} A_{\mu\nu}.
+\end{equation}
+
+This avoids building large tensor-product matrices.
+
+\subsection*{6. Construct the covariance matrix}
+
+For the current state \(|\psi(t)\rangle\), compute
+
+\begin{equation}
+\mu_a = \langle O_a\rangle.
+\end{equation}
+
+Then construct the \(4\times4\) covariance matrix
+
+\begin{equation}
+C_{ab}
+=
+\frac{1}{2}
+\langle O_aO_b+O_bO_a\rangle
+-
+\mu_a\mu_b.
+\end{equation}
+
+For efficiency, avoid explicitly constructing \(O_aO_b\). Instead use
+
+\begin{equation}
+C_{ab}
+=
+\mathrm{Re}\left[
+\langle O_a\psi | O_b\psi\rangle
+\right]
+-
+\mu_a\mu_b.
+\end{equation}
+
+\subsection*{7. Minimum fluctuation direction}
+
+Diagonalize the \(4\times4\) covariance matrix and take
+
+\begin{equation}
+\lambda_{\min}(C).
+\end{equation}
+
+This is the minimum generalized transverse variance.
+
+\subsection*{8. Generalized squeezing parameter}
+
+Compute
+
+\begin{equation}
+\xi^2_{\rm gen}(t)
+=
+\frac{N\lambda_{\min}(C)}
+{\langle N_c/2\rangle^2},
+\end{equation}
+
+where
+
+\begin{equation}
+N_c =
+\sum_i |c_i\rangle\langle c_i|.
+\end{equation}
+
+Compute \(\langle N_c\rangle\) using the same collective-operator construction:
+
+\begin{equation}
+N_c =
+\sum_{\mu,\nu}
+(|c\rangle\langle c|)_{\mu\nu} A_{\mu\nu}.
+\end{equation}
+
+If the state is well polarized along \(|c\rangle\), then
+\(\langle N_c/2\rangle\approx N/2\), but the code should compute it explicitly
+rather than assuming this.
+
+\section*{Data that may need to be saved per timestep}
+
+Save enough data to reconstruct the squeezing calculation after the simulation:
+
+\begin{itemize}
+\item the full state vector \(|\psi(t)\rangle\) in the reduced \((N_J,n_e)\)
+  basis, or equivalent data sufficient to reconstruct it;
+\item the timestep values \(t\);
+\item \(N\), \(\Gamma\), \(\Omega\), \(\delta\), and any sector truncation
+  metadata;
+\item the basis/index mapping for \((N_J,n_e)\);
+\item if not recomputed during post-processing, save
+  \(\theta_J(t),\phi_J(t),\theta_S(t),\phi_S(t)\).
+\end{itemize}
+
+Prefer recomputing angles from the state during post-processing if this avoids
+storing redundant data.
+
+\end{document}
