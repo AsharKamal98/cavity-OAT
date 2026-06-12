@@ -1,0 +1,132 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,multirow}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Coherence preservation}
+\label{sec:coherence}
+
+In this section, we discuss the preservation of coherences. First, we discuss the formal definition of weak and strong symmetries and discuss the implications for the Liouvillian structure and the effect of this structure for spontaneous symmetry breaking. Second, we show this preservation under mean-field theory using Schwinger bosons. Third, we analytically show that for the observables of interest, all relevant coherences are preserved when the drive is turned off.
+
+\subsection{Strong symmetry breaking}
+
+To understand the distinction between weak and strong symmetries, it is helpful to reconsider the dynamics from the perspective of the full system-environment Hamiltonian, which takes the general form
+\begin{equation}
+    \hat H_{SE} = \hat H_S + \hat H_E + \hat V, \qquad \hat V = \sum_i \hat L_i \otimes \hat E_i,
+\end{equation}
+where $\hat H_S$ ($\hat H_E$) is the system (environment) Hamiltonian while $V$ is the interaction between the two composed of a product of system operators ($\hat L_i$) and environment operators ($\hat E_i$), and we have anticipated that the system operators in $\hat V$ will give rise to the Lindblad operators, which can always be expressed in a traceless, orthogonal basis.
+Throughout, we only consider symmetries with separable unitary transformations, i.e., $\hat U = \hat U_S \otimes \hat U_E$, which commute with the full Hamiltonian $[\hat H_{SE}, \hat U] = 0$. In deriving the Liouvillian dynamics of the system, the environment is traced out. We can thus distinguish two relevant scenarios for symmetries of $H_{SE}$ that affect system: (i) The symmetry acts on both system and environment and (ii) The symmetry acts on only the system (i.e., $\hat U_E$ is the identity). 
+
+In (i), information about the symmetry sectors and their conserved quantities is lost when the environment is traced out and $\hat U_E$ is no longer accessible, so the conservation law can at most be satisfied in the system after ensemble/trajectory averaging. 
+In (ii), no information about the symmetry is lost when the environment is traced out since $\hat U_E$ is the identity, so the corresponding conserved quantity must be conserved on an individual trajectory level within a given symmetry sector of the system. From this, we can understand (i) as corresponding to weak symmetries of the Liouvillian, while (ii) corresponds to strong symmetries, although we remark that the Hamiltonian framework here can be extended beyond Liouvillian dynamics \cite{Manzano2018}. Recently, connections and equivalencies have further been identified between the distinction of weak/strong symmetries and symmetries of Hamiltonians in the presence of disorder \cite{Ma2023a,Ma2023b}. Specifically, the concept of an average symmetry emerges in disordered systems when the symmetry is violated for any individual realization but is restored upon ensemble averaging of many realizations. The disorder averaging is thus analogous to the trajectory averaging of a weak symmetry and vice-versa.
+
+With this in mind, we can see the implications of these two scenarios on the Liouvillian 
+\begin{equation}
+    \partial_t \hat \rho = \mathcal{L}(\hat \rho), \qquad
+    \mathcal{L}(\cdot) \equiv -i[\hat H_S,(\cdot)] + \sum_i \hat L_i(\cdot) \hat L_i^\dagger - \frac{1}{2} \{\hat L_i^\dagger \hat L_i, (\cdot)\}
+\end{equation} 
+where $\hat L_i$ are the Lindblad jump operators, and $\hat A \equiv \hat U_S$ is the corresponding symmetry operator of the system. Since $\mathcal{L}$ is a superoperator, we denote its action on a generic operator via inserting the operator anywhere $(\cdot)$ occurs. 
+Thus in the case of (i), a weak symmetry, since $\hat U_S \hat V \hat U_S^\dagger \neq \hat V$ (the action of $\hat U_E$ is necessary for commutation), we have $[\hat L_i, \hat A] \neq 0$. Nevertheless, although we do not prove it here,  the Lindblad operators can always be expressed in a new basis such that the action of the unitary is only to apply a phase shift to the $\hat L_i$, $\hat A \hat L_i \hat A^\dagger = e^{i \phi} \hat L_i$,. 
+Since unlike in $\hat H_{SE}$, the Lindblad operators appear in pairs,  the combined transformation of both can leave the Liouvillian itself invariant given that the phase from $\hat L_i$ and $\hat L_i^\dagger$ cancel. 
+We thus define the symmetry superoperator $\mathcal{A}(\cdot) = \hat A (\cdot) \hat A^\dagger$ in order to capture the fact that both jump operators must transform under $\hat A$, where the symmetry of $\mathcal{L}$ is now captured by its commutation with the symmetry superoperator $[\mathcal{L},\mathcal{A}] \equiv \mathcal{L}(\mathcal{A}(\cdot)) - \mathcal{A}(\mathcal{L}(\cdot)) = 0$. The parentheses in this notation indicate the order of the action of superoperators, e.g., $\mathcal{L}(\mathcal{A}(\cdot))$ indicates that we apply $\mathcal{A}$ then $\mathcal{L}$ to the generic operator in $(\cdot)$. If the operators are vectorized, the superoperators can be expressed as matrices, in which case this commutation relation reduces to the usual definition in terms of matrices. 
+
+
+Like for a Hamiltonian, $\mathcal{L}$ is block diagonal in the symmetry sectors of $\mathcal{A}$ for a weak symmetry after vectorizing $\hat \rho$, 
+\begin{equation}
+    \mathcal{L} = \left(
+    \begin{array}{ccc}
+    \mathcal{L}_1 &  & 0 \\
+     & \ddots &  \\
+    0 &  & \mathcal{L}_{n} 
+    \end{array}
+    \right),
+\end{equation}
+where $n$ is the number of symmetry sectors.
+There is always a single block with eigenvalue 1 containing all operators with non-vanishing trace, denoted $\mathcal{L}_1$, while the remaining sectors are all composed of traceless operators. For example, for two symmetry sectors of $\hat A$ $|a \rangle, |b \rangle$, e.g., parity, there are two symmetry sectors of $\mathcal{A}$  (see Ref.~\cite{Buca2012} for a generic number of symmetry sectors). The first, corresponding to $\mathcal{L}_1$, includes operators of the form $|a \rangle \langle a|, |b \rangle \langle b|$, and have eigenvalue 1 (the two phases from the symmetry operator on each side cancel), and all operators (and thus density matrices) with nonzero trace are in this sector since the other sectors involve bras and kets of different symmetry sectors. The second, corresponding to $\mathcal{L}_2$, includes operators of the form $|a\rangle \langle b|, |b \rangle \langle a|$, all of which are traceless and have conjugate eigenvalues other than 1 (the two phases do not cancel). In principle $|a\rangle \langle b|, |b \rangle \langle a|$ can define two conjugate symmetry sectors, but since they are equivalent we may combine them into one. 
+
+While the generic conditions on the uniqueness of the steady state, particularly in the thermodynamic limit, are complicated in general (see, e.g., Ref.~\cite{Zhang2024} for an overview), for most typical open quantum systems with only a weak symmetry we expect that $\mathcal{L}_1$ will always have a 0 eigenoperator corresponding to a steady state at any system size and for any system parameters. Moreover, we expect that in the thermodynamic limit, when spontaneous symmetry breaking of the weak symmetry occurs, at least one of the $\mathcal{L}_{i>1}$ realizes a traceless 0 eigenoperator, as in the example investigated in Ref.~\cite{Lieu2020}.
+This is analogous to the transverse-field Ising model, where the ground state is symmetric (eigenvalue 1) for a finite system, while the antisymmetric (eigenvalue $-1$) ground state becomes degenerate only in the thermodynamic limit. 
+
+In the case of (ii), a strong symmetry, we have $[\hat L_i, \hat A] = 0$. This means either of the pairs of jump operators in the master equation can be transformed while leaving the master equation invariant. Therefore, in contrast to the weak symmetry we can instead define \textit{two} symmetry superoperators $\mathcal{A}_l(\cdot) \equiv \hat A(\cdot)$, $\mathcal{A}_r (\cdot) \equiv (\cdot) \hat A^\dagger$, both of which satisfy $[\mathcal{L}, \mathcal{A}_{l/r}] = 0$ and correspond to transformations on operators on either the left or right hand side of the Liouvillian.
+
+If there are $n$ symmetry sectors of $\hat A$, then these two symmetry superoperators block diagonalize $\mathcal{L}$ into $n^2$ blocks. Without loss of generality, we can consider two sectors $|a_1\rangle, |a_2\rangle$ denoting all states with eigenvalues $a_1, a_2$ (e.g., eigenvalues of $e^{i \hat N_J/N}$). We may thus write 
+\begin{equation}
+    \mathcal{L} = \left(
+    \begin{array}{cccc}
+    \mathcal{L}_{11} &  &  & 0 \\
+     & \mathcal{L}_{22} &  &  \\
+     &  &\mathcal{L}_{12} &   \\
+    0 &  &  & \mathcal{L}_{21}
+    \end{array}
+    \right),
+\end{equation}
+where the blocks correspond to the spaces $|a_1\rangle \langle a_1|,|a_2\rangle \langle a_2|,|a_1\rangle \langle a_2|$, and $|a_2\rangle \langle a_1|$, in order. In this case, both $\mathcal{L}_{11}$ and $\mathcal{L}_{22}$ have non-vanishing trace, and both will possess eigenoperators with eigenvalue 0 for most typical open quantum systems which exhibit steady states. This is a manifestation of the conservation law for any individual trajectory: if the system is initialized in one symmetry sector, it must remain there. This indicates that there are generally multiple steady states even for typical finite systems, one for each sector, as recently observed experimentally \cite{Li2023}. The eventual projection into a given symmetry sector on an individual trajectory level has been termed dissipative freezing \cite{SanchezMunoz2019} and can be understood as arising due to a weak measurement of the symmetry. We remark that the behavior of trajectories in the unbroken symmetry phase, such as for dissipative freezing, depends on the precise unraveling. For example, while a weak measurement and a dephasing term can have equivalent Liouvillian dynamics, if the unraveling for the dephasing is achieved through white noise on a Hamiltonian term, there will be no such projection. 
+
+Going beyond the unbroken symmetry phase, we expect spontaneous symmetry breaking of the strong symmetry to correspond to $\mathcal{L}_{12},\mathcal{L}_{21}$ (which are equivalent) obtaining an eigenoperator with 0 eigenvalue in the thermodynamic limit, as in Ref.~\cite{Lieu2020}. Since these correspond to coherences between $|a_1\rangle$ and $|a_2\rangle$, symmetry breaking indicates the preservation of coherences in the steady state, as captured by its association with passive error correction \cite{Lieu2020,Liu2023}, which has likewise enabled the extension of symmetry protected topological phases in open quantum systems \cite{deGroot2022} and the investigation of the effect of the type of symmetry on criticality in these systems \cite{Minganti2023}. This feature of the strong symmetry thus corresponds to the emergence of a decoherence free subspace or a more general noiseless subsystem \cite{Lidar1998, Knill2000, Albert2014, Lieu2020} and enables the near-preservation and generation of the different relative Berry phases throughout the protocol. 
+
+
+\subsection{Mean field theory}
+
+The additional coherences of interest are $\hat u^\dagger \hat g, \hat u^\dagger \hat e$, where $\hat u$ denotes the collective annihilation operator for the $|{\uparrow}\rangle$ state with corresponding mean-field value $u = \langle \hat u \rangle$. Since $\hat u$ commutes with the Hamiltonian and jump operator, we find $\partial_t u = 0$. Hence, we find
+\begin{equation}
+    \partial_t \langle \hat u^\dagger \hat d \rangle_{\text{MF}} = u^* \partial_t d, \qquad \partial_t \langle \hat u^\dagger \hat e \rangle_{\text{MF}} =  u^* \partial_t e,
+\end{equation}
+indicating that the evolution of the coherences within $\hat S$ are determined purely by those of $\hat J$ at the mean-field level. Moreover, if we look at the magnitude of these two coherences $\mathcal{U} \equiv (\hat u^\dagger \hat d, \hat u^\dagger \hat e)$, we find
+\begin{equation}
+    \partial_t |\langle \mathcal{U} \rangle_{\text{MF}} |^2 = |u|^2 \partial_t (|d|^2+|e|^2) = |u|^2 \partial_t N = 0,
+\end{equation}
+indicating these coherences are preserved under mean-field theory and only change their phase information. As a result, their evolution is otherwise determined entirely by $d, e$. In the spin-polarized phase, they relax to a steady-state value while maintaining the original coherence of the initial state up to deterministic phase factors. In the mixed phase, the modified Rabi oscillations impart themselves on these coherences as well. This mirrors the two-level model, where these oscillations are a consequence of the conservation of $\hat J^2$, which implies mean-field conservation of $\langle \hat J_x \rangle_{\text{MF}}^2 + \langle \hat J_y \rangle_{\text{MF}}^2 + \langle \hat J_z \rangle_{\text{MF}}^2$, preventing mean-field theory from directly capturing the loss of coherence in the steady state. Thus these oscillations in the three-level coherences imply a similar loss of coherence in the steady state.
+
+\subsection{Turning off the drive}
+
+Next, we discuss the preservation of coherence when the drive is turned off. While we expect that the results here qualitatively hold for any quenches of $\Omega$ within the spin-polarized phase for $\delta \to 0$, the case of no drive can be solved exactly for any initial density matrix. 
+
+First, we note that only coherences between states with an equal number of $|e\rangle$ excitations can be preserved in the $|{\uparrow}\rangle, |{\downarrow}\rangle$ manifold because the recycling term in the Lindbladian always removes excitations from both the ket and the bra simultaneously. Physically, if two states emit different numbers of photons, then they are perfectly distinguished, preventing the conservation of any coherence. Writing our states in the permutationally symmetric basis $|n_{\downarrow}, n_{\uparrow}, n_e \rangle$, where $n_\mu$ denotes the number of atoms in $|\mu\rangle$, we find
+\begin{subequations}
+\begin{equation}
+    \Gamma^{-1} \partial_t \langle \mathcal{C}_{n_e} \rangle =  w_{n_e+1} \langle \mathcal{C}_{n_e} \rangle - W_{n_e} \langle \mathcal{C}_{n_e} \rangle, \qquad \mathcal{C}_{n_e} \equiv |n_{\downarrow}, n_{\uparrow}, n_e \rangle \langle n_{\downarrow}', n_{\uparrow}', n_e |
+\end{equation}
+\begin{equation}
+    w_{n_e} \equiv \sqrt{(n_{\downarrow}+1) n_e  (n_{\downarrow}' + 1) n_e} , \qquad W_{n_e} \equiv \frac{(n_{\downarrow}+1) n_e + (n_{\downarrow}' + 1) n_e}{2}
+\end{equation}
+\end{subequations}
+where we have dropped $n_{\updownarrow}$ labels in $\mathcal{C}_{n_e}$ for simplicity. Thus a coherence with $n_e$ excitations decay at rate $W_{n_e}$ while gaining coherence from the corresponding $n_e+1$ excitation coherence at a rate $w_{n_e+1}$. We remark that $w_{n_e}$ and $W_{n_e}$ are the geometric and arithmetic means of the superradiant decay rates (in units of $\Gamma$) of the bra and ket with $n_e$ excitations.
+
+The full rate equation is expressed
+\begin{equation}
+    \Gamma^{-1} \partial_t \vec{\mathcal{C}} = 
+    \left(
+    \begin{array}{cccc}
+        \ddots & \ddots & \ddots & \vdots \\
+        \ddots & -W_{2} & \ddots & 0 \\
+        \ddots & w_2 & -W_1 & 0 \\
+        \cdots & 0 & w_1 & 0
+    \end{array}
+    \right) \vec{\mathcal{C}}, \qquad \vec{\mathcal{C}} \equiv ( \cdots, \mathcal{C}_2, \mathcal{C}_1, \mathcal{C}_0)^T.
+\end{equation}
+Since we are interested in the steady state, we identify the left ($\vec{u}_i$) and right ($\vec{v}_i$) eigenvectors with 0 eigenvalue $W_0 = 0$
+\begin{subequations}
+\begin{equation}
+    \vec{v}_0 = (0, \cdots, 0, 1),
+\end{equation}
+\begin{equation}
+    \vec{u}_0 = ( \cdots, \beta_2 \beta_1, \beta_1, 1), \qquad \beta_{n_e} \equiv \frac{w_{n_e}}{W_{n_e}},
+\end{equation}
+\end{subequations}
+which satisfy the orthogonality condition $\vec{u}_i \cdot \vec{v}_j = \delta_{ij}$. We identify the final coherence $\mathcal{C}_0$ by noting that if $\vec{\mathcal{C}}(t) = \sum_{n_e} a_{n_e} \vec{v}_{n_e} e^{-W_{n_e} t}$, then the orthogonality condition implies $\mathcal{C}_0 (t \to \infty) = a_0 = \vec{u}_0 \cdot \vec{\mathcal{C}}(0)$. From this, we see that the $\beta_{n_e} \leq 1$ thus represent the fraction of the $n_e$ coherence which is converted into $n_e - 1$ coherence. Given the arithmetic and geometric mean form of $w$ and $W$, we see that $\beta$ represents a measurement of the equivalence of the superradiant decay rates, i.e., their distinguishability. Expanding $\beta_{n_e}$ in powers of $n_{\downarrow} - n_{\downarrow}' = N_J - N_J'$, noting $n_{\downarrow} = N_J - n_e$,
+\begin{subequations}
+\begin{equation}
+    \beta_{n_e} \approx 1 - \frac{(N_J - N_J')^2}{8 (N_J - n_e+1)^2},
+\end{equation}
+\begin{equation}
+    \prod_{n_e' = 1}^{n_e} \beta_{n_e'} \approx 1 - \sum_{n_e' = 1}^{n_e}\frac{(N_J - N_J')^2}{8 (N_J - n_e+1)^2} \approx 1 -\frac{(N_J-N_J')^2}{8} \int_0^{n_e} \frac{dx}{(N_J - x)^2} = 1 - \frac{n_e}{8 N_J (N_J - n_e)} (N_J-N_J')^2.
+\end{equation}
+\end{subequations}
+From this, we see that if $(N_J - N_J)' \ll \mathcal{O}(\sqrt{N})$, the fraction of coherences with $n_e$ excitations that survives converges to 1 for large $N$. Since spin squeezing in the $|{\uparrow}\rangle,|{\downarrow}\rangle$ manifold only depends on coherences between $|N_J - N_J'| \leq 2$, we expect nearly perfect transfer of the spin squeezing after the drive is turned off.
+
+\end{document}

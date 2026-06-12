@@ -14,37 +14,81 @@ to read.
 
 ### `docs/theory`
 
-This directory contains physics/theory context. Use these files to understand
-what equations, approximations, and physical assumptions should be implemented.
+This directory contains the project theory. Use these files to understand
+the theory when constructing instruction files, or to get the physics context
+while implementing code changes. Paper-derived theory files are the ultimate
+source of truth. Project theory notes are useful working derivations, but should
+defer to the actual paper files if the two disagree. Instruction files should be
+checked against theory files in case of inconsistencies or doubts about
+implementation.
 
-Theory files answer questions like:
+Use `docs/theory/theory_overview.md` as the entry point. That file gives the
+high-level theory background and points to other theory-specific files for details.
 
-- What is the Hamiltonian or jump operator?
-- What approximation is being used?
-- What are the relevant paper formulas?
-- What physics should a diagnostic or plot represent?
+The theory-document hierarchy should be:
 
-Theory files should not be treated as implementation instructions unless they
-explicitly say so. After reading theory, check `docs/instructions` for how the
-code should realize that theory.
+```text
+AGENTS.md
+  -> docs/theory/theory_overview.md
+      -> docs/theory/main.tex
+      -> docs/theory/end_matter.tex
+      -> docs/theory/appendix_cavity_model.tex
+      -> docs/theory/appendix_mean_field_theory.tex
+      -> docs/theory/appendix_coherence_preservation.tex
+      -> docs/theory/appendix_weak_drive_limit.tex
+      -> docs/theory/appendix_holstein_primakoff.tex
+      -> docs/theory/appendix_single_particle_decoherence.tex
+      -> docs/theory/notes_inhomogeneous_coupling.tex
+      -> docs/theory/supp.tex
+      -> docs/theory/Engineering One Axis Twisting via a Dissipative Berry Phase Using Strong.pdf
+```
+
+For one-time setup of theory documentation from original paper TeX sources, use
+`docs/instructions/theory_documentation_setup.md`.
 
 ### `docs/instructions`
 
 This directory contains implementation rules for Codex and future coding tasks.
 Use these files when changing code behavior, APIs, diagnostics, averaging logic,
-or post-processing logic.
+post-processing logic, or requiring implementation-specific knowledge for a task.
 
-Instruction files answer questions like:
+For implementation-specific tasks, use
+`docs/instructions/implementation_overview.md` as the entry point. That file gives the
+high-level intended code structure and points to task-specific instruction files
+for details. Use this for:
 
-- How should a helper function behave?
-- What ordering or averaging convention should the code use?
-- What logic must be preserved across future refactors?
-- What implementation details are intentional and should not be changed
-  accidentally?
+- the intended top-level workflow of custom MCWF runs;
+- how parameter setup, phase construction, initial states, validation,
+  simulation, observables, diagnostics, and plotting should fit together;
+- deciding which task-specific instruction file to read next;
+- keeping notebook and helper code aligned with the repository's intended
+  structure.
 
-If theory and implementation instructions both exist for a topic, read both:
-the theory explains the equations, while the instruction file explains how the
-repository should implement them.
+The instruction-document hierarchy should be:
+
+```text
+AGENTS.md
+  -> docs/instructions/implementation_overview.md
+      -> docs/instructions/simulation_parameters.md (planned/missing)
+      -> docs/instructions/initial_sector_state.md (planned/missing)
+      -> docs/instructions/parameter_validation.md (planned/missing)
+      -> docs/instructions/simulation_precompute.md
+      -> docs/instructions/paper_inhomogeneous_couplings.tex
+      -> docs/instructions/ensemble_simulation.md (planned/missing)
+      -> docs/instructions/single_trajectory_simulation.md (planned/missing)
+      -> docs/instructions/bloch_vector_averaging.tex
+      -> docs/instructions/squeezing.tex
+      -> docs/instructions/dephasing_diagnostics.tex
+      -> docs/instructions/plotting_workflows.md (planned/missing)
+```
+
+Keep task-specific routing in `docs/instructions/implementation_overview.md`,
+not directly in `AGENTS.md`.
+
+All future changes to intended code behavior should be reflected in the relevant
+instruction file. The goal is that, given the implementation overview and the
+task-specific instruction files it references, Codex can reconstruct the
+high-level code logic without relying on hidden assumptions.
 
 ### `docs/output_texts`
 
@@ -56,196 +100,31 @@ Use these files only when the task asks for prose consistency, figure captions,
 result summaries, or wording that should match previous text. Do not use them as
 the primary source for formulas or implementation behavior.
 
-## Theory Files
-
-### `docs/theory/paper_summary.md`
-
-Read this for high-level paper context:
-
-- the main idea of the protocol;
-- the three phases of the protocol;
-- why strong symmetry matters;
-- how Berry-phase accumulation leads to OAT;
-- what the simulations are broadly trying to reproduce.
-
-Use this for orientation, README-style summaries, plotting interpretation, and
-short explanations that do not require detailed equations.
-
-### `docs/theory/paper_key_equations.md`
-
-Read this whenever the task involves paper formulas, observables, Hamiltonians,
-jump operators, squeezing, or benchmark parameters.
-
-Use this for:
-
-- master equation and effective spin model;
-- collective operators;
-- critical drive and mean-field steady state;
-- shifted jump operator;
-- effective OAT and collective dephasing expressions;
-- generalized squeezing parameter;
-- Fig. 4-style benchmark parameters.
-
-For any task involving squeezing, jump operators, Berry phase, \(N_J\) sectors,
-or Fig. 4 reproduction, read this file first unless a more specific theory file
-below is clearly the better starting point.
-
-### `docs/theory/paper_appendix_cavity_model.tex`
-
-Read this whenever the task mentions cavity parameters, the cavity model,
-bad-cavity elimination, or converting experimental/cavity parameters into the
-effective spin parameters.
-
-Use this for:
-
-- full driven cavity-spin model;
-- cavity mean-field equation;
-- bad-cavity condition;
-- identification of \(\Omega\) and \(\Gamma\);
-- relation between cavity coherence and the shifted jump operator.
-
-### `docs/theory/paper_inhomogeneous_couplings.tex`
-
-Read this whenever the task involves inhomogeneous couplings, weighted collective
-jumps, split active-manifold groups, or comparing homogeneous vs inhomogeneous
-MCWF simulations.
-
-Use this for:
-
-- two-group active-manifold sectors \((N_{J,1},N_{J,2})\);
-- product Dicke basis states \(|n_{e,1},n_{e,2}\rangle\);
-- group-resolved operators \(J_{1,\pm}\), \(J_{2,\pm}\), \(N_{e,1}\),
-  \(N_{e,2}\);
-- weighted drive Hamiltonian;
-- weighted collective jump operator;
-- shifted weighted jump operator;
-- inhomogeneous mean-field residual equations.
-
-Before modifying Hamiltonian construction, jump operators, sector keys, basis
-construction, precomputation, observables, or trajectory propagation for
-inhomogeneous coupling, read this file and then check the relevant files in
-`docs/instructions`.
-
-### `docs/theory/main.tex`
-
-This is the full main-paper TeX source. Read it only when the existing theory
-summary files do not contain enough context for the task, or when the user
-explicitly asks to inspect the paper text.
-
-Prefer the targeted theory summaries above first. They are faster to use and are
-intended to avoid unnecessary full-paper reading.
-
-### `docs/theory/supp.tex`
-
-This is the full supplemental TeX source. Read it only when the existing theory
-summary files do not contain enough context for a supplemental/appendix-level
-task, or when the user explicitly asks to inspect the supplement.
-
-Prefer targeted theory summaries, such as
-`docs/theory/paper_appendix_cavity_model.tex`, before reading the full
-supplement.
-
-### `docs/theory/Engineering One Axis Twisting via a Dissipative Berry Phase Using Strong.pdf`
-
-This is the original paper PDF. Use the TeX and Markdown files first. Open the
-PDF only if the TeX/Markdown sources are insufficient or if the user explicitly
-requests PDF-level verification.
-
-## Instruction Files
-
-### `docs/instructions/documentation_file_guidelines.md`
-
-Read this before creating a new file in `docs/theory` or `docs/instructions`.
-
-Use this for:
-
-- deciding whether a new documentation file should be Markdown or standalone
-  TeX;
-- keeping standalone TeX files minimal and renderable;
-- avoiding duplicated explanations by referencing existing documentation files;
-- preserving the split between theory files and implementation-instruction
-  files.
-
-### `docs/instructions/bloch_vector_averaging.tex`
-
-Read this whenever a task involves averaging or plotting active-manifold Bloch
-vectors, Bloch angles, dressed-state directions, or group/sector/trajectory
-averages of \(\theta_J,\phi_J\).
-
-Use this for:
-
-- why raw collective vectors from different \(N_J\) sectors should not be
-  compared directly as directions;
-- how `active_manifold_angles(...)` normalizes by \(N_{\rm active}\);
-- how to average sector, group, and trajectory moments before constructing
-  Bloch directions;
-- when this logic should not be used, e.g. genuinely extensive observables such
-  as total \(\langle J_x\rangle\), jump rates, or jump counts.
-
-### `docs/instructions/ensemble_simulation_implementation.md`
-
-Read this whenever a task involves `run_trajectory_ensemble(...)`,
-`simulate_single_trajectory(...)`, `build_precomputed_trajectory_data(...)`,
-the shared `t_eval` grid, MCWF step splitting, multiprocessing, precomputed
-propagators, or full-step versus partial-step propagation.
-
-Use this for:
-
-- how ensemble-level precomputation is structured;
-- what data are shared across trajectories and worker processes;
-- when precomputed full-step propagators can be reused;
-- why phase boundaries, `t_eval` boundaries, and jump bisection require
-  variable-step propagation;
-- how homogeneous and inhomogeneous sector structures differ at the
-  implementation level.
-
-### `docs/instructions/squeezing.tex`
-
-Read this whenever a task involves implementing or modifying the generalized
-three-level squeezing parameter.
-
-Use this for:
-
-- how the dressed states \(|1\rangle\), \(|c\rangle\), \(|j\rangle\), and
-  \(|s\rangle\) should be constructed;
-- what moments are required;
-- how ensemble squeezing should be computed from averaged moments rather than
-  averaging per-trajectory squeezing values;
-- what data should be saved or post-processed.
-
-When this file refers to active-manifold angle averaging, use
-`docs/instructions/bloch_vector_averaging.tex` as the authoritative convention.
-
-### `docs/instructions/dephasing_diagnostics.tex`
-
-Read this whenever a task involves visualizing dephasing, plotting effective
-\(S\)-Bloch vector lengths, or comparing total and group-resolved coherence
-loss.
-
-Use this for:
-
-- why Bloch-vector components must be ensemble-averaged before taking the
-  vector length;
-- how to plot total effective-\(S\) Bloch-vector length for homogeneous results;
-- how to plot total, group-1, and group-2 lengths for inhomogeneous results;
-- how to interpret total shrinkage versus group-resolved shrinkage.
+Read relevant theory and instruction files before writing text. 
 
 ## General Rules
-
-- Do not guess paper-specific formulas from memory. Check the relevant theory
-  file first.
-- For pure coding tasks unrelated to physics formulas, do not read all theory
-  notes unless needed.
+- For implementation changes, or any task requiring knowledge about implementation, read
+  `docs/instructions/implementation_overview.md` first.
+- For editing instructions, or any task requiring knowledge about theory, read
+  `docs/theory/theory_overview.md` first.
+- Always read the relevant overview file before reading a task-specific
+  instruction or theory-specific file. 
 - Before creating a new theory or instruction file, read
   `docs/instructions/documentation_file_guidelines.md`.
-- For implementation changes, check whether a relevant instruction file exists
-  before editing code.
 - If both a theory file and an instruction file apply, use the theory file for
   equations and the instruction file for repository-specific implementation
   behavior.
-- Keep implementations consistent with the reduced strong-symmetry sector basis
-  used in the code.
-- Prefer sparse/reduced-basis constructions over full \(3^N\) tensor-product
-  operators.
-- Do not use files in `docs/output_texts` as implementation requirements unless
-  the user explicitly asks to follow one of those writeups.
+- Keep `AGENTS.md` as the clean hierarchy/front-door map. It should point to
+  overview files, and the hierarchy should list task-specific or theory-specific
+  files by name under the overview file that references them.
+  Example:
+  ```text
+  AGENTS.md
+    -> docs/instructions/implementation_overview.md
+        -> docs/instructions/task_specific_file.md
+        -> docs/instructions/other_task_specific_file.md
+          -> ...
+        -> ...
+    -> docs/theory/theory_overview.md
+        -> docs/theory/task_specific_theory_file.tex
+  ```

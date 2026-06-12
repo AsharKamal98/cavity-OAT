@@ -5,10 +5,14 @@ Read this before creating a new file in `docs/theory` or `docs/instructions`.
 ## Core Rules
 
 - If the user asks for a new theory or instruction file in TeX format, make it renderable by itself.
+- Instruction files should be concise and straight to the point. 
 - For standalone TeX files, use only the minimal LaTeX preamble needed to compile cleanly, for example `article`, `geometry`, `amsmath`, `amssymb`, and `hyperref` when useful.
 - After creating or editing a standalone TeX file, compile it with `docs/build_tex.sh` when possible and fix render errors before finishing.
 - Files may reference other documentation files. Prefer references over re-explaining material that already has a dedicated source-of-truth file.
 - If a topic already has a theory file and an instruction file, keep the split clear: theory files explain equations and physics assumptions, while instruction files explain how the repository should implement or use them.
+- Use instruction-style wording for implementation rules: prefer "should be" or
+  "should" when stating intended behavior. Use "is" for descriptive statements,
+  such as where a rule or reference file is found.
 - Always update AGENTS.md file accordingly.
 
 ## Reference Style

@@ -26,3 +26,7 @@ mkdir -p "$OUTDIR"
   -c \
   -outdir="$OUTDIR" \
   "$TEXDIR/$TEXBASE"
+
+# Keep only rendered PDFs in the per-directory build folder.  Latexmk's own
+# cleanup can leave aux/log/fls/fdb_latexmk files behind when using -outdir.
+find "$OUTDIR" -type f ! -name '*.pdf' -delete

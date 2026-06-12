@@ -1,0 +1,575 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{hyperref}
+
+\newcommand{\up}{\uparrow}
+\newcommand{\down}{\downarrow}
+\newcommand{\ee}{e}
+\newcommand{\Nj}{N_J}
+\newcommand{\Ne}{N_e}
+\newcommand{\GammaC}{\Gamma}
+\newcommand{\OmegaDrive}{\Omega}
+
+\setlength{\parindent}{0pt}
+
+\title{Mean-Field Equations for Inhomogeneous Couplings}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+
+\section{Inhomogeneous Hamiltonian}
+
+Split the atoms into two groups according to the drive they feel. The Hamiltonian changes as
+\begin{equation}
+\hat{H}_{\delta}
+=
+\Omega \hat{J}_x
+-
+\delta \hat{N}_e
+\quad
+\rightarrow
+\quad
+\hat{H}_{\delta}
+=
+\Omega
+(
+\omega_1 \hat{J}_{1x}
++
+\omega_2 \hat{J}_{2x}
+)
+-
+\delta
+(
+\hat{N}_{e1}
++
+\hat{N}_{e2}
+).
+\end{equation}
+
+The natural Dicke/occupation basis is now described by the number of excitations in each subgroup,
+\begin{equation}
+|n_e\rangle
+\quad
+\rightarrow
+\quad
+|n_{e1},n_{e2}\rangle
+=
+|n_{e1}\rangle_1
+\otimes
+|n_{e2}\rangle_2.
+\end{equation}
+
+The Schwinger-boson operators have been split for the two groups,
+\begin{equation}
+\hat{e},\hat{d}
+\quad
+\rightarrow
+\quad
+\hat{e}_1,\hat{e}_2,\hat{d}_1,\hat{d}_2.
+\end{equation}
+They act as before, but only on their own subgroup. They follow the bosonic commutation relations
+\begin{equation} \label{eq:bosonic_commutation_relations}
+\begin{gathered}
+[\hat{d}_a,\hat{d}_b^{\dagger}]
+=
+[\hat{e}_a,\hat{e}_b^{\dagger}]
+=
+\delta_{ab}.
+\\
+[\hat{d}_a,\hat{e}_b]
+=
+[\hat{d}_a,\hat{e}_b^{\dagger}]
+=
+[\hat{d}_a^{\dagger},\hat{e}_b]
+=
+[\hat{d}_a^{\dagger},\hat{e}_b^{\dagger}]
+=
+0.
+\end{gathered}
+\end{equation}
+\\
+The operators in the Hamiltonian act on their respective subspaces. For the excitation number operator,
+\begin{equation}
+\hat{N}_e
+=
+\sum_i |e_i\rangle\langle e_i|
+\quad
+\rightarrow
+\quad
+\hat{N}_{e1},
+\hat{N}_{e2},
+\end{equation}
+where
+\begin{equation}
+\hat{N}_{e1}
+=
+\sum_{i\in 1}
+|e_i\rangle\langle e_i|,
+\qquad
+\hat{N}_{e2}
+=
+\sum_{i\in 2}
+|e_i\rangle\langle e_i|.
+\end{equation}
+
+In Schwinger-boson notation,
+\begin{equation}
+\hat{N}_e
+=
+\hat{e}^{\dagger}\hat{e}
+\quad
+\rightarrow
+\quad
+\hat{N}_e
+=
+\hat{N}_{e1}
++
+\hat{N}_{e2}
+=
+\hat{e}_1^{\dagger}\hat{e}_1
++
+\hat{e}_2^{\dagger}\hat{e}_2.
+\end{equation}
+
+Here the group operators act only on their own subgroup. For example,
+\begin{equation}
+\hat{e}_1 |n_{e1},n_{e2}\rangle
+=
+\sqrt{n_{e1}}
+|n_{e1}-1,n_{e2}\rangle,
+\end{equation}
+while acting as the identity on the second subgroup.
+\\
+
+For \(\hat{J}_x\),
+\begin{equation}
+\hat{J}_x
+=
+\frac{1}{2}
+(
+\hat{J}_{+}
++
+\hat{J}_{-}
+)
+=
+\frac{1}{2}
+(
+\hat{e}^{\dagger}\hat{d}
++
+\hat{d}^{\dagger}\hat{e}
+).
+\end{equation}
+
+After splitting into two groups,
+\begin{equation}
+\hat{J}_x
+=
+\hat{J}_{1x}
++
+\hat{J}_{2x},
+\end{equation}
+with
+\begin{equation}
+\hat{J}_{1x}
+=
+\frac{1}{2}
+(
+\hat{J}_{1+}
++
+\hat{J}_{1-}
+),
+\qquad
+\hat{J}_{2x}
+=
+\frac{1}{2}
+(
+\hat{J}_{2+}
++
+\hat{J}_{2-}
+).
+\end{equation}
+
+The raising and lowering operators are
+\begin{equation} 
+\begin{aligned}
+\hat{J}_{1+}
+=
+\hat{e}_1^{\dagger}\hat{d}_1,
+\qquad
+\hat{J}_{1-}
+=
+\hat{d}_1^{\dagger}\hat{e}_1,
+\\
+\hat{J}_{2+}
+=
+\hat{e}_2^{\dagger}\hat{d}_2,
+\qquad
+\hat{J}_{2-}
+=
+\hat{d}_2^{\dagger}\hat{e}_2.
+\end{aligned}
+\end{equation}
+
+
+
+\section{Mean-field approximation}
+
+Replace operator expectation values by complex amplitudes,
+\begin{equation}
+D_a(t)
+\equiv
+\langle \hat{d}_a\rangle(t),
+\qquad
+E_a(t)
+\equiv
+\langle \hat{e}_a\rangle(t),
+\end{equation}
+for \(a=1,2\).
+\\
+
+Approximate
+\begin{equation}
+|D_a|^2 
+=
+|\langle \hat{d}_a\rangle|^2 = \langle \hat{d}_a\rangle \langle \hat{d}_a\rangle 
+\approx
+\langle \hat{d}_a^{\dagger}\hat{d}_a\rangle
+=
+N_{d,a},
+\end{equation}
+and
+\begin{equation}
+|E_a|^2
+=
+|\langle \hat{e}_a\rangle|^2 = \langle \hat{e}_a\rangle \langle \hat{e}_a\rangle
+\approx
+\langle \hat{e}_a^{\dagger}\hat{e}_a\rangle
+=
+N_{e,a}.
+\end{equation}
+
+For a coherent spin state in group \(a\),
+\begin{equation}
+D_a
+=
+\sqrt{N_{J,a}}\cos\frac{\theta_a}{2},
+\qquad
+E_a
+=
+\sqrt{N_{J,a}}e^{-i\phi_a}\sin\frac{\theta_a}{2}.
+\end{equation}
+
+More generally, the two groups may have different steady-state angles and phases.
+
+\section{Equations of motion}
+
+In the Heisenberg picture, the Lindblad equation gives
+\begin{equation}
+\frac{d}{dt}\langle \hat{O}\rangle
+=
+i\langle [\hat{H},\hat{O}]\rangle
++
+\Gamma
+\left\langle
+\hat{L}^{\dagger}\hat{O}\hat{L}
+-
+\frac{1}{2}
+\left\{
+\hat{L}^{\dagger}\hat{L},\hat{O}
+\right\}
+\right\rangle,
+\end{equation}
+with weighted collective decay
+\begin{equation}
+\hat{L}
+=
+\omega_1 \hat{J}_{1-}
++
+\omega_2 \hat{J}_{2-}.
+\end{equation}
+
+Applying the bosonic commutation relations in Eq.~\ref{eq:bosonic_commutation_relations}, one finds the following mean-field equations for $\hat d_1$, $\hat d_2$, $\hat e_1$ and $\hat e_2$:
+\begin{equation}
+\begin{cases}
+\partial_t D_a
+=
+-\dfrac{i\Omega\omega_a}{2}E_a
++
+\dfrac{\Gamma \omega_a }{2}
+(
+\omega_1 E_1^{*}D_1
++
+\omega_2 E_2^{*}D_2
+)
+E_a,
+\\[2mm]
+\partial_t E_a
+=
+-\dfrac{i\Omega\omega_a}{2}D_a
++
+i\delta E_a
+-
+\dfrac{\Gamma \omega_a }{2}
+D_a
+(
+\omega_1 D_1^{*}E_1
++
+\omega_2 D_2^{*}E_2
+),
+\end{cases}
+\qquad
+a=1,2.
+\end{equation}
+
+% These are the four mean-field equations for the two groups.
+
+\section{Rotating frame}
+
+Now go to a rotating frame,
+\begin{equation}
+D_a(t)
+=
+e^{-i\omega_{B,a} t}d_a(t),
+\qquad
+E_a(t)
+=
+e^{-i\omega_{B,a} t}e_a(t).
+\end{equation}
+
+Then
+\begin{equation}
+\partial_t D_a
+=
+e^{-i\omega_{B,a} t}
+(
+\partial_t d_a
+-
+i\omega_{B,a} d_a
+),
+\end{equation}
+and similarly for \(E_a\). Hence,
+\begin{equation}
+\begin{gathered}
+\partial_t d_a
+=
+-\frac{i\Omega\omega_a}{2}e_a
++
+\frac{\Gamma \omega_a}{2}
+(
+\omega_1 e_1^{*}d_1
++
+\omega_2 e_2^{*}d_2
+)
+e_a
++
+i\omega_{B,a} d_a,
+\\
+\partial_t e_a
+=
+-\frac{i\Omega\omega_a}{2}d_a
++
+i\delta e_a
+-
+\frac{\Gamma \omega_a}{2}
+d_a
+(
+\omega_1 d_1^{*}e_1
++
+\omega_2 d_2^{*}e_2
+)
++
+i\omega_{B,a} e_a.
+\end{gathered}
+\end{equation}
+
+Set
+\begin{equation}
+\partial_t d_a=0,
+\qquad
+\partial_t e_a=0.
+\end{equation}
+
+Multiply the first equation by \(d_a^{*}\), and multiply the complex conjugate of the second equation by \(e_a\). This gives
+\begin{equation}
+0
+=
+-\frac{i\Omega\omega_a}{2}e_a d_a^{*}
++
+\frac{\Gamma \omega_a}{2}
+(
+\omega_1 e_1^{*}d_1
++
+\omega_2 e_2^{*}d_2
+)
+e_a d_a^{*}
++
+i\omega_{B,a} |d_a|^2,
+\end{equation}
+and
+\begin{equation}
+0
+=
+\frac{i\Omega\omega_a}{2}d_a^{*}e_a
+-
+i\delta |e_a|^2
+-
+\frac{\Gamma \omega_a}{2}
+d_a^{*}e_a
+(
+\omega_1 d_1e_1^{*}
++
+\omega_2 d_2e_2^{*}
+)
+-
+i\omega_{B,a} |e_a|^2.
+\end{equation}
+
+Adding the two equations cancels the drive terms and dissipative terms:
+\begin{equation}
+0
+=
+-i\delta |e_a|^2
++
+i\omega_{B,a}
+(
+|d_a|^2-|e_a|^2
+).
+\end{equation}
+
+Using
+\begin{equation}
+|d_a|^2
+=
+N_{J,a}\cos^2\frac{\theta_a}{2},
+\qquad
+|e_a|^2
+=
+N_{J,a}\sin^2\frac{\theta_a}{2},
+\end{equation}
+we find
+\begin{equation} \label{eq:rotating_frame}
+\omega_{B,a}
+=
+\frac{
+\delta 
+}{
+2\cos\theta_a
+} - \frac{\delta}{2}.
+\end{equation}
+If we enforce that the two groups share the same rotating frame $\omega_{B,1} = \omega_{B,2}$, the above equation implies that they share the same excitation ratio as well then, meaning  $\theta_1 = \theta_2$. Therefore the inhomogeneous drive weights \(\omega_1\) and \(\omega_2\) must enter mainly through different phases \(\phi_1\) and \(\phi_2\) in that case.
+\\
+
+Now subtract the second equation from the first. This gives
+\begin{equation}
+0
+=
+-i\Omega\omega_a d_a^{*}e_a
++
+i\delta |e_a|^2
++
+i\omega_{B,a}
+(
+|d_a|^2+|e_a|^2
+)
++
+\Gamma \omega_a d_a^{*}e_a
+(
+\omega_1 d_1e_1^{*}
++
+\omega_2 d_2e_2^{*}
+).
+\end{equation}
+
+After substituting
+\begin{equation}
+\begin{gathered}
+d_a^{*}e_a
+=
+\frac{N_{J,a}}{2}
+e^{-i\phi_a}
+\sin\theta_a,
+\\
+\omega_1 d_1e_1^{*}
++
+\omega_2 d_2e_2^{*}
+=
+\frac{\omega_1 N_{J,1}}{2}
+e^{i\phi_1}
+\sin\theta_1
++
+\frac{\omega_2 N_{J,2}}{2}
+e^{i\phi_2}
+\sin\theta_2,
+\end{gathered}
+\end{equation}
+and using the formula found for $\omega_B$ in Eq. \ref{eq:rotating_frame}, one arrives at:
+\begin{equation}
+\boxed{
+\begin{aligned}
+\frac{\Omega\omega_a}{2}
+e^{-i\phi_a}
+\sin\theta_a
+=
+&\frac{\delta}{2}
+\sin \theta_a \tan \theta_a
+-
+i\frac{\Gamma \omega_a}{4}
+e^{-i\phi_a}
+\sin\theta_a
+\left[
+\omega_1 N_{J,1} e^{i\phi_1} \sin\theta_1
++
+\omega_2 N_{J,2}e^{i\phi_2} \sin\theta_2
+\right].
+\end{aligned}
+}
+\end{equation}
+This is the steady-state phase equation for group \(a=1,2\).
+
+\section{Homogeneous limit}
+In the homogeneous limit,
+\begin{equation}
+\omega_1=\omega_2=1,
+\qquad
+\theta_1=\theta_2=\theta_J,
+\qquad
+\phi_1=\phi_2=\phi_J.
+\end{equation}
+
+Then
+\begin{equation}
+N_{J,1}e^{i\phi_1}
++
+N_{J,2}e^{i\phi_2}
+=
+N_J e^{i\phi_J},
+\end{equation}
+and the group equation reduces to
+\begin{equation}
+\begin{aligned}
+\frac{\Omega}{2}
+e^{-i\phi_J}
+\sin\theta_J
+=
+&\frac{\delta}{2}
+\sin \theta_J \tan \theta_J
+-
+i\frac{\Gamma N_J}{4}
+\sin^2\theta_J.,
+\end{aligned}
+\end{equation}
+matching perfectly the equation for the homogeneous case derived in the original paper. 
+
+
+
+\end{document}

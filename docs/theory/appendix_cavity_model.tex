@@ -1,0 +1,51 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,multirow}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Cavity Model}
+\label{sec:cavity}
+
+Here, we discuss the behavior of the cavity photons, which have been adiabatically eliminated in the main text. To understand how their behavior is related to the spin model, we reconsider the full cavity-spin model
+\begin{subequations}
+\begin{equation}
+    \partial_t \hat \rho = -i [\hat H, \hat \rho] + \kappa (\hat a \hat \rho \hat a^\dagger - \frac{1}{2} \{ \hat a^\dagger \hat a, \hat \rho \}),
+\end{equation}
+\begin{equation}
+    \hat H = i \epsilon (\hat a^\dagger - \hat a) - \delta \hat N_e + g_c (\hat a \hat J^+ + \hat a^\dagger \hat J^-),
+\end{equation}
+\end{subequations}
+where $\kappa$ represents the rate of photon leakage and the Tavis-Cummings term $g_c (\hat a \hat J^+ + \hat a^\dagger \hat J^-)$ describes the atom-photon interaction with single-photon Rabi frequency $2 g_c$. Here, we have assumed that the cavity is coherently driven via $\epsilon$, which we show leads to the drive in the spin model. Below, we also discuss how driving the spins directly modifies the analysis.
+
+The mean-field dynamics for $\hat a, \hat J^-$ are given by
+\begin{subequations}
+\begin{equation}
+    \partial_t \langle \hat a \rangle  =  \epsilon + i g_c \langle \hat J^-\rangle  - \frac{\kappa}{2} \langle \hat a\rangle,
+\end{equation}
+\begin{equation}
+    \partial_t \langle \hat J^- \rangle = - i \delta \langle \hat J^- \rangle + 2i g_c \langle \hat a \rangle \langle \hat J_z \rangle,
+\end{equation}
+\end{subequations}
+whose cavity steady-state solution is 
+\begin{equation}
+     \langle \hat a\rangle = \frac{\epsilon + i g_c \langle \hat J^- \rangle}{\kappa/2}.
+\end{equation}
+In the bad cavity limit $\kappa \gg \sqrt{N_J}g_c, \delta$, we can adiabatically eliminate the cavity by replacing it with its expectation value for the spin equations of motion, comparing to the corresponding mean-field spin dynamics of the main text
+\begin{equation}
+    \partial_t \langle \hat J^- \rangle = - i \delta \langle \hat J^- \rangle + \frac{4 i \epsilon g_c}{\kappa} \hat J_z - \frac{4 g_c^2}{\kappa} \langle \hat J_z \rangle \hat \langle J^- \rangle = - i \delta \langle \hat J^- \rangle + i \Omega \hat J_z - \Gamma \langle \hat J_z \rangle \langle \hat J^- \rangle, 
+\end{equation}
+which allows us to identify $\Omega = 4 \epsilon g_c/\kappa$ and $\Gamma = 4g_c^2/\kappa$. Hence we find the cavity steady state may also be expressed
+\begin{equation}
+\label{eq:aMF}
+    \langle \hat a \rangle = i \frac{g_c}{\kappa/2}(\langle \hat J^-\rangle + i\Omega/\Gamma).
+\end{equation}
+This takes a value of 0 in the spin-polarized phase when $\delta = 0$, corresponding to the absence of photons. Because this holds for all values of $N_J$, this implies conservation of coherences in the steady state due to the environment's inability to distinguish the different values of $N_J$ for the spins.
+
+Note that if the spins were driven directly, the constant term would be dropped in the above expression, and the cavity coherence would likewise be shifted to a constant, non-zero value $-2 g_c \Omega/(\kappa \Gamma)$, again independent of $N_J$.
+
+\end{document}

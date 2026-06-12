@@ -1,0 +1,60 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,multirow}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Mean field theory}
+\label{sec:MFT}
+
+In this section, we determine the steady-state behavior of the two-level system using mean-field theory. As in the main text, we utilize a Schwinger boson approach, where $\hat d, \hat e$ denote the annihilation operators for $|{\downarrow}\rangle$ and $|e\rangle$ with corresponding mean-field values $d = e^{i \omega_Bt} \langle \hat d \rangle, e = e^{i \omega_Bt}  \langle \hat e \rangle$, with $\omega_B$ denoting the rotating frame associated with the non-trivial Berry phase. The resulting mean-field equations are
+\begin{subequations}
+    \begin{gather}
+    \label{eq:MFTg}
+        \partial_t d = - i \frac{\Omega}{2} e + i \omega_B d + \frac{\Gamma}{2} |e|^2 d = 0,\\
+    \label{eq:MFTe}
+        \partial_t e = - i \frac{\Omega}{2} d + i (\delta + \omega_B) e - \frac{\Gamma}{2} |d|^2 e = 0,
+    \end{gather}
+\end{subequations}
+where we have assumed a drive in the $x$-direction as in $\hat H_\delta$ of the main text.
+
+First, we identify $\omega_B$. Subtracting the $\Omega$ terms from each side and multiplying these two equations, we find
+\begin{equation}
+    \frac{\Omega^2}{4} = \left[ \frac{\Gamma}{2} |e|^2 + i \omega_B\right] \left[ \frac{\Gamma}{2} |d|^2 - i (\delta + \omega_B) \right].
+\end{equation}
+Noting that we have assumed $\Omega$ to be real without loss of generality, the two terms on the RHS have opposite complex phases, enforcing the condition
+\begin{equation}
+    \frac{|e|^2}{|d|^2} = \frac{\omega_B}{\delta + \omega_B},
+\end{equation}
+whose solution is readily solved
+\begin{equation}
+    \omega_B= \delta \frac{|e|^2}{|d|^2-|e|^2} = \frac{\delta}{2 \cos \theta_J} - \frac{\delta}{2},
+\end{equation}
+where we have used the fact that $|e|^2 = N \sin^2\frac{\theta_J}{2}, |d|^2 = N \cos^2 \frac{\theta_J}{2}$ on the Bloch sphere.
+
+Next, we identify the steady-state values of $e, d$. We multiply Eq.~(\ref{eq:MFTg}) by $d^*$ and the complex conjugate of Eq.~(\ref{eq:MFTe}) by $e$ and subtract the two, finding
+\begin{subequations}
+    \begin{equation}
+        i \Omega e d^* = i \delta |e|^2 + i \omega_B(|d|^2 + |e|^2) + \Gamma |d|^2 |e|^2,
+    \end{equation}
+    \begin{equation}
+        \frac{\Omega}{2}  e^{-i \phi_J} \sin \theta_J=  \frac{\delta}{2} \sin \theta_J\tan \theta_J - i \frac{N_J \Gamma}{4} \sin^2 \theta_J,
+    \end{equation}
+\end{subequations}
+where $e^* d = \langle \hat J^+ \rangle = \frac{N_J}{2} e^{i \phi_J} \sin \theta_J$.
+Considering the real and imaginary parts separately, we find
+\begin{subequations}
+    \begin{equation}
+        \Omega \cot \theta_J\cos \phi_J = \delta,
+    \end{equation}
+    \begin{equation}
+        \frac{\Omega}{2} \sin \phi_J = \frac{N_J \Gamma}{4} \sin \theta_J,
+    \end{equation}
+\end{subequations}
+from which $\theta_J, \phi_J$ may be identified. For the particular case of $\delta = 0$, we have $\sin \theta_J= 2 \Omega/N_J \Gamma = \Omega/\Omega_c$, $\phi_J = \pi/2$, as anticipated.
+
+\end{document}

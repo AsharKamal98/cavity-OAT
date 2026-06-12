@@ -1,0 +1,110 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,multirow}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Holstein-Primakoff}
+\label{sec:HP}
+
+In this section, we derive the Holstein-Primakoff Hamiltonian and jump operator. To do so, we utilize the transformation 
+\begin{equation}
+    \left( 
+    \begin{array}{c}
+    \hat c^\dagger \\
+    \hat s^\dagger \\
+    \hat \jmath^\dagger 
+    \end{array} 
+    \right)
+    = 
+    \left(
+    \begin{array}{ccc}
+         \sqrt{f_J} \cos \frac{\tilde{\theta}_J}{2} & \sqrt{f_J} e^{-i \tilde{\phi}_J} \sin \frac{\tilde{\theta}_J}{2} & \sqrt{f_{\uparrow}} \\
+         -\sqrt{f_{\uparrow}} \cos \frac{\tilde{\theta}_J}{2} & -\sqrt{f_{\uparrow}} e^{- i \tilde{\phi}_J} \sin \frac{\tilde{\theta}_J}{2} & \sqrt{f_J}\\
+         \sin \frac{\tilde{\theta}_J}{2} & -e^{i \tilde{\phi}_J} \cos \frac{\tilde{\theta}_J}{2} & 0
+    \end{array} \right)
+    \left(
+    \begin{array}{c}
+        \hat d_{\tilde{\omega}_B}^\dagger \\
+        \hat{e}_{\tilde{\omega}_B}^\dagger \\
+        \hat u^\dagger     
+    \end{array}
+    \right),
+\end{equation}
+where $\hat c$ captures the mean-field steady state, $\hat \jmath$ the quantum fluctuations of the $\hat J$ Bloch sphere, and $\hat s$ the fluctuations of the $\hat S$ Bloch sphere. Here, the $\tilde{\omega}_B$ subscripts denote that we are in the rotating frame $\hat e_{\tilde{\omega}_B} = e^{i \tilde{\omega}_B t} \hat e, ~\hat d_{\tilde{\omega}_B} = e^{i \tilde{\omega}_B t} \hat d$, which introduces an additional Hamiltonian term $-\tilde{\omega}_B(\hat{e}^\dagger_{\tilde{\omega}_B} \hat{e}_{\tilde{\omega}_B} + \hat{d}^\dagger_{\tilde{\omega}_B} \hat{d}_{\tilde{\omega}_B})$. We also assumed without loss of generality that $\varphi = 0$ on the $\hat S$ Bloch sphere.
+
+Expressing the Hamiltonian and jump operator in terms of $\hat c, \hat s, \hat \jmath$, we implement a generalized Holstein-Primakoff transformation according to the substitution $\hat c \to \sqrt{N - \hat{s}^\dagger \hat s - \hat{\jmath}^\dagger \hat \jmath}$, which we truncate at quadratic order in the Hamiltonian and first order in the jump operator. 
+It is convenient to relate the quadratures of $\hat s, \hat \jmath$ to spin operators
+\begin{subequations}
+   \begin{gather}
+        \sum_i  \frac{|0_i \rangle \langle 0_i| - |1_i \rangle\langle 1_i|}{2} \equiv
+       \hat S_z \approx  \sqrt{\frac{N}{2}} \hat x_s, \qquad
+        \sum_i \frac{|0_i \rangle \langle 1_i| - |1_i \rangle \langle 0_i|}{2i} 
+       \equiv \hat S_y \approx -\sqrt{\frac{N}{2}} \hat p_s, \\
+       \hat J_y \cos \tilde{\phi}_J - \hat J_x \sin \tilde{\phi}_J \approx \sqrt{\frac{f_J N}{2}} \hat p_j, \qquad
+       (\hat J_x \cos \tilde{\phi}_J + \hat J_y \sin \tilde{\phi}_J ) \cos \tilde{\theta}_J + \hat J_z \sin \tilde{\theta}_J \approx -\sqrt{\frac{f_J N}{2}} \hat x_j
+   \end{gather}
+\end{subequations}
+where we have chosen $f_J = f_{\uparrow} = 1/2$ so the steady state points in the $x$-direction on the $\hat S$ Bloch sphere. Here we see that the quadratures of the bosons directly correspond to fluctuations perpendicular to the Bloch vector on the $\hat S, \hat J$ Bloch spheres.
+We further note that because nearly all population of the $J$ states is in the $|1\rangle$ state, $\hat S_z \approx (\hat N_{\uparrow} - \hat N_J)/2$, with both proportional to $\hat x_s$ at linear order in the Holstein-Primakoff expansion. Since the strong symmetry implies conservation of $\hat N_{\uparrow} - \hat N_{J}$, $\hat x_s$ will commute with both Hamiltonian and jump operator at the order we consider. 
+
+Here, we note that as a result of this transformation, the jump operator takes the form $C + \hat O$ for some constant $C$ and operator $\hat O$ like in the weak drive limit. We can remove the constant term from the jump operator by shifting its effect to the Hamiltonian via an additional term $\Gamma (C \hat{O}^\dagger - C^* \hat O)/2i$.
+In the new basis following the Holstein-Primakoff approximation, we identify the effective quadratic Hamiltonian
+\begin{subequations}
+\begin{multline}
+    \hat H_{\text{HP}} \approx -\frac{\delta}{\cos \tilde{\theta}_J} \hat \jmath^\dagger \hat \jmath + \left[\sqrt{\frac{f_J N}{2}} \hat p_j - \sqrt{f_{\uparrow}} \frac{\hat s^\dagger \hat \jmath - \hat \jmath^\dagger \hat s}{2i} \right] \left( \frac{f_J N \Gamma}{2} \sin \tilde{\theta}_J - \Omega \sin \tilde{\phi}_J \right) +\\
+    \left[\frac{f_J }{2}(N-\hat{s}^\dagger \hat s - \hat{\jmath}^\dagger \hat \jmath) - \sqrt{\frac{f_J f_{\uparrow} N}{2}} \hat x_s  + \frac{f_{\uparrow}}{2} \hat s^\dagger \hat s -\frac{1}{2} \hat \jmath^\dagger \hat \jmath \right] \sin \tilde{\theta}_J  \left( \Omega \cos \tilde{\phi}_J - \delta \tan \tilde{\theta}_J \right) + \\
+    \left[-\sqrt{\frac{ f_J N}{2}}  \hat x_j  + \sqrt{f_{\uparrow}} \frac{\hat s^\dagger \hat \jmath + \hat \jmath^\dagger \hat s}{2}\right] \cos \tilde{\theta}_J  \left( \Omega \cos \tilde{\phi}_J - \delta \tan \tilde{\theta}_J \right),
+\end{multline}
+\begin{equation}
+    \hat H_{\text{HP}} \approx -\frac{\delta}{\cos \tilde{\theta}_J} \hat \jmath^\dagger \hat \jmath,
+\end{equation}
+\end{subequations}
+where most terms go to zero according to the mean field equations.
+To linear order (quadratic in the master equation), the jump operator is
+\begin{equation}
+    \hat l_{\text{HP}} \approx -e^{- i \tilde{\phi}_J} \sqrt{\frac{f_J N}{2}}\left(\hat x_j \cos \tilde{\theta}_J + i \hat p_j + \sqrt{f_{\uparrow}} \hat x_s \sin \tilde{\theta}_J \right).
+\end{equation}
+As anticipated, the Hamiltonian and jump operator both commute with $\hat x_s$ as a consequence of the strong symmetry.
+
+Next, we will derive the effective Hamiltonian and jump operators for only the $\hat s$ boson by adiabatically eliminating $\hat \jmath$. The equation of motion for $ \hat \jmath $ is
+\begin{equation}
+    \partial_t \hat \jmath \approx \left(i \delta \sec \tilde{\theta}_J - \frac{f_J N \Gamma}{2} \cos \tilde{\theta}_J \right) \hat \jmath  - \frac{f_J N \Gamma \sin \tilde{\theta}_J}{2}  \sqrt{\frac{f_{\uparrow}}{2}} \hat x_s.
+\end{equation}
+Here, we note that the above equation implies that $\hat \jmath$ will relax quickly to its steady state value, justifying the adiabatic elimination of it. By setting the evolution to 0 and solving for $\hat \jmath$, we make the substitution
+\begin{equation}
+    \hat \jmath \to \frac{f_J N \Gamma \sin \tilde{\theta}_J}{2 i \delta \sec \tilde{\theta}_J - f_J N \Gamma \cos \tilde{\theta}_J} \sqrt{\frac{f_{\uparrow}}{2}} \hat x_s,
+\end{equation}
+which results in the new Hamiltonian and jump operator
+\begin{subequations}
+    \begin{equation}
+        \hat H_{\text{HP+AE}} \approx -\frac{\delta}{2 \cos \tilde{\theta}_J} \frac{ f_\uparrow f_J^2 N^2 \Gamma^2 \sin^2 \tilde{\theta}_J}{f_J^2 N^2 \Gamma^2 \cos^2 \tilde{\theta}_J + 4 \delta^2 \sec^2 \tilde{\theta}_J} \hat{x}_s^2,
+    \end{equation}
+    \begin{equation}
+        \hat{l}_{\text{HP+AE}} \approx 2 e^{-i \tilde{\phi}_J} \sqrt{\frac{f_J f_{\uparrow} N}{2}} \frac{\delta \tan \tilde{\theta}_J (i f_J N \Gamma - 2 \delta \sec \tilde{\theta}_J) }{f_J^2 N^2 \Gamma^2 \cos^2 \tilde{\theta}_J + 4 \delta^2 \sec^2 \tilde{\theta}_J} \hat x_s.
+    \end{equation}
+\end{subequations}
+Here, the Hamiltonian gives rise to shearing dynamics in the $\hat s$ boson in the $\hat p_s$ direction while the jump operator leads to dephasing. 
+
+With this expression, we can use the associated timescales to self-consistently ensure that the adiabatic elimination is justified. Since the relaxation of $\hat \jmath$ is set by $f_J N \Gamma \cos \tilde{\theta}_J$, the squeezing dynamics should occur on timescales longer than this. Assuming we keep $\delta/N \Gamma$ fixed while varying $N$, then the Hamiltonian dynamics of $\hat H_{\text{AE}}$ scales like $N \Gamma$ while the OAT rate will have no $N$-dependence. Since the timescale of optimal squeezing scales slower than $N^{-2/3}$ (see Sec.~\ref{sec:decoherence}), the squeezing dynamics will be slower than the relaxational timescale of $\hat \jmath$, which scales like $N^{-1}$, for sufficiently large $N$. The precise condition for the validity of adiabatic elimination for any finite $N$ will depend on the choices of $\cos \tilde{\theta}_J$ and $\delta$ due to critical slowing down and higher-order effects beyond what we have considered here.
+
+The relative rates of shearing to dephasing is given by
+\begin{equation}
+     \frac{ f_J N \Gamma \cos \tilde{\theta}_J}{ 4 |\delta|} \frac{f_J^2 N^2 \Gamma^2 \cos^2 \tilde{\theta}_J + 4 \delta^2 \sec^2 \tilde{\theta}_J^2}{f_J^2 N^2 \Gamma^2+4 \delta^2 \sec^2 \tilde{\theta}_J }, 
+\end{equation}
+which is maximized in the limit $f_J N \Gamma \cos^2 \tilde{\theta}_J \gg 2\delta$. In this limit, the effective Hamiltonian and jump operator can be simplified to
+\begin{subequations}
+    \begin{equation}
+        \hat H_{\text{HP+AE}}\approx - \delta f_{\uparrow} \frac{\sin^2 \tilde{\theta}_J}{2 \cos^3 \tilde{\theta}_J} \hat x_s^2,
+    \end{equation}
+    \begin{equation}
+        \hat l_{\text{HP+AE}} \approx 2 i \delta e^{- i \tilde{\phi}_J} \sqrt{\frac{f_J f_{\uparrow} N}{2}} \frac{\sin \tilde{\theta}_J}{ f_J N \Gamma \cos^3 \tilde{\theta}_J} \hat x_s.
+    \end{equation}
+\end{subequations}
+The effective $\hat S$ dynamics in both cases can be obtained via the mapping $\hat x_s \to \sqrt{\frac{2}{N}} \hat S_z$ as in the main text, and we find the OAT in the small $\delta$ limit is consistent with the effective Hamiltonians derived from both the Berry phase and the weak drive limit. The linear term (in $\hat S_z$) is not present since we are in the corresponding rotating frame defined by $\tilde{\omega}_B$ already. We similarly find agreement with the effective dephasing derived via $N_J$ fluctuations in the End Matter and in the weak drive limit.
+
+\end{document}

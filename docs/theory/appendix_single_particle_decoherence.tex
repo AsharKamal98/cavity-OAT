@@ -1,0 +1,186 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,multirow}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Single-particle decoherence}
+\label{sec:decoherence}
+
+In this section, we derive the scaling behavior of the optimal squeezing and the corresponding squeezing time in the presence of single-particle decoherence. As in the main text, we focus on the cases of spontaneous emission and single-particle dephasing separately. Here, we use a short-time, perturbative expansion of the time evolution of $\xi^2$ based on the exact solution of the dynamics \cite{Chu2021}.
+
+Before proceeding, we first consider the behavior in the absence of decoherence. For an OAT Hamiltonian $-\check{\chi} \hat S_z^2$, we find
+\begin{equation}
+    \xi^2(t) \approx \frac{1}{N^2 \check{\chi}^2 t^2} + \frac{N^2 \check{\chi}^4 t^4}{6}.
+\end{equation}
+Minimizing this in time, we find
+\begin{equation}
+    \xi^2_{\text{opt}} = \frac{3^{2/3}}{2 N^{2/3}}, \qquad
+    \check{\chi} t_{\text{opt}} = \frac{3^{1/6}}{N^{2/3}},
+\end{equation}
+accurately capturing the usual scaling for OAT dynamics. 
+
+Beyond OAT dynamics, our protocol also undergoes collective decoherence. For collective decoherence (jump operator $\hat{S}_z$) at rate $\check{\Gamma}$, we find \cite{Schleier-Smith2010,Lewis-Swan2018,Chu2021,Baamara2022}
+\begin{equation}
+    \xi^2(t) \approx \frac{1 + N \check{\Gamma} t}{N^2 \check{\chi}^2 t^2} + \frac{N^2 \check{\chi}^4 t^4}{6}.
+\end{equation}
+Assuming $N \check \Gamma t_{\text{opt}} \gg 1$, we optimize the squeezing, finding
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{5 (\check{\Gamma}/\check{\chi})^{4/5}}{2^{9/5}\times 3^{1/5}N^{2/5}}, \qquad t_{\text{opt}} \approx \frac{(3/2)^{1/5}(\check \Gamma/ \check \chi)^{1/5}}{\check \chi N^{3/5}},
+\end{equation}
+so the scaling depends on how we scale $\check \Gamma/\check \chi$. 
+
+As discussed in Sec.~\ref{sec:HP}, $\check \Gamma/\check \chi$ is minimized for $2 \delta \sec \tilde{\theta}_J \ll f_J N \Gamma \cos \tilde{\theta}_J$, thus allowing for the greatest amount of squeezing. Working in this limit and taking $f_J = f_{\uparrow} = 1/2$, corresponding to the equator in the $\hat S$ Bloch sphere, we find
+\begin{equation}
+    \check{\chi} = \frac{ \delta \sin^2 \tilde{\theta}_J}{2 N \cos^3 \tilde{\theta}_J}, \qquad \check{\Gamma} = \frac{4 \delta^2 \sin^2 \tilde{\theta}_J}{N^2 \Gamma^2 \cos^6 \tilde{\theta}_J} \Gamma, \qquad \frac{\check{\Gamma}}{\check{\chi}} = \frac{8 \delta}{N \Gamma \cos^3 \tilde{\theta}_J}.
+\end{equation}
+If we fix $\check \Gamma/\check \chi \equiv a N^\beta$, then we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{ 5 a^{4/5}}{2^{9/5} \times 3^{1/5} N^{\alpha}}, \qquad \Gamma t_{\text{opt}} \approx \frac{16 (3/2)^{1/5}}{a^{4/5} \sin^2 \tilde{\theta}_J N^{1-\alpha}},
+\end{equation}
+where we have defined $\alpha \equiv (2-4 \beta)/5$. Here, we see explicitly the tradeoff in varying both $\alpha$ and $a$, with $\xi^2_{\text{opt}} \Gamma t_{\text{opt}} \sin^2 \tilde{\theta}_J \approx 20/N$, independent of $a$, as well as the role of $\sin^2 \tilde{\theta}_J$ in the squeezing timescale. Furthermore, we note that it is only sensible to consider $2/3 \geq \alpha > 0$, corresponding to $ -1/3 \leq \beta \leq 1/2$, as we cannot achieve better than OAT scaling and we do not consider non-scalable squeezing. Since we can always ensure $\check \Gamma/\check \chi \to 0$ by taking $\delta \to 0$, then any of these scaling behaviors can be achieved with the caveat that the total squeezing is always constrained by OAT squeezing, which limits the choice of $a$ for a given $N, \alpha$, and that we satisfy the approximations used to derive the squeezing dynamics (adiabatic elimination of $\hat \jmath$ and relevance of higher-order terms near criticality). 
+
+\subsection{Spontaneous emission}
+\label{sec:SE}
+
+First, we consider the optimal squeezing in the presence of (effective) spontaneous emission in the $\hat S$ Bloch sphere. As discussed in the main text, the optimal squeezing occurs in the limit of weak drive. In light of this, we will utilize the OAT and collective dephasing rates derived in Sec.~\ref{sec:weak}. 
+\begin{equation}
+    \check{\chi} = \frac{\delta \Omega^2 (\delta \chi/2 + N \chi^2/4 + N \Gamma_\Delta^2/16)}{2 |\delta + (\chi + i \Gamma_\Delta/2)N/2|^4}, \qquad \check{\Gamma_\Delta} = \frac{\delta^2 \Omega^2 \Gamma_\Delta}{4 |\delta + (\chi + i \Gamma_\Delta/2)N/2|^4}.
+\end{equation}
+In the weak drive limit, we further find
+\begin{equation}
+    \gamma_- = \gamma_{e \uparrow} \sin^2 \frac{\tilde{\theta}_J}{2} \approx \frac{\Omega^2/4}{|\delta + (\chi + i \Gamma_\Delta/2)N/2|^2} \gamma_{e \uparrow}.
+\end{equation}
+To simplify the analysis, we will focus on two limits $\delta^2 \gg N^2 (\chi^2 + \Gamma_\Delta^2/4)/4$ and $\delta^2 \ll N^2 (\chi^2 + \Gamma_\Delta^2/4)/4$.
+
+The limit $\delta^2 \gg N^2 (\chi^2 + \Gamma_\Delta^2/4)/4$ corresponds to far off-resonant drive. In this limit, we have
+\begin{equation}
+    \check{\chi} \approx \chi \sin^2 \frac{\tilde{\theta}_J}{2}, \qquad \check{\Gamma} \approx \Gamma_\Delta \sin^2 \frac{\tilde{\theta}_J}{2},
+\end{equation}
+and so the OAT rate is just the original two-level rate normalized by the excited state population while the collective decoherence rate is similarly the two-level collective dissipation rate renormalized by the excited state population. The detuning only enters by determining this excited state population. Defining $\tau \equiv t \sin^2 \frac{\tilde{\theta}_J}{2}$, we find
+\begin{equation}
+    \xi^2(\tau) \approx \frac{1 + N \Gamma_\Delta \tau}{N^2 \chi^2 \tau^2} + \frac{N^2 \chi^4 \tau^4}{6} + \frac{2}{3} \gamma_{e \uparrow} \tau.
+\end{equation}
+Optimizing the squeezing with respect to $\Delta$ and $\tau$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3}}{2 N^{2/3}} + \frac{4 \sqrt{2/3}}{\sqrt{N \Gamma/\gamma_{e \uparrow}}} , \qquad \gamma_{e \uparrow} t_{\text{opt}} \approx \frac{\sqrt{6}}{ \sin^2 \frac{\tilde{\theta}_J}{2}  \sqrt{ N \Gamma /\gamma_{e \uparrow}}}, \qquad \Delta_{ \text{opt}} \approx \pm \frac{\sqrt{\Gamma/\gamma_{e \uparrow}} 3^{1/3}N^{1/6}}{ \sqrt{2}} \frac{\kappa}{2},
+\end{equation}
+where we assume we are in a limit where $\Delta^2 \gg \kappa^2/4$ (which requires $ N^{1/3} \gg \gamma_{e \uparrow}/\Gamma$) for the optimization and note that the optimized values are expressed in terms of $\Gamma$ rather than $\Gamma_\Delta$. The squeezing will be reduced when this limit is not realized.
+Logarithmic corrections can be obtained by going beyond linear approximations (in time) of the sources of decoherence. We note that the scaling of $\Delta_{\text{opt}}$ with $N$ can be increased to $\Delta_{\text{opt}} \sim (N \Gamma/\gamma_{e \uparrow})^{1/4} \kappa$ without (strongly) modifying the optimal scaling of the squeezing and squeezing time. Increasing the detuning modifies the scaling of the unitary OAT component of $\xi^2_{\text{opt}}$ from $N^{-2/3}$ to $N^{-1/2}$, so it at most modifies the coefficient of the dominant term. This can be utilized to ensure that $\Delta \gg \kappa$ is achieved.
+
+The limit $\delta^2 \ll N^2 (\chi^2 + \Gamma^2/4)/4$ corresponds to near-resonant drive as in the main text and is described by
+\begin{equation}
+    \check{\chi} \approx  \frac{2 \delta }{N} \sin^2 \frac{\tilde{\theta}_J}{2}, \qquad \check{\Gamma} \approx \frac{\delta^2 \Gamma_\Delta}{N^2 \chi^2/4+N^2 \Gamma_\Delta^2/16} \sin^2 \frac{\tilde{\theta}_J}{2} = \frac{ 4 \delta^2 \kappa}{N^2 g_c^2} \sin^2 \frac{\tilde{\theta}_J}{2},
+\end{equation}
+where again the excited state population determines the overall time scale of the dynamics and we absorb it via $\tau$. 
+Interestingly, we see that $\Delta$ does not play a role in this limit beyond its effect on the excited state population, indicating that there is no benefit (or detriment) from having elastic interactions. We can understand this as a consequence of the fact that, as we note in the End Matter, the Berry phase depends only on $\cos \tilde{\theta}_J$ and is otherwise independent of $\chi$. Optimizing the squeezing with respect to time and $\delta$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx  \frac{3^{2/3}}{2 N^{2/3}} + \frac{4 \sqrt{2/3}}{\sqrt{N \Gamma/\gamma_{e \uparrow}}} , \qquad \gamma_{e \uparrow} t_{\text{opt}} \approx \frac{\sqrt{6}}{ \sin^2 \frac{\tilde{\theta}_J}{2} \sqrt{N \Gamma/ \gamma_{e \uparrow}}}, \qquad \delta_{\text{opt}} \approx \pm \frac{\sqrt{\Gamma/\gamma_{e \uparrow}} N^{5/6}}{3^{1/3} \sqrt{2} } \frac{\gamma_{e \uparrow}}{2},
+\end{equation}
+where we can see that the scaling of $\delta$ is consistent with the limit we have considered and again we have expressed the results in terms of $\Gamma$ rather than $\Gamma_\Delta$. Logarithmic corrections can again be obtained by going beyond linear approximations (in time) of the sources of decoherence. Like for the dispersive regime, we may also modify the scaling of $\delta_{\text{opt}}$ to $\delta_{\text{opt}} \sim (N \Gamma/\gamma_{e \uparrow})^{3/4} \gamma_{e \uparrow}$ without changing the dominant scaling terms in the squeezing and squeezing times beyond a change to its coefficient. In contrast to the dispersive regime, here the relevant detuning becomes smaller. Remarkably, we also find the exact same optimal squeezing and squeezing time in both limits, implying that our protocol can potentially be extended to approaches where a weak drive and far off-resonant cavity were assumed, allowing them to go beyond the weak drive limit as well, subject to concerns of metastability in certain regions of the phase diagram \cite{Barberena2019}.
+
+\subsection{Single-particle dephasing}
+
+Next, we consider the optimal squeezing in the presence of single-particle dephasing. Unlike for spontaneous emission, we assume that the corresponding rate $\gamma_d$ is independent of the population. In this case, the squeezing dynamics is approximately
+\begin{equation}
+    \xi^2(t) \approx e^{\gamma_d t}\left(\frac{e^{\gamma_d t} + N \check{\Gamma} t}{N^2 \check{\chi}^2 t^2} + \frac{N^2 \check{\chi}^4 t^4}{6} \right).
+\end{equation}
+For $f_J = f_{\uparrow} = 1/2$ in the limit $\delta \ll N \Gamma \cos^2 \tilde{\theta}_J$ where optimal squeezing occurs, we have
+\begin{equation}
+    \check{\chi} = \frac{ \delta \sin^2 \tilde{\theta}_J}{2 N \cos^3 \tilde{\theta}_J}, \qquad \check{\Gamma} = \frac{4 \delta^2 \sin^2 \tilde{\theta}_J}{N^2 \Gamma^2 \cos^6 \tilde{\theta}_J} \Gamma, \qquad \frac{\check{\Gamma}}{\check{\chi}} = \frac{8 \delta}{N \Gamma \cos^3 \tilde{\theta}_J}.
+\end{equation}
+We see that both the OAT and the collective dephasing scale with $\sin^2 \tilde{\theta}_J$, indicating faster squeezing rates, and thus improved squeezing, can be obtained closer to criticality, although there are diminishing returns. Depending on the strength of $\gamma_d$, we identify two different optimal squeezing behaviors. For weak $\gamma_d \ll (3 e)^{2/3} N^{1/3} \sin^2 \tilde{\theta}_J \Gamma/32$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3}}{2 N^{2/3}} + \frac{4 \sqrt{10 \gamma_d/\Gamma}}{3^{1/6} N^{5/6} \sin \tilde{\theta}_J}, \qquad \gamma_d t_{\text{opt}} \approx \frac{ 8 \times 3^{1/6}}{\sqrt{10 \Gamma /\gamma_d} N^{1/6} \sin \tilde{\theta}_J }, \qquad \delta_{\text{opt}} \approx \pm \sqrt{\frac{5 N \Gamma \gamma_d}{8}} \frac{\cos^3 \tilde{\theta}_J}{\sin \tilde{\theta}_J} ,
+\end{equation}
+corresponding to ideal OAT squeezing, albeit at a slower rate. Here, we see that the optimal squeezing does not depend strongly on $\tilde{\theta}_J$, although the time scale and optimal detuning do.
+
+For strong $\gamma_d \gg (3 e)^{2/3} N^{1/3} \sin^2 \tilde{\theta}_J \Gamma/32$, we find
+\begin{equation}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3} }{2 N^{2/3}} e^{4/3} + \frac{16 e \gamma_d}{N \Gamma \sin^2 \tilde{\theta}_J} , \qquad \gamma_d t_{\text{opt}} = 1, \qquad \delta_{\text{opt}} \approx \pm \frac{2 \times (3 e)^{1/6} N^{1/3} \cos^3 \tilde{\theta}_J }{\sin^2 \tilde{\theta}_J} \gamma_d,
+\end{equation}
+which will exhibit OAT scaling with an additional prefactor of $e^{5/3}(1+f_d)$, where $\gamma_d \equiv f_d \times (3 e)^{2/3} N^{1/3} \sin^2 \tilde{\theta}_J \Gamma/32$. Here, we see that the optimal squeezing time is simply the inverse of the dephasing rate, while the optimal squeezing is weakly dependent on $\sin^2 \tilde{\theta}_J$. In the main text, the example of $N= 10^6, \gamma_d = 100 \Gamma$ is nearly in this limit, which is why we found a time scale that was largely fixed as we moved away from the critical point while the squeezing itself was reduced. 
+ 
+\subsection{Competing single-particle decoherence}
+
+Finally, we consider scenarios where both sources of single-particle decoherence are present. Depending on the relative strength of both sources and the particular parameters, there will be a competition in terms of which is most relevant. When spontaneous emission is most dominant, the optimal squeezing will occur at weak drives with a finite detuning and $\xi^2_{\text{opt}} \propto 1/\sqrt{N}$. In contrast, when single-particle dephasing is most dominant, the optimal squeezing will occur near criticality with small detuning and $\xi^2_{\text{opt}}$. Hence when both are equally relevant, the optimal drive and detuning will be between these two extremes. In this section, we will determine when one or the other is dominant. 
+
+In order to proceed, we must consider spontaneous emission beyond the weak drive limit. Using the values of $\check \chi, \check \Gamma$ obtained from adiabatic elimination of the HP equations, we find
+\begin{equation}
+\begin{gathered}
+    \xi^2_{\text{opt}} \approx \frac{3^{2/3}}{2 N^{2/3}} + \frac{8 \sqrt{(1-\cos \tilde{\theta}_J)}}{\sin \tilde{\theta}_J \sqrt{3 N \Gamma /\gamma_{e \uparrow}} }, \qquad \gamma_{e \uparrow} t_{\text{opt}} \approx \frac{4 \sqrt{3}}{  \sin \tilde{\theta}_J \sqrt{ (1+\cos \tilde{\theta}_J) N  \Gamma / \gamma_{e \uparrow}}}, \\
+    \delta_{\text{opt}} \approx \pm \frac{\cos^3 \tilde{\theta}_J \sqrt{(1- \cos \tilde{\theta}_J)  \Gamma/ \gamma_{e \uparrow}} N^{5/6}}{3^{1/3} \sin \tilde{\theta}_J} \frac{\gamma_{e \uparrow}}{2}
+\end{gathered}
+\end{equation}
+We find that when $\cos \tilde{\theta}_J \to 1$, the squeezing is minimized and we recover the weak drive behavior, as anticipated. 
+
+To determine the competition between both sources of decoherence, we determine where these optimal squeezing values (for fixed $\tilde{\theta}_J$) are the same for both spontaneous emission and for dephasing, indicating that the modification to the squeezing is the same for both decoherence processes. A more sophisticated approach might involve re-optimizing $\xi^2$ with the shift from the single-particle decoherence-free protocol doubled, although our less sophisticated approach will be sufficient in determining when one or the other is dominant, and thus whether we consider weak drive, critical drive, or somewhere in the middle.
+
+For $f_d \ll 1$, the optimal squeezing values for the two scenarios are equal when
+\begin{equation}
+     \cos \tilde{\theta}_J \approx 1- \frac{15 }{2 \times 3^{1/3}  N^{2/3}} \frac{\gamma_d}{\gamma_{e \uparrow}},
+\end{equation}
+This equation is only valid for $0 \leq \cos \tilde{\theta}_J \leq 1$, so when $\gamma_d/\gamma_{e \uparrow} \ll 2 \times 3^{1/3} N^{2/3}/15$, we expect spontaneous emission to dominate and the optimal squeezing to occur at weak drive. In the opposite limit, we expect single-particle dephasing to dominate and the optimal squeezing to occur near criticality. This further requires $ \Gamma/\gamma_{e \uparrow} \sin^2 \tilde{\theta}_J \gg 64 (N/(3e)^2)^{1/3}/15$ to ensure $f_d \ll 1$. For the parameters in the main text, this requires $\Gamma/\gamma_{e \uparrow} \sin^2 \tilde{\theta}_J \gg 105$, which is not realized. 
+
+For $f_d \gg 1$, the optimal squeezing values for the two scenarios are equal when
+\begin{equation}
+\label{eq:optdecse}
+    \sin^2 \frac{\tilde{\theta}_J}{2} \cos \frac{\tilde{\theta}_J}{2} \approx \frac{2 e }{\sqrt{2 N \Gamma/\gamma_{e \uparrow}}} \frac{\gamma_d}{\gamma_{e \uparrow}},
+\end{equation}
+where we have utilized the fact that the OAT scaling terms are small for $f_d \gg 1$. Since the left-hand side varies from $2/(3 \sqrt{3})$ at criticality to 0 at weak drive, for $\gamma_d/\gamma_{e \uparrow} \gg  \sqrt{ N \Gamma/\gamma_{e \uparrow}}/(3 \sqrt{6} e)$, we predict single-particle decoherence to dominate and the optimal squeezing to occur near criticality. In the opposite limit $\gamma_d/\gamma_{e \uparrow} \ll \sqrt{ N \Gamma/\gamma_{e \uparrow}}/(3 \sqrt{6} e)$, we predict spontaneous emission to dominate and the optimal squeezing to occur at weak drive. When $\gamma_d/\gamma_{e \uparrow} \sim \sqrt{ N \Gamma/\gamma_{e \uparrow}}/(3 \sqrt{6} e)$, we predict both single-particle decoherence terms to be comparably relevant, and the optimal parameters will occur somewhere between the two extremes. For $\gamma_{e \uparrow} = \Gamma, N = 10^6$ as in the main text, this corresponds to $\gamma_d/\gamma_{e \uparrow} \sim 50$, hence the optimal drive occurring between the two extremes when $\gamma_d = 100 \Gamma$. Similar scaling emerges when comparing the optimal squeezing times or detunings, which both give the same result as one another. Hence we can also look at where the optimal detunings intersect for the two individual sources of single-particle decoherence, although this intersection will only be a very approximate estimate of the actual optimal parameters. 
+
+\subsection{Comparison to other protocols}
+
+In this section, we compare the scaling of the squeezing and squeezing time to other common approaches to the generation of spin squeezing in optical cavities. We focus only on the case of intrinsic sources of decoherence due to spontaneous emission, i.e., $\gamma_{e \downarrow} \sin^2 \frac{\tilde{\theta}_J}{2}$. However, as discussed in the main text, the ability of our protocol to go beyond the weak excitation regime and accelerate the squeezing dynamics provides a means of mitigating the effect of external dephasing sources when the squeezing is to be generated directly on the clock transition, as in the example level scheme of the main text. While the squeezing dynamics in all cases can be accelerated by generating it on transitions which couple more strongly to the cavity, this introduces the additional complication of transferring the spin squeezing to a clock transition, thereby introducing additional sources of noise. In all cases, we neglect overall timescales while keeping this fact in mind. We likewise neglect most constant coefficients for the optimal $\xi^2_{\text{opt}}$, which depend on the precise implementation and are typically comparable for all protocols. 
+
+The protocols we consider are as follows:
+\begin{itemize}
+    \item (OAT) One-axis twisting $\hat H = \hat S_z^2$. We compare our protocol to the related protocol in the dispersive, weak excitation regime, see Sec.~\ref{sec:SE} or Ref.~\cite{Barberena2023b} for details about the squeezing optimization.
+    \item (QND) Quantum non-demolition measurement utilizes a measurement jump operator $\hat l = \hat S_z$. In this approach, the emitted cavity light from the jump operator $\hat l$ is measured, providing a non-demolition measurement of $\hat S_z$, which reduces the variance in $\hat S_z$ at the cost of quantum backaction in $\langle \hat S_z \rangle$. Unlike the other protocols, this approach is non-unitary, and its performance depends strongly on the detection efficiency $\eta$. See Ref.~\cite{Barberena2023b} for details about the protocol and squeezing optimization as well as a discussion of the minimal $\eta$ necessary for QND to outperform OAT in the dispersive, weak-excitation regime.
+    \item (TAT) Two-axis twisting $\hat H = \hat S_z^2 - \hat S_x^2$. In this approach, an additional counter-twisting term is introduced. In the absence of decoherence, TAT realizes Heisenberg squeezing $\xi^2 \sim 1/N$ along with accelerated squeezing dynamics due to the generation of an unstable saddle-point in the mean-field dynamics of the Bloch vector. See Ref.~\cite{Borregaard2017a} for details about the protocol and squeezing optimization.
+    \item (TnT) Twist-and-turn $\hat H = \hat S_z^2 + \Omega \hat S_x$. In this approach, an additional drive term is added to mimic the instability like in TAT and accelerate the squeezing dynamics, although Heisenberg scaling is not realized. See Refs.~\cite{Muessel2015,Hu2017,Barberena2022} for details about the protocol and squeezing optimization.
+\end{itemize}
+
+In Table \ref{tab:protocols}, we summarize the scaling behavior of the spin squeezing and squeezing times in the presence of intrinsic sources of decoherence due to spontaneous emission. We note that like for our protocol, OAT and QND both exhibit different scaling depending on the effective form of the decoherence. This is a consequence of the fact that single-particle dephasing commutes with the associated dynamics and, more importantly, primarily modifies the anti-squeezed quadrature, leading to a reduced impact on the spin squeezing. For both TAT and TnT, this no longer holds, and both effective spin flips and dephasing impact the squeezing in similar ways. We also report several squeezing values realized experimentally in optical cavities.
+
+\begin{table}[h]
+\centering
+\def\arraystretch{1}
+\setlength\tabcolsep{2.4mm}
+\begin{tabular}{ccccc}
+\toprule
+\toprule
+ & \multirow{2}{*}{Decoherence} & \multirow{2}{*}{$\xi^2_{\text{opt}}$} & \multirow{2}{*}{$\gamma_e t_{\text{opt}}$} & Experiment \\
+ & & & & ($N$ , $\xi^2$) \\
+\midrule
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{\shortstack{Our \\ Protocol}} & Spin Flips & $\frac{1}{\sqrt{NC}}$ & $\frac{1}{\sqrt{NC}}$ & (1000, $-8.2$ dB) [Simulation]\\
+\cmidrule{2-4}
+& Dephasing & $\frac{1}{N^{2/3}}$ & $\frac{1}{N^{2/3}}$ & (1000, $-14$ dB) [Simulation] \\
+\midrule
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{OAT} & Spin Flips & $\frac{1}{\sqrt{NC}}$ & $\frac{1}{\sqrt{NC}}$ & 
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{($5 \times 10^4, -5.6$ dB) \cite{Leroux2010}, \hspace{3.2cm}} \\
+\cmidrule{2-4}
+& Dephasing & $\frac{1}{N^{2/3}}$ & $\frac{1}{N^{2/3}}$ & \hspace{3.2cm} ($1500, -6.5$ dB) \cite{Braverman2019} \\
+\midrule
+ \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{QND} & Spin Flips & $\frac{1}{\sqrt{NC}}$ & $\frac{1}{\sqrt{NC}}$ & \multirow{2}{*}[-0.5\dimexpr \aboverulesep + \belowrulesep + \cmidrulewidth]{($5 \times 10^4$, $-3$ dB) \cite{Schleier-Smith2010a}, ($5 \times 10^5, -20$ dB) \cite{Hosten2016}, \hspace{3.4cm}} \\
+\cmidrule{2-4}
+& Dephasing & $\frac{e}{\eta N}\frac{C}{1+C}$ & $\frac{1}{1+C}$ & \hspace{6.8cm} ($5 \times 10^4$, $-18$ dB) \cite{Cox2016}\\
+\midrule
+TAT & Either & $\frac{1}{\sqrt{NC}}$ & $\frac{\log \sqrt{NC}}{\sqrt{NC}}$ & Recently implemented without measured squeezing in Ref.~\cite{Luo2024}.\\
+\midrule
+TnT & Either & $\frac{1}{\sqrt{NC}}$ & $\frac{\log \sqrt{NC}}{\sqrt{NC}}$ & (200, $-2$/$-4$ dB) \cite{Li2023a}* \\
+ \bottomrule
+ \bottomrule
+\end{tabular}
+\caption{Comparison of typical squeezing protocols for optical cavities and associated experimental realizations. $C \equiv 4 g_c^2/\kappa \gamma_e$ is the single-atom cooperativity, where $\gamma_e$ is the spontaneous emission rate of $|e\rangle$, and $\eta$ is the detection efficiency of the emitted cavity light. Experimental squeezing entries split between two rows exhibit both forms of single-particle decoherence. *Spin squeezing was measured for only a single suboptimal (in time) point; $-4$ dB represents the expected squeezing based on Ref.~\cite{Li2023a}'s numerical simulations, which show good agreement with the experimental data. \label{tab:protocols}}
+\end{table}
+
+
+
+Finally, we remark that our approach could be naturally extended to incorporate QND by measuring the emitted cavity light to weakly measure $\hat S_z$, whereby an analysis similar to Ref.~\cite{Barberena2023b}, which considered the weak excitation regime, could be implemented to determine when OAT- or QND-dominated squeezing is optimal for our approach.
+
+\end{document}

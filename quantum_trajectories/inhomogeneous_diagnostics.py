@@ -35,6 +35,18 @@ def _observable_series_for_result(
     return obs, result.phases, result.Gamma, phase_indices
 
 
+def _omega_groups_for_result(
+    result: Union[TrajectoryResult, TrajectoryEnsemble],
+) -> Optional[tuple[float, float]]:
+    """
+    Read the two inhomogeneous coupling weights stored on the trajectory result.
+    """
+    reference = result.trajectories[0] if isinstance(result, TrajectoryEnsemble) else result
+    if reference.omega_1 is None or reference.omega_2 is None:
+        return None
+    return float(reference.omega_1), float(reference.omega_2)
+
+
 def _require_two_group_observables(obs: ObservableSeries) -> tuple[Tuple[np.ndarray, ...], ...]:
     """
     Extract group-resolved observables and fail clearly for homogeneous data.
@@ -116,6 +128,20 @@ def inhomogeneous_group_angles(
         ne_groups[0] + ne_groups[1],
         tol=tol,
     )
+
+    # TEMP DEBUG: print scaled group angles at the saved t_eval points.
+    # Uncomment this block if the omega_1 != omega_2 angle drift diagnostic is needed again.
+    # omega_groups = _omega_groups_for_result(result)
+    # if omega_groups is not None:
+    #     omega1, omega2 = omega_groups
+    #     scaled_theta1 = theta[0] / np.sqrt(omega1) if omega1 > 0 else np.full_like(theta[0], np.nan)
+    #     scaled_theta2 = theta[1] / np.sqrt(omega2) if omega2 > 0 else np.full_like(theta[1], np.nan)
+    #     print("TEMP DEBUG: theta_i / sqrt(omega_i) at saved t_eval points")
+    #     print("idx          t    theta_1/sqrt(omega_1)    theta_2/sqrt(omega_2)")
+    #     for idx, (time, value1, value2) in enumerate(
+    #         zip(np.asarray(obs.t, dtype=float), scaled_theta1, scaled_theta2)
+    #     ):
+    #         print(f"{idx:3d} {time:10.6f} {value1:24.12e} {value2:24.12e}")
 
     return {
         "t": np.asarray(obs.t, dtype=float),

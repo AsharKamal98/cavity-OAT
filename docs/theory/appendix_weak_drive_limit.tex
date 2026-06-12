@@ -1,0 +1,72 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,multirow}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section{Weak drive limit}
+\label{sec:weak}
+
+In this section, we derive the effective Hamiltonian and jump operator in the limit of weak drive. In this limit, the excited state $|e\rangle$ can be adiabatically eliminated, leaving only the effective dynamics of the ground-state manifold. To do so, we utilize a perturbative approach applicable to dissipative systems \cite{Reiter2012}. Furthermore, we will consider the role of collective interactions on the model which arise due to a detuning $\Delta$ of the cavity from the atomic transition. The corresponding Hamiltonian is
+\begin{equation}
+    \hat H = \Omega \hat J_x - \delta \hat N_e + \chi \hat J^\dagger \hat J, \qquad \hat l = \hat J^-, \qquad \chi = \frac{g_c^2}{\Delta^2+\kappa^2/4} \Delta, \qquad \Gamma_{\Delta} = \frac{g_c^2}{\Delta^2+\kappa^2/4} \kappa, 
+\end{equation}
+where $2 g_c$ is the single-photon Rabi frequency of the $|{\downarrow}\rangle \to |e\rangle$ transition and $\kappa$ is the decay rate of the cavity. Here, we have introduced $\Gamma_{\Delta}$ to distinguish it from the superradiant decay rate $\Gamma = \Gamma_{\Delta = 0}$ of the main text, where $\Delta = 0$.
+
+To lowest non-trivial (second-) order, this results in the general expressions for effective Hamiltonian and jump operator 
+\begin{subequations}
+\begin{equation}
+    \hat H_\updownarrow \approx - \frac{1}{2} \hat V_- [\hat H_{{{\text{NH}}}}^{-1} + (\hat H_{{{\text{NH}}}}^\dagger)^{-1}]\hat V_+, \qquad \hat l_\updownarrow = \hat l \hat H_{{{\text{NH}}}}^{-1} \hat V_+,
+\end{equation}
+\begin{equation}
+    \hat H_{\text{NH}} \equiv \hat H_e - \frac{i}{2} \hat l^\dagger \hat l,
+\end{equation}
+\end{subequations}
+where $\hat V^+ = \Omega/2 \hat J^+$ and its conjugate are the perturbative terms and $\hat H_e$ encodes the excited-state energies relative to the coupled ground state. Here, we see that the non-Hermitian $\hat{H}_{\text{NH}}^{-1} + H.c.$ replaces the usual inverse energy difference in conventional Hamiltonian perturbation theory while incorporating the non-zero linewidths of the bare Hamiltonian's eigenstates.
+
+For the three-level model and fixed $N_J$, the non-Hermitian Hamiltonian takes the form
+\begin{subequations}
+\begin{equation}
+    \hat H_{{{\text{NH}}}} = -\delta \left(\frac{N_J}{2} + \hat J_z\right) - \left(\chi + i \frac{\Gamma_\Delta}{2} \right) \hat J^+ \hat J^- = -\delta \left(\frac{N_J}{2} + \hat J_z\right) - \left(\chi + i \frac{\Gamma_\Delta}{2} \right) \left[ \hat J^2 - \hat J_z^2 + \hat J_z \right].
+\end{equation}
+\end{subequations}
+Since we are interested in the weak drive limit where all atoms are in the ground-state manifold, we restrict our focus to the state $|J = N_J/2, m_J = -N_J /2\rangle$, where $J$ and $m_J$ are the total and azimuthal quantum numbers of $\hat{\mathbf{J}}$. Thus we find the resulting (complex) Stark shift in this limit to be
+\begin{equation}
+    \hat J^- \hat H_{{\text{NH}}}^{-1} \hat J^+ |N_J/2,-N_J/2 \rangle = -\frac{N_J}{\delta +(\chi + i \frac{\Gamma_\Delta}{2}) N_J} |N_J/2,-N_J/2 \rangle,
+\end{equation}
+which is non-linear in $N_J$ when $\delta \neq 0$. Both $\chi, \Gamma_\Delta$ give rise to nonlinear fluctuations (in $N_J$) to the Stark shifts in a similar way, although $\Gamma_\Delta$ does so via the linewidths.
+
+In the weak drive limit, we restore fluctuations in $N_J$ according to $\hat{N}_J \equiv N/2 - \hat{S}_{\updownarrow,z}$, where $\updownarrow$ denotes the $|{\uparrow},{\downarrow}\rangle$ manifold, resulting in the following effective Hamiltonian and jump operator
+\begin{equation}
+\begin{aligned}
+    \hat H_{\updownarrow} &~= \frac{\Omega^2}{4} \frac{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})] (N/2-\hat{S}_{\updownarrow,z})}{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})]^2+\frac{\Gamma_\Delta^2}{4} (N/2-\hat{S}_{\updownarrow,z})^2}, \\
+    \hat l_{\updownarrow} &~= -\frac{\Omega}{2}\frac{N/2-\hat{S}_{\updownarrow,z}}{\delta +(\chi + i \frac{\Gamma_\Delta}{2}) (N/2-\hat{S}_{\updownarrow,z})}
+    \\ &~ = -\frac{\Omega}{2} \left( -\frac{\delta \hat{S}_{\updownarrow,z}}{[\delta + (\chi + i \Gamma_\Delta/2) N/2][ \delta + (\chi + i \Gamma_\Delta/2) (N/2 - S_{\updownarrow,z})]}  + \frac{N/2}{\delta + (\chi + i \Gamma_\Delta/2)N/2}\right).
+\end{aligned}
+\end{equation}
+Here, we note that there is a constant term in the jump operator, which can give rise to unitary dynamics in combination with the operator part of the jump operator. For a jump operator $C + \hat O$, this corresponds to a Hamiltonian term $\Gamma_\Delta (C \hat O^\dagger - C^* \hat O)/2i$. Absorbing the effect of the constant term into the Hamiltonian, we find
+\begin{subequations}
+\begin{align}
+    \hat H_{\updownarrow} &~ = \frac{\Omega^2}{4} \frac{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})] (N/2-\hat{S}_{\updownarrow,z})}{[\delta+\chi  (N/2-\hat{S}_{\updownarrow,z})]^2+\frac{\Gamma_\Delta^2}{4} (N/2-\hat{S}_{\updownarrow,z})^2}\left(1 - \frac{N \Gamma_\Delta^2 \delta \hat S_{\updownarrow,z} /4 }{[\delta+ \chi (N/2+\hat S_{\updownarrow,z})] [ (\delta +N \chi/2)^2 + (N \Gamma_\Delta/4)^2] }\right),\\
+    \hat l_{\updownarrow} &~ = \frac{\Omega}{2} \left( \frac{\delta \hat{S}_{\updownarrow,z}}{[\delta + (\chi + i \Gamma_\Delta/2) N/2][ \delta + (\chi + i \Gamma_\Delta/2) (N/2 - S_{\updownarrow,z})]}\right).
+\end{align}
+\end{subequations}
+
+Finally, we can expand both in powers of $\hat S_{\updownarrow,z}$ when assuming an equal superposition of the ground states ($\langle \hat S_{\updownarrow,z} \rangle = 0$). Expanding to second order in the master equation (second order in the Hamiltonian and first order in the jump operator), we find
+\begin{subequations}
+    \begin{align}
+        \hat H_{\updownarrow} &~ \approx \frac{N \Omega^2 (\delta + N \chi/2) }{8| \delta + N \chi/2 + i N \Gamma_\Delta/4|^2} - \frac{ \delta \Omega^2 }{4 | \delta + N \chi/2 + i N \Gamma_\Delta/4|^2} \hat S_{\updownarrow,z} - \frac{ \delta \Omega^2 (N \Gamma_\Delta^2/16 +  \delta \chi/2 + N \chi^2/4) }{2 |\delta + N \chi/2 + i N \Gamma_\Delta /4|^4} \hat S_{\updownarrow,z}^2 \\
+        \hat l_{\updownarrow} &~ \approx  \frac{\delta \Omega }{2[ \delta + (\chi + i \Gamma_\Delta/2) N/2]^2}\hat S_{\updownarrow,z},
+    \end{align}
+\end{subequations}
+whose ratio of OAT to collective dephasing rates is
+\begin{equation}
+    \frac{2 (\delta \chi/2 + N \chi^2/4 + N\Gamma_\Delta^2/16)}{\delta \Gamma_\Delta},
+\end{equation}
+which approaches $\chi/\Gamma_\Delta = \Delta/\kappa$ in the limit of large $\delta$ and $N g_c^2 /(4 \delta \kappa)$ in the limit of near-resonant drive. In the limit $\chi = 0, \delta \to 0$, we find agreement with the Berry phase derivations of the previous section.
+
+\end{document}
