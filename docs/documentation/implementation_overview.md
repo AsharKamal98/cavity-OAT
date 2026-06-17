@@ -41,7 +41,7 @@ helpers.
 
 Detailed implementation conventions should live in:
 
-- `docs/instructions/simulation_parameters.typ`
+- `docs/instructions/simulation_parameters.tex`
 
 ## 2. Phase Protocol
 
@@ -119,7 +119,7 @@ Detailed initialization conventions should live in:
 
 For inhomogeneous coupling conventions, use:
 
-- `docs/instructions/paper_inhomogeneous_couplings.typ`
+- `docs/instructions/paper_inhomogeneous_couplings.tex`
 
 ## 4. Parameter Validation
 
@@ -242,11 +242,11 @@ ensemble_observables(TrajectoryEnsemble) -> ObservableSeries
 Use task-specific rules for nonlinear diagnostics:
 
 - Bloch angles and active-manifold directions:
-  `docs/instructions/bloch_vector_averaging.typ`
+  `docs/instructions/bloch_vector_averaging.tex`
 - Generalized squeezing:
-  `docs/instructions/squeezing.typ`
+  `docs/instructions/squeezing.tex`
 - Dephasing Bloch-vector lengths:
-  `docs/instructions/dephasing_diagnostics.typ`
+  `docs/instructions/dephasing_diagnostics.tex`
 
 Extensive observables such as total atom numbers, jump rates, and jump counts
 should not be normalized using Bloch-direction conventions unless a diagnostic
@@ -268,9 +268,9 @@ plot_diagnostic(diagnostic_data or result, ...) -> matplotlib figure/axes
 
 Current task-specific diagnostic instructions include:
 
-- `docs/instructions/squeezing.typ`
-- `docs/instructions/dephasing_diagnostics.typ`
-- `docs/instructions/bloch_vector_averaging.typ`
+- `docs/instructions/squeezing.tex`
+- `docs/instructions/dephasing_diagnostics.tex`
+- `docs/instructions/bloch_vector_averaging.tex`
 
 Future diagnostics should get their own instruction files when they introduce
 new averaging rules, new physical conventions, or nontrivial plotting logic.

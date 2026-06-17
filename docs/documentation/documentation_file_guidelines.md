@@ -89,11 +89,11 @@ TDOO: add instructions on how to write theory files
 When pointing to another document, use the repository path, for example:
 
 ```text
-docs/instructions/bloch_vector_averaging.typ
+docs/instructions/bloch_vector_averaging.tex
 ```
 
 For TeX files, use escaped underscores inside `\texttt{...}`:
 
 ```tex
-\texttt{docs/instructions/bloch\_vector\_averaging.typ}
+\texttt{docs/instructions/bloch\_vector\_averaging.tex}
 ```

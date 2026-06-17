@@ -82,18 +82,18 @@ def build_sector_ops(Nj: int) -> SectorOperators:
     jplus_vals = np.sqrt((Nj - ne[:-1]) * (ne[:-1] + 1.0))
     jminus_vals = np.sqrt(ne[1:] * (Nj - ne[1:] + 1.0))
 
-    J_plus = diags(jplus_vals, offsets=-1, shape=(dim, dim), dtype=np.complex128).tocsc()
-    J_minus = diags(jminus_vals, offsets=+1, shape=(dim, dim), dtype=np.complex128).tocsc()
+    Jp = diags(jplus_vals, offsets=-1, shape=(dim, dim), dtype=np.complex128).tocsc()
+    Jm = diags(jminus_vals, offsets=+1, shape=(dim, dim), dtype=np.complex128).tocsc()
 
-    J_x = (J_plus + J_minus) * 0.5
-    J_y = ((J_plus - J_minus) / (2.0j)).tocsc()
+    J_x = (Jp + Jm) * 0.5
+    J_y = ((Jp - Jm) / (2.0j)).tocsc()
     N_e = diags(ne, 0, shape=(dim, dim), dtype=np.complex128).tocsc()
-    JpJm = (J_plus @ J_minus).tocsc()
+    JpJm = (Jp @ Jm).tocsc()
 
     return SectorOperators(
         Nj=Nj,
-        J_plus=J_plus,
-        J_minus=J_minus,
+        Jp=Jp,
+        Jm=Jm,
         J_x=J_x,
         J_y=J_y,
         N_e=N_e,
@@ -102,7 +102,7 @@ def build_sector_ops(Nj: int) -> SectorOperators:
         Nj_groups=(Nj,),
         omega_groups=(1.0,),
         J_x_drive=J_x,
-        A_weighted=J_minus,
+        A_weighted=Jm,
         AdagA_weighted=JpJm,
         N_e_groups=(N_e,),
         J_x_groups=(J_x,),
@@ -141,35 +141,35 @@ def build_two_group_sector_ops(
     I1 = eye(Nj1 + 1, format="csc", dtype=np.complex128)
     I2 = eye(Nj2 + 1, format="csc", dtype=np.complex128)
 
-    J1_plus = kron(ops1.J_plus, I2, format="csc")
-    J1_minus = kron(ops1.J_minus, I2, format="csc")
+    J1p = kron(ops1.Jp, I2, format="csc")
+    J1m = kron(ops1.Jm, I2, format="csc")
     J1_x = kron(ops1.J_x, I2, format="csc")
     J1_y = kron(ops1.J_y, I2, format="csc")
     N_e1 = kron(ops1.N_e, I2, format="csc")
 
-    J2_plus = kron(I1, ops2.J_plus, format="csc")
-    J2_minus = kron(I1, ops2.J_minus, format="csc")
+    J2p = kron(I1, ops2.Jp, format="csc")
+    J2m = kron(I1, ops2.Jm, format="csc")
     J2_x = kron(I1, ops2.J_x, format="csc")
     J2_y = kron(I1, ops2.J_y, format="csc")
     N_e2 = kron(I1, ops2.N_e, format="csc")
 
-    J_plus = (J1_plus + J2_plus).tocsc()
-    J_minus = (J1_minus + J2_minus).tocsc()
+    Jp = (J1p + J2p).tocsc()
+    Jm = (J1m + J2m).tocsc()
     J_x = (J1_x + J2_x).tocsc()
     J_y = (J1_y + J2_y).tocsc()
     N_e = (N_e1 + N_e2).tocsc()
-    A_weighted = (omega1 * J1_minus + omega2 * J2_minus).tocsc()
+    A_weighted = (omega1 * J1m + omega2 * J2m).tocsc()
     J_x_drive = (omega1 * J1_x + omega2 * J2_x).tocsc()
     AdagA_weighted = (A_weighted.conjugate().transpose() @ A_weighted).tocsc()
 
     return SectorOperators(
         Nj=Nj1 + Nj2,
-        J_plus=J_plus,
-        J_minus=J_minus,
+        Jp=Jp,
+        Jm=Jm,
         J_x=J_x,
         J_y=J_y,
         N_e=N_e,
-        JpJm=(J_plus @ J_minus).tocsc(),
+        JpJm=(Jp @ Jm).tocsc(),
         sector_key=(Nj1, Nj2),
         Nj_groups=(Nj1, Nj2),
         omega_groups=(omega1, omega2),

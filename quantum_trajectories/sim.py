@@ -65,7 +65,7 @@ def build_phase_jump_operator_for_sector(
     Here `ops` contains the reduced operators for a fixed Nj sector, so the
     returned matrix acts only within that sector's (Nj + 1)-dimensional basis.
     """
-    unshifted_jump = ops.A_weighted if ops.A_weighted is not None else ops.J_minus
+    unshifted_jump = ops.A_weighted if ops.A_weighted is not None else ops.Jm
     if not shifted_jump_operator:
         return unshifted_jump
 
@@ -240,7 +240,7 @@ def build_precomputed_trajectory_data(
         for sector_key in sector_list
     }
     # Reduced Hilbert-space dimension in each sector: Nj + 1 or (Nj1 + 1)(Nj2 + 1).
-    dims = {sector_key: ops.J_minus.shape[0] for sector_key, ops in zip(sector_list, ops_list)}
+    dims = {sector_key: ops.Jm.shape[0] for sector_key, ops in zip(sector_list, ops_list)}
     # Phase- and sector-resolved jump operators:
     # phase_jump_operators[phase_index][sector_index] = l_{phase,Nj}.
     phase_jump_operators = [

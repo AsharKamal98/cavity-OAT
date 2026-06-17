@@ -48,7 +48,7 @@ For one-time setup of theory documentation from original paper TeX sources, use
 
 ### `docs/instructions`
 
-This directory contains implementation rules for Codex and future coding tasks.
+This directory contains high-level implementation rules for Codex and future coding tasks.
 Use these files when changing code behavior, APIs, diagnostics, averaging logic,
 post-processing logic, or requiring implementation-specific knowledge for a task.
 
@@ -69,26 +69,30 @@ The instruction-document hierarchy should be:
 ```text
 AGENTS.md
   -> docs/instructions/implementation_overview.md
-      -> docs/instructions/simulation_parameters.md (planned/missing)
+      -> docs/instructions/simulation_parameters.typ
       -> docs/instructions/initial_sector_state.md (planned/missing)
       -> docs/instructions/parameter_validation.md (planned/missing)
-      -> docs/instructions/simulation_precompute.md
-      -> docs/instructions/paper_inhomogeneous_couplings.tex
+      -> docs/instructions/simulation_precompute.typ
+      -> docs/instructions/paper_inhomogeneous_couplings.typ
       -> docs/instructions/ensemble_simulation.md (planned/missing)
       -> docs/instructions/single_trajectory_simulation.md (planned/missing)
-      -> docs/instructions/bloch_vector_averaging.tex
-      -> docs/instructions/squeezing.tex
-      -> docs/instructions/dephasing_diagnostics.tex
+      -> docs/instructions/bloch_vector_averaging.typ
+      -> docs/instructions/squeezing.typ
+      -> docs/instructions/dephasing_diagnostics.typ
       -> docs/instructions/plotting_workflows.md (planned/missing)
 ```
 
 Keep task-specific routing in `docs/instructions/implementation_overview.md`,
 not directly in `AGENTS.md`.
 
-All future changes to intended code behavior should be reflected in the relevant
-instruction file. The goal is that, given the implementation overview and the
+All future changes to intended code behavior should be reflected in the relevant instruction file.
+The goal is that, given the implementation overview and the
 task-specific instruction files it references, Codex can reconstruct the
 high-level code logic without relying on hidden assumptions.
+
+
+
+
 
 ### `docs/output_texts`
 

@@ -16,8 +16,8 @@ SectorKey = Union[int, Tuple[int, int]]
 @dataclass
 class SectorOperators:
     Nj: int
-    J_plus: csc_matrix
-    J_minus: csc_matrix
+    Jp: csc_matrix
+    Jm: csc_matrix
     J_x: csc_matrix
     J_y: csc_matrix
     N_e: csc_matrix

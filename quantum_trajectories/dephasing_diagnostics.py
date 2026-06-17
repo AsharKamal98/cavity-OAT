@@ -592,3 +592,95 @@ def plot_dephasing_bloch_lengths(
         fig.savefig(output_path, dpi=200, bbox_inches="tight")
 
     return data, fig, axes_arr
+
+
+def plot_compare_dephasing_bloch_lengths(
+    homogeneous_result: Union[TrajectoryResult, TrajectoryEnsemble],
+    inhomogeneous_result: Union[TrajectoryResult, TrajectoryEnsemble],
+    *,
+    normalize: bool = True,
+    ax=None,
+    output_path: Optional[Union[str, Path]] = None,
+    tol: float = 1e-12,
+    n_processes: Optional[int] = None,
+    homogeneous_averaged_observables: Optional[ObservableSeries] = None,
+    inhomogeneous_averaged_observables: Optional[ObservableSeries] = None,
+):
+    """
+    Compute and plot homogeneous-vs-inhomogeneous dephasing diagnostics.
+
+    This mirrors the comparison notebook use case: the homogeneous total length,
+    the inhomogeneous total length, and the inhomogeneous group-resolved lengths
+    are shown on one axis.  The dephasing lengths are computed inside this
+    helper so callers do not need to duplicate plotting logic.
+    """
+    import matplotlib.pyplot as plt
+
+    homogeneous_data = dephasing_bloch_lengths(
+        homogeneous_result,
+        normalize=normalize,
+        tol=tol,
+        n_processes=n_processes,
+        averaged_observables=homogeneous_averaged_observables,
+    )
+    inhomogeneous_data = dephasing_bloch_lengths(
+        inhomogeneous_result,
+        normalize=normalize,
+        tol=tol,
+        n_processes=n_processes,
+        averaged_observables=inhomogeneous_averaged_observables,
+    )
+
+    if ax is None:
+        fig, axis = plt.subplots(figsize=(8, 4))
+    else:
+        axis = ax
+        fig = axis.figure
+
+    axis.plot(
+        homogeneous_data["t"],
+        homogeneous_data["length_total_plot"],
+        linewidth=2.0,
+        label="homogeneous total",
+    )
+    axis.plot(
+        inhomogeneous_data["t"],
+        inhomogeneous_data["length_total_plot"],
+        linewidth=2.0,
+        label="inhomogeneous total",
+    )
+    if inhomogeneous_data["inhomogeneous"]:
+        for group_index, group_length in enumerate(
+            inhomogeneous_data["length_groups_plot"],
+            start=1,
+        ):
+            axis.plot(
+                inhomogeneous_data["t"],
+                group_length,
+                linestyle="--",
+                linewidth=1.4,
+                alpha=0.8,
+                label=f"inhomogeneous group {group_index}",
+            )
+
+    reference = _reference_result(inhomogeneous_result)
+    if len(reference.phases) >= 2:
+        for phase_time in phase_change_times(reference.phases):
+            axis.axvline(phase_time, linestyle="--", color="black", alpha=0.35)
+
+    axis.set_xlabel(r"$\Gamma t$")
+    axis.set_ylabel(homogeneous_data["ylabel"])
+    axis.set_title("Dephasing Bloch-vector length")
+    axis.grid(alpha=0.3)
+    axis.legend()
+    fig.tight_layout()
+
+    if output_path is not None:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=200, bbox_inches="tight")
+
+    return {
+        "homogeneous": homogeneous_data,
+        "inhomogeneous": inhomogeneous_data,
+    }, fig, axis
