@@ -8,6 +8,9 @@ Instruction files describe how the repository implements the physics from
 performance-relevant choices, and invariants that must survive refactors. They
 should not duplicate detailed theory or document every line of code.
 
+Generic reusable instruction files live in `docs/instructions/generic/` and can
+be copied between projects.
+
 When implementing a feature:
 
 - Read the relevant theory file for equations and physical meaning.
@@ -231,6 +234,10 @@ Observable code should convert saved trajectory snapshots into expectation-value
 time series. For ensembles, average the underlying observables or moments before
 constructing nonlinear derived quantities when the target object is the
 unconditioned state.
+
+For parser output-container conventions, use:
+
+- `docs/instructions/generic/parser.md`
 
 High-level data flow should look like:
 

@@ -44,7 +44,7 @@ AGENTS.md
 ```
 
 For one-time setup of theory documentation from original paper TeX sources, use
-`docs/instructions/theory_documentation_setup.md`.
+`docs/instructions/generic/theory_documentation_setup.md`.
 
 ### `docs/instructions`
 
@@ -117,7 +117,7 @@ Read relevant theory and instruction files before writing text.
 - Always read the relevant overview file before reading a task-specific
   instruction or theory-specific file. 
 - Before creating a new theory or instruction file, read
-  `docs/instructions/documentation_file_guidelines.md`.
+  `docs/instructions/generic/documentation_file_guidelines.md`.
 - If both a theory file and an instruction file apply, use the theory file for
   equations and the instruction file for repository-specific implementation
   behavior.

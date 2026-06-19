@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from common.parser import Array, AveragedResult, ObservableSeries, Phase
+from pydantic import BaseModel
 from scipy.sparse import csc_matrix
 
 SectorKey = Union[int, Tuple[int, int]]
@@ -71,8 +72,8 @@ class TrajectoryResult:
     non_precomputed_step_count: int = 0
 
 
-@dataclass
-class JMomentSnapshot:
+
+class JMomentSnapshot(BaseModel):
     """First-order J-sphere moments for one saved trajectory snapshot."""
 
     t: float
@@ -84,14 +85,13 @@ class JMomentSnapshot:
     jump_rate: float
     N_j: float
     Jx_drive: float
-    Jx_groups: Optional[Tuple[float, ...]] = None
-    Jy_groups: Optional[Tuple[float, ...]] = None
-    Jz_groups: Optional[Tuple[float, ...]] = None
-    N_e_groups: Optional[Tuple[float, ...]] = None
+    Jx_groups: Tuple[float, ...] | None = None
+    Jy_groups: Tuple[float, ...] | None = None
+    Jz_groups: Tuple[float, ...] | None = None
+    N_e_groups: Tuple[float, ...] | None = None
 
 
-@dataclass
-class JMomentSeries:
+class JMomentSeries(BaseModel):
     """Per-timestep first-order J-sphere moments for one trajectory."""
 
     t: Array
@@ -103,10 +103,24 @@ class JMomentSeries:
     jump_rate: Array
     N_j: Array
     Jx_drive: Array
-    Jx_groups: Optional[Tuple[Array, ...]] = None
-    Jy_groups: Optional[Tuple[Array, ...]] = None
-    Jz_groups: Optional[Tuple[Array, ...]] = None
-    N_e_groups: Optional[Tuple[Array, ...]] = None
+    Jx_groups: Tuple[Array, ...] | None = None
+    Jy_groups: Tuple[Array, ...] | None = None
+    Jz_groups: Tuple[Array, ...] | None = None
+    N_e_groups: Tuple[Array, ...] | None = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class MomentSeries(BaseModel):
+    """Container for moment series computed on a shared time grid."""
+
+    t: Array
+    J: JMomentSeries | None = None
+    S: Any | None = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 # -----------------------------------------------------------------------------
 # Ensambles
