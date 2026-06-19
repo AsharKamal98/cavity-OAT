@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import multiprocessing as mp
-from typing import Dict, Iterable, Mapping, Optional
+from typing import Dict, Mapping, Optional
 
 import numpy as np
-from tqdm.auto import tqdm
 
 from common.utils import active_manifold_angles
+from quantum_trajectories.utils import map_with_optional_pool
 from quantum_trajectories.parser import (
     Array,
     AveragedResult,
@@ -309,36 +308,6 @@ def _trajectory_observables_worker(args: tuple[TrajectoryResult, float]) -> Obse
     return trajectory_observables(traj, tol=tol)
 
 
-def _map_with_optional_pool(
-    worker,
-    items: Iterable,
-    *,
-    n_processes: Optional[int],
-    progress_desc: str,
-):
-    """
-    Run an independent worker over items either serially or with a process pool,
-    while keeping the same tqdm progress reporting in both modes.
-    """
-    items = list(items)
-    if n_processes is None or n_processes == 1:
-        return [worker(item) for item in tqdm(items, desc=progress_desc)]
-
-    if n_processes == -1:
-        n_processes = mp.cpu_count()
-    if n_processes <= 0:
-        raise ValueError("n_processes must be None, 1, -1, or a positive integer.")
-
-    ctx = mp.get_context()
-    with ctx.Pool(processes=n_processes) as pool:
-        return list(
-            tqdm(
-                pool.imap(worker, items),
-                total=len(items),
-                desc=progress_desc,
-            )
-        )
-
 def _interp_series(t_src: Array, y_src: Array, t_ref: Array) -> Array:
     """
     Linear interpolation onto a common time grid.
@@ -404,7 +373,7 @@ def ensemble_observables(
     Jz_group_lists = None
     Ne_group_lists = None
 
-    per_traj_obs = _map_with_optional_pool(
+    per_traj_obs = map_with_optional_pool(
         _trajectory_observables_worker,
         [(traj, tol) for traj in ensemble.trajectories],
         n_processes=n_processes,

@@ -97,3 +97,8 @@ For TeX files, use escaped underscores inside `\texttt{...}`:
 ```tex
 \texttt{docs/instructions/bloch\_vector\_averaging.typ}
 ```
+
+## General Writing Rules
+
+- In Typst math, group multi-character subscripts explicitly, e.g. use `t_(k)`,
+  `psi_(alpha)`, and `N_(J)` instead of `t_k`, `psi_alpha`, or `N_J`.

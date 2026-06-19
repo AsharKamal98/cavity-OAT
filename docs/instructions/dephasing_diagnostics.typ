@@ -9,7 +9,7 @@
 
 Use this note whenever implementing or modifying diagnostics intended to visualize dephasing in custom MCWF results.
 
-For any averaging over different $N_J$ sectors, group-resolved sectors, or trajectory ensembles, follow `docs/instructions/bloch_vector_averaging.typ`. This file only adds the dephasing-specific rule that the averaged vector length is computed after the relevant vector components have been averaged.
+For any averaging over different $N_J$ sectors or group-resolved sectors, follow `docs/instructions/bloch_vector_averaging.typ`. For trajectory ensembles, first average the relevant vector components over trajectories on the shared time grid, then apply the sector/group averaging rule to that already-averaged data. This file only adds the dephasing-specific rule that the averaged vector length is computed after the relevant vector components have been averaged.
 
 = Goal
 

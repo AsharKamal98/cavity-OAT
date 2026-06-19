@@ -41,7 +41,7 @@ helpers.
 
 Detailed implementation conventions should live in:
 
-- `docs/instructions/simulation_parameters.typ`
+- `docs/instructions/simulation_parameters.typ` (needs cleaning!)
 
 ## 2. Phase Protocol
 
@@ -119,7 +119,7 @@ Detailed initialization conventions should live in:
 
 For inhomogeneous coupling conventions, use:
 
-- `docs/instructions/paper_inhomogeneous_couplings.typ`
+- `docs/instructions/paper_inhomogeneous_couplings.typ` (needs cleaning!)
 
 ## 4. Parameter Validation
 
@@ -187,7 +187,7 @@ or the logic that chooses between precomputed and variable-step propagation.
 
 For ensemble-level simulation flow, use:
 
-- `docs/instructions/ensemble_simulation.md` (planned/missing)
+- `docs/instructions/ensemble_simulation.typ` (needs cleaning!)
 
 This file should cover seed construction, multiprocessing, worker state, shared
 precomputed data, and collecting `TrajectoryResult`s into a
@@ -219,7 +219,7 @@ blocks on the internal `n_e` or `(n_e1, n_e2)` basis.
 
 For single-trajectory simulation flow, use:
 
-- `docs/instructions/single_trajectory_simulation.md` (planned/missing)
+- `docs/instructions/single_trajectory_simulation.typ` (needs cleaning!)
 
 This file should cover `simulate_single_trajectory(...)`, `t_eval` saving,
 full-`dt` steps versus partial steps, jump detection, jump bisection, and
@@ -239,14 +239,25 @@ trajectory_observables(TrajectoryResult) -> ObservableSeries
 ensemble_observables(TrajectoryEnsemble) -> ObservableSeries
 ```
 
+For reusable first-order J-moment extraction, use:
+
+- `docs/instructions/j_moments.typ`
+
+This file should cover `compute_trajectory_j_moments(...)`,
+`compute_average_j_moments(...)`, `compute_ensemble_j_moments(...)`,
+`JMomentSnapshot`, `JMomentSeries`, and the meaning of each saved J-moment
+field.
+
 Use task-specific rules for nonlinear diagnostics:
 
 - Bloch angles and active-manifold directions:
   `docs/instructions/bloch_vector_averaging.typ`
+- Normalized active-manifold spin-component plots:
+  `docs/instructions/plot_spin_components.typ`
 - Generalized squeezing:
   `docs/instructions/squeezing.typ`
 - Dephasing Bloch-vector lengths:
-  `docs/instructions/dephasing_diagnostics.typ`
+  `docs/instructions/dephasing_diagnostics.typ` (needs cleaning!)
 
 Extensive observables such as total atom numbers, jump rates, and jump counts
 should not be normalized using Bloch-direction conventions unless a diagnostic
@@ -271,6 +282,7 @@ Current task-specific diagnostic instructions include:
 - `docs/instructions/squeezing.typ`
 - `docs/instructions/dephasing_diagnostics.typ`
 - `docs/instructions/bloch_vector_averaging.typ`
+- `docs/instructions/plot_spin_components.typ`
 
 Future diagnostics should get their own instruction files when they introduce
 new averaging rules, new physical conventions, or nontrivial plotting logic.
@@ -323,3 +335,6 @@ files:
   2. pseudo-code-style data input shape;
   3. pseudo-code-style data output shape;
   4. high-level pseudo-code for long or complex functions.
+- Do not automatically modify instruction files or parts of instruction files
+  unrelated to the given task, unless it is a smaller typo. If a larger
+  inconsistency is found in unrelated instructions to the task, let the user know.

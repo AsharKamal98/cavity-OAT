@@ -45,7 +45,9 @@ def active_manifold_angles(
 
     We then normalize the collective spin components by N_active so that the
     returned (sx, sy, sz) correspond to the averaged single-particle Bloch
-    vector within the active manifold.
+    vector within the active manifold, with sz using the same sign convention
+    as J_z. The polar angle uses theta = arccos(-sz), so the |down> state
+    points to the north pole in the J-Bloch convention.
     """
     Jx = np.asarray(Jx, dtype=float)
     Jy = np.asarray(Jy, dtype=float)
@@ -61,14 +63,14 @@ def active_manifold_angles(
     valid = N_active > tol
     sx[valid] = 2.0 * Jx[valid] / N_active[valid]
     sy[valid] = 2.0 * Jy[valid] / N_active[valid]
-    sz[valid] = -2.0 * Jz[valid] / N_active[valid]
+    sz[valid] = 2.0 * Jz[valid] / N_active[valid]
 
     if np.any(sz < -1.0 - tol) or np.any(sz > 1.0 + tol):
         raise ValueError("sz values must lie in [-1, 1] to compute angles.")
     sz = np.clip(sz, -1.0, 1.0)
 
     theta = np.zeros_like(sz, dtype=float)
-    theta[valid] = np.arccos(sz[valid])
+    theta[valid] = np.arccos(-sz[valid])
 
     phi = np.arctan2(sy, sx)
     r_perp = np.sqrt(sx**2 + sy**2)

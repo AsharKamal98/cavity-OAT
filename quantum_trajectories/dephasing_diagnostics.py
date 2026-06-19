@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import multiprocessing as mp
 from pathlib import Path
-from typing import Iterable, Mapping, Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
 
@@ -11,6 +10,7 @@ from common.utils import active_manifold_angles, phase_change_times
 from quantum_trajectories.aggregator import ensemble_observables, trajectory_observables
 from quantum_trajectories.parser import Array, SectorKey, TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.state_helpers import total_norm2
+from quantum_trajectories.utils import map_with_optional_pool
 
 
 def _reference_result(result: Union[TrajectoryResult, TrajectoryEnsemble]) -> TrajectoryResult:
@@ -389,29 +389,6 @@ def _trajectory_s_components_worker(args: tuple) -> np.ndarray:
     )
 
 
-def _map_with_optional_pool(
-    worker,
-    items: Iterable,
-    *,
-    n_processes: Optional[int],
-    progress_desc: str,
-):
-    from tqdm.auto import tqdm
-
-    items = list(items)
-    if n_processes is None or n_processes == 1:
-        return [worker(item) for item in tqdm(items, desc=progress_desc)]
-
-    if n_processes == -1:
-        n_processes = mp.cpu_count()
-    if n_processes <= 0:
-        raise ValueError("n_processes must be None, 1, -1, or a positive integer.")
-
-    ctx = mp.get_context()
-    with ctx.Pool(processes=n_processes) as pool:
-        return list(tqdm(pool.imap(worker, items), total=len(items), desc=progress_desc))
-
-
 def dephasing_bloch_lengths(
     result: Union[TrajectoryResult, TrajectoryEnsemble],
     *,
@@ -445,7 +422,7 @@ def dephasing_bloch_lengths(
     )
 
     if isinstance(result, TrajectoryEnsemble):
-        per_traj_components = _map_with_optional_pool(
+        per_traj_components = map_with_optional_pool(
             _trajectory_s_components_worker,
             [
                 (traj, t, theta_groups, phi_groups, group_sizes, tol)

@@ -190,7 +190,7 @@ $
 J_(x,1),J_(y,1),J_(z,1),N_(e,1), quad J_(x,2),J_(y,2),J_(z,2),N_(e,2).
 $
 
-Angle and Bloch-vector averages across sectors or trajectories should follow `docs/instructions/bloch_vector_averaging.typ`. In particular, do not average angles directly. Average the appropriate normalized components or moments first, then construct $theta$ and $phi$.
+Angle and Bloch-vector averages across sectors should follow `docs/instructions/bloch_vector_averaging.typ`. For trajectory ensembles, first average the required moments over trajectories on the shared time grid, then apply the Bloch-vector averaging rule to that already-averaged data. In particular, do not average angles directly. Average the appropriate normalized components or moments first, then construct $theta$ and $phi$.
 
 = Mean-Field Residual Diagnostic
 

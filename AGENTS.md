@@ -74,9 +74,12 @@ AGENTS.md
       -> docs/instructions/parameter_validation.md (planned/missing)
       -> docs/instructions/simulation_precompute.typ
       -> docs/instructions/paper_inhomogeneous_couplings.typ
-      -> docs/instructions/ensemble_simulation.md (planned/missing)
-      -> docs/instructions/single_trajectory_simulation.md (planned/missing)
+      -> docs/instructions/ensemble_simulation.typ
+      -> docs/instructions/single_trajectory_simulation.typ
+      -> docs/instructions/observable_moment_pipeline.typ
+      -> docs/instructions/j_moments.typ
       -> docs/instructions/bloch_vector_averaging.typ
+      -> docs/instructions/plot_spin_components.typ
       -> docs/instructions/squeezing.typ
       -> docs/instructions/dephasing_diagnostics.typ
       -> docs/instructions/plotting_workflows.md (planned/missing)

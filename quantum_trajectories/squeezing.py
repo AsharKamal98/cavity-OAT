@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import multiprocessing as mp
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
 import numpy as np
 
@@ -14,6 +13,7 @@ from quantum_trajectories.aggregator import expected_collective_components, traj
 from quantum_trajectories.operator_helpers import build_sector_ops
 from quantum_trajectories.parser import Array, SectorKey, TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.state_helpers import total_norm2
+from quantum_trajectories.utils import map_with_optional_pool
 
 
 def _block_inner_product(left: Mapping[SectorKey, Array], right: Mapping[SectorKey, Array]) -> complex:
@@ -47,35 +47,6 @@ def _interp_series(t_src: Array, y_src: Array, t_ref: Array) -> Array:
     t_unique, idx = np.unique(t_src, return_index=True)
     y_unique = y_src[idx]
     return np.interp(t_ref, t_unique, y_unique)
-
-
-def _map_with_optional_pool(
-    worker,
-    items: Iterable,
-    *,
-    n_processes: Optional[int],
-    progress_desc: str,
-):
-    """
-    Run a trajectory-wise worker either serially or through multiprocessing.
-
-    A tqdm progress bar is shown in both cases so long post-processing stages
-    stay visible when profiling ensemble squeezing.
-    """
-    from tqdm.auto import tqdm
-
-    items = list(items)
-    if n_processes is None or n_processes == 1:
-        return [worker(item) for item in tqdm(items, desc=progress_desc)]
-
-    if n_processes == -1:
-        n_processes = mp.cpu_count()
-    if n_processes <= 0:
-        raise ValueError("n_processes must be None, 1, -1, or a positive integer.")
-
-    ctx = mp.get_context()
-    with ctx.Pool(processes=n_processes) as pool:
-        return list(tqdm(pool.imap(worker, items), total=len(items), desc=progress_desc))
 
 
 def _trajectory_observables_worker(args: tuple[TrajectoryResult, float]) -> ObservableSeries:
@@ -904,7 +875,7 @@ def generalized_squeezing_for_ensemble(
         ne_mean = np.asarray(averaged_observables.N_e, dtype=float)
         nj_mean = np.asarray(averaged_observables.N_j, dtype=float)
     else:
-        per_traj_obs = _map_with_optional_pool(
+        per_traj_obs = map_with_optional_pool(
             _trajectory_observables_worker,
             [(traj, tol) for traj in ensemble.trajectories],
             n_processes=n_processes,
@@ -940,7 +911,7 @@ def generalized_squeezing_for_ensemble(
         print(f"xi timing: theta_J/phi_J construction finished in {time.perf_counter() - t0:.3f} s")
 
     t0 = time.perf_counter()
-    s_bloch_results = _map_with_optional_pool(
+    s_bloch_results = map_with_optional_pool(
         _trajectory_s_bloch_series_worker,
         [(traj, t, theta_j, phi_j, tol) for traj in ensemble.trajectories],
         n_processes=n_processes,
@@ -970,7 +941,7 @@ def generalized_squeezing_for_ensemble(
         print(f"xi timing: theta_S/phi_S construction finished in {time.perf_counter() - t0:.3f} s")
 
     t0 = time.perf_counter()
-    covariance_results = _map_with_optional_pool(
+    covariance_results = map_with_optional_pool(
         _trajectory_covariance_series_worker,
         [(traj, t, theta_j, phi_j, theta_s, phi_s, tol) for traj in ensemble.trajectories],
         n_processes=n_processes,
@@ -1282,7 +1253,7 @@ def generalized_squeezing_for_inhomogeneous(
     if len(trajectories) == 1:
         per_traj_obs = [trajectory_observables(trajectories[0], tol=tol)]
     else:
-        per_traj_obs = _map_with_optional_pool(
+        per_traj_obs = map_with_optional_pool(
             _trajectory_observables_worker,
             [(traj, tol) for traj in trajectories],
             n_processes=n_processes,
@@ -1315,7 +1286,7 @@ def generalized_squeezing_for_inhomogeneous(
     excited_fraction_full[valid_full_active] = obs_mean["N_e"][valid_full_active] / obs_mean["N_j"][valid_full_active]
 
     t0 = time.perf_counter()
-    s_bloch_results = _map_with_optional_pool(
+    s_bloch_results = map_with_optional_pool(
         _trajectory_inhomogeneous_s_bloch_series_worker,
         [(traj, t, theta_j_groups, phi_j_groups, N_groups, tol) for traj in trajectories],
         n_processes=n_processes,
@@ -1348,7 +1319,7 @@ def generalized_squeezing_for_inhomogeneous(
         print(f"inhom xi timing: group theta_S/phi_S construction finished in {time.perf_counter() - t0:.3f} s")
 
     t0 = time.perf_counter()
-    covariance_results = _map_with_optional_pool(
+    covariance_results = map_with_optional_pool(
         _trajectory_inhomogeneous_covariance_series_worker,
         [
             (traj, t, theta_j_groups, phi_j_groups, theta_s_groups, phi_s_groups, N_groups, tol)

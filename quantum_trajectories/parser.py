@@ -70,6 +70,44 @@ class TrajectoryResult:
     total_step_count: int = 0
     non_precomputed_step_count: int = 0
 
+
+@dataclass
+class JMomentSnapshot:
+    """First-order J-sphere moments for one saved trajectory snapshot."""
+
+    t: float
+    phase_index: int
+    Jx: float
+    Jy: float
+    Jz: float
+    N_e: float
+    jump_rate: float
+    N_j: float
+    Jx_drive: float
+    Jx_groups: Optional[Tuple[float, ...]] = None
+    Jy_groups: Optional[Tuple[float, ...]] = None
+    Jz_groups: Optional[Tuple[float, ...]] = None
+    N_e_groups: Optional[Tuple[float, ...]] = None
+
+
+@dataclass
+class JMomentSeries:
+    """Per-timestep first-order J-sphere moments for one trajectory."""
+
+    t: Array
+    phase_index: Array
+    Jx: Array
+    Jy: Array
+    Jz: Array
+    N_e: Array
+    jump_rate: Array
+    N_j: Array
+    Jx_drive: Array
+    Jx_groups: Optional[Tuple[Array, ...]] = None
+    Jy_groups: Optional[Tuple[Array, ...]] = None
+    Jz_groups: Optional[Tuple[Array, ...]] = None
+    N_e_groups: Optional[Tuple[Array, ...]] = None
+
 # -----------------------------------------------------------------------------
 # Ensambles
 # -----------------------------------------------------------------------------
