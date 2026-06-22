@@ -64,7 +64,7 @@ def _expected_collective_components_detailed(
             "Jy": 0.0,
             "Jz": 0.0,
             "N_e": 0.0,
-            "Jx_drive": 0.0,
+            "J_drive": 0.0,
             "Jx_groups": (0.0, 0.0) if any(isinstance(key, tuple) for key in blocks) else None,
             "Jy_groups": (0.0, 0.0) if any(isinstance(key, tuple) for key in blocks) else None,
             "Jz_groups": (0.0, 0.0) if any(isinstance(key, tuple) for key in blocks) else None,
@@ -75,7 +75,7 @@ def _expected_collective_components_detailed(
     jy_total = 0.0
     jz_total = 0.0
     ne_total = 0.0
-    jx_drive_total = 0.0
+    j_drive_total = 0.0
     any_inhomogeneous = any(isinstance(key, tuple) for key in blocks)
     if any_inhomogeneous:
         jx_groups = np.zeros(2, dtype=float)
@@ -94,10 +94,10 @@ def _expected_collective_components_detailed(
         jx_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
         jy_total += float(np.vdot(psi, ops.J_y.dot(psi)).real)
         ne_total += float(np.vdot(psi, ops.N_e.dot(psi)).real)
-        if ops.J_x_drive is not None:
-            jx_drive_total += float(np.vdot(psi, ops.J_x_drive.dot(psi)).real)
+        if ops.J_drive is not None:
+            j_drive_total += float(np.vdot(psi, ops.J_drive.dot(psi)).real)
         else:
-            jx_drive_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
+            j_drive_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
 
         if isinstance(sector_key, tuple):
             Nj1, Nj2 = sector_key
@@ -131,7 +131,7 @@ def _expected_collective_components_detailed(
         "Jy": jy_total / norm2,
         "Jz": jz_total / norm2,
         "N_e": ne_total / norm2,
-        "Jx_drive": jx_drive_total / norm2,
+        "J_drive": j_drive_total / norm2,
         "Jx_groups": None if jx_groups is None else tuple(jx_groups / norm2),
         "Jy_groups": None if jy_groups is None else tuple(jy_groups / norm2),
         "Jz_groups": None if jz_groups is None else tuple(jz_groups / norm2),
@@ -212,7 +212,7 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
     jy = np.zeros_like(t)
     jz = np.zeros_like(t)
     ne = np.zeros_like(t)
-    jx_drive = np.zeros_like(t)
+    j_drive = np.zeros_like(t)
     jump_rate = np.zeros_like(t)
     nj = np.zeros_like(t)
     group_count = 2 if any(isinstance(key, tuple) for key in result.sectors) else 0
@@ -234,7 +234,7 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
         jy[k] = comp["Jy"]
         jz[k] = comp["Jz"]
         ne[k] = comp["N_e"]
-        jx_drive[k] = comp["Jx_drive"]
+        j_drive[k] = comp["J_drive"]
         if group_count:
             for g in range(group_count):
                 jx_groups[g, k] = comp["Jx_groups"][g]
@@ -277,7 +277,7 @@ def trajectory_observables(result: TrajectoryResult, *, tol: float = 1e-12) -> O
         sx=sx,
         sy=sy,
         sz=sz,
-        Jx_drive=jx_drive,
+        J_drive=j_drive,
         Jx_groups=None if jx_groups is None else tuple(jx_groups[g] for g in range(group_count)),
         Jy_groups=None if jy_groups is None else tuple(jy_groups[g] for g in range(group_count)),
         Jz_groups=None if jz_groups is None else tuple(jz_groups[g] for g in range(group_count)),
@@ -363,7 +363,7 @@ def ensemble_observables(
     Jx_list = []
     Jy_list = []
     Jz_list = []
-    Jx_drive_list = []
+    J_drive_list = []
     Ne_list = []
     jump_rate_list = []
     Nj_list = []
@@ -390,8 +390,8 @@ def ensemble_observables(
         Jx_list.append(obs.Jx)
         Jy_list.append(obs.Jy)
         Jz_list.append(obs.Jz)
-        if obs.Jx_drive is not None:
-            Jx_drive_list.append(obs.Jx_drive)
+        if obs.J_drive is not None:
+            J_drive_list.append(obs.J_drive)
         Ne_list.append(obs.N_e)
         jump_rate_list.append(obs.jump_rate)
         Nj_list.append(obs.N_j)
@@ -413,7 +413,7 @@ def ensemble_observables(
     Jy_arr = np.asarray(Jy_list, dtype=float)
     Jz_arr = np.asarray(Jz_list, dtype=float)
     Ne_arr = np.asarray(Ne_list, dtype=float)
-    Jx_drive_arr = np.asarray(Jx_drive_list, dtype=float) if Jx_drive_list else None
+    J_drive_arr = np.asarray(J_drive_list, dtype=float) if J_drive_list else None
     jump_rate_arr = np.asarray(jump_rate_list, dtype=float)
     Nj_arr = np.asarray(Nj_list, dtype=float)
 
@@ -421,7 +421,7 @@ def ensemble_observables(
     Jy_mean = np.mean(Jy_arr, axis=0)
     Jz_mean = np.mean(Jz_arr, axis=0)
     N_e_mean = np.mean(Ne_arr, axis=0)
-    Jx_drive_mean = np.mean(Jx_drive_arr, axis=0) if Jx_drive_arr is not None else None
+    J_drive_mean = np.mean(J_drive_arr, axis=0) if J_drive_arr is not None else None
     jump_rate_mean = np.mean(jump_rate_arr, axis=0)
     N_j_mean = np.mean(Nj_arr, axis=0)
 
@@ -429,7 +429,7 @@ def ensemble_observables(
     Jy_std = np.std(Jy_arr, axis=0, ddof=0)
     Jz_std = np.std(Jz_arr, axis=0, ddof=0)
     N_e_std = np.std(Ne_arr, axis=0, ddof=0)
-    Jx_drive_std = np.std(Jx_drive_arr, axis=0, ddof=0) if Jx_drive_arr is not None else None
+    J_drive_std = np.std(J_drive_arr, axis=0, ddof=0) if J_drive_arr is not None else None
     jump_rate_std = np.std(jump_rate_arr, axis=0, ddof=0)
     N_j_std = np.std(Nj_arr, axis=0, ddof=0)
 
@@ -480,7 +480,7 @@ def ensemble_observables(
         sx=sx,
         sy=sy,
         sz=sz,
-        Jx_drive=Jx_drive_mean,
+        J_drive=J_drive_mean,
         Jx_groups=Jx_groups_mean,
         Jy_groups=Jy_groups_mean,
         Jz_groups=Jz_groups_mean,

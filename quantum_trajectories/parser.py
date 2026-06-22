@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import numpy as np
 from common.parser import Array, AveragedResult, ObservableSeries, Phase
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from scipy.sparse import csc_matrix
 
 SectorKey = Union[int, Tuple[int, int]]
+
 
 # ----------------------------------------------------
 # Classes
@@ -21,17 +23,19 @@ class SectorOperators:
     Jm: csc_matrix
     J_x: csc_matrix
     J_y: csc_matrix
+    J_z: csc_matrix
     N_e: csc_matrix
     JpJm: csc_matrix
     sector_key: Optional[SectorKey] = None
     Nj_groups: Optional[Tuple[int, ...]] = None
     omega_groups: Optional[Tuple[float, ...]] = None
-    J_x_drive: Optional[csc_matrix] = None
+    J_drive: Optional[csc_matrix] = None
     A_weighted: Optional[csc_matrix] = None
     AdagA_weighted: Optional[csc_matrix] = None
     N_e_groups: Optional[Tuple[csc_matrix, ...]] = None
     J_x_groups: Optional[Tuple[csc_matrix, ...]] = None
     J_y_groups: Optional[Tuple[csc_matrix, ...]] = None
+    J_z_groups: Optional[Tuple[csc_matrix, ...]] = None
 
 
 @dataclass
@@ -82,17 +86,18 @@ class JMomentSnapshot(BaseModel):
     Jy: float
     Jz: float
     N_e: float
-    jump_rate: float
     N_j: float
-    Jx_drive: float
+    jump_rate: float
+    J_drive: float
     Jx_groups: Tuple[float, ...] | None = None
     Jy_groups: Tuple[float, ...] | None = None
     Jz_groups: Tuple[float, ...] | None = None
     N_e_groups: Tuple[float, ...] | None = None
+    N_j_groups: Tuple[float, ...] | None = None
 
 
 class JMomentSeries(BaseModel):
-    """Per-timestep first-order J-sphere moments for one trajectory."""
+    """Per-timestep first-order J-sphere moments for one (single or averaged) trajectory."""
 
     t: Array
     phase_index: Array
@@ -100,13 +105,14 @@ class JMomentSeries(BaseModel):
     Jy: Array
     Jz: Array
     N_e: Array
-    jump_rate: Array
     N_j: Array
-    Jx_drive: Array
+    jump_rate: Array
+    J_drive: Array
     Jx_groups: Tuple[Array, ...] | None = None
     Jy_groups: Tuple[Array, ...] | None = None
     Jz_groups: Tuple[Array, ...] | None = None
     N_e_groups: Tuple[Array, ...] | None = None
+    N_j_groups: Tuple[Array, ...] | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -118,6 +124,22 @@ class MomentSeries(BaseModel):
     t: Array
     J: JMomentSeries | None = None
     S: Any | None = None
+
+    @root_validator(pre=True)
+    def build_t_eval_from_num_snapshots(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if values.get("t") is not None:
+            return values
+
+        phases = values.get("phases")
+        num_snapshots = values.get("num_snapshots")
+        if phases is None or num_snapshots is None:
+            return values
+
+        if num_snapshots < 2:
+            raise ValueError("num_snapshots must be at least 2.")
+        total_time = float(sum(phase.duration for phase in phases))
+        values["t"] = np.linspace(0.0, total_time, num_snapshots, dtype=float)
+        return values
 
     class Config:
         arbitrary_types_allowed = True

@@ -551,6 +551,7 @@ def plot_dephasing_bloch_lengths(
     length_ax.set_title("Dephasing diagnostic")
     length_ax.grid(alpha=0.3)
     length_ax.legend()
+    length_ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     if show_phase_panel:
         phase_ax = axes_arr[1]
@@ -560,6 +561,7 @@ def plot_dephasing_bloch_lengths(
         phase_ax.set_title("Relative group phase")
         phase_ax.grid(alpha=0.3)
         phase_ax.legend()
+        phase_ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     fig.tight_layout()
 
@@ -650,6 +652,7 @@ def plot_compare_dephasing_bloch_lengths(
     axis.set_title("Dephasing Bloch-vector length")
     axis.grid(alpha=0.3)
     axis.legend()
+    axis.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
     fig.tight_layout()
 
     if output_path is not None:

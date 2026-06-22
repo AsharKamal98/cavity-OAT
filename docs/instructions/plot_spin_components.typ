@@ -172,15 +172,3 @@ If `group_resolved=True` is requested for homogeneous data, fail clearly because
 there are no group-resolved moments to plot. If `group_resolved="auto"`, omit
 group curves when group moments are absent.
 
-= Data Requirements and Edge Cases
-
-The plot should require no new simulation data. It should be reconstructible
-from a saved `TrajectoryResult`, a `TrajectoryEnsemble`, or a matching
-`ObservableSeries` produced from those objects.
-
-All trajectories in an ensemble should share the same saved `t_eval` grid, as
-already required by `ensemble_observables(...)`.
-
-When $N_("active")(t)$ is zero or numerically below tolerance, use the behavior
-of `active_manifold_angles(...)`; the returned components should remain finite
-and the spin length should be computed from those returned components.

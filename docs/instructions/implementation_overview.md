@@ -311,10 +311,9 @@ Notebook functions should:
 Plot labels should reflect the physical quantity being plotted, especially when
 comparing simulation, theory, and approximations.
 
-Detailed plotting conventions may be added in future task-specific instruction
-files:
+Detailed plotting conventions live in:
 
-- `docs/instructions/plotting_workflows.md` (planned/missing)
+- `docs/instructions/plotting_workflows.md`
 
 ## General Rules
 

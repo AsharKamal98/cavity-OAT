@@ -196,7 +196,7 @@ The simulation code should prefer the generic fields on `SectorOperators`:
 ```python
 ops.A_weighted
 ops.AdagA_weighted
-ops.J_x_drive
+ops.J_drive
 ```
 
 For homogeneous sectors these fields are aliases of the ordinary unweighted
@@ -242,7 +242,7 @@ $
 In code this corresponds to:
 
 ```python
-H = omega * ops.J_x_drive - delta * ops.N_e
+H = omega * ops.J_drive - delta * ops.N_e
 H_eff = H - 0.5j * Gamma * ops.AdagA_weighted
 ```
 

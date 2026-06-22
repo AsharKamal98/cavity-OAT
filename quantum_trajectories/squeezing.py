@@ -1481,6 +1481,7 @@ def plot_generalized_xi(
     axes[0].set_title(title)
     axes[0].grid(alpha=0.3)
     axes[0].legend()
+    axes[0].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     eigen_labels = [
         r"$\lambda_1$ (smallest)",
@@ -1503,6 +1504,7 @@ def plot_generalized_xi(
     axes[1].set_yscale("log")
     axes[1].grid(alpha=0.3)
     axes[1].legend()
+    axes[1].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     axes[2].plot(xi_data["t"], np.asarray(xi_data["N_c"], dtype=float), linewidth=1.8, label=r"$\langle N_c\rangle$")
     axes[2].axhline(
@@ -1519,6 +1521,7 @@ def plot_generalized_xi(
     axes[2].ticklabel_format(axis="y", style="plain", useOffset=False)
     axes[2].yaxis.get_major_locator().set_params(integer=True)
     axes[2].legend()
+    axes[2].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     axes[3].plot(
         xi_data["t"],
@@ -1541,6 +1544,7 @@ def plot_generalized_xi(
     axes[3].set_title(r"Active-manifold excited fraction $\langle e\rangle$")
     axes[3].grid(alpha=0.3)
     axes[3].legend()
+    axes[3].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     for axis in axes:
         axis.axvline(t_step1_end, linestyle="--", color="black", alpha=0.6)
@@ -1623,6 +1627,7 @@ def plot_inhomogeneous_generalized_xi(
     axes[0].set_title("Inhomogeneous squeezing")
     axes[0].grid(alpha=0.3)
     axes[0].legend()
+    axes[0].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     for idx, _, label in curve_specs:
         lambdas = np.asarray(xi_data["lambda_min"][idx], dtype=float)
@@ -1634,6 +1639,7 @@ def plot_inhomogeneous_generalized_xi(
     axes[1].set_yscale("log")
     axes[1].grid(alpha=0.3)
     axes[1].legend()
+    axes[1].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     for idx, _, label in curve_specs:
         axes[2].plot(
@@ -1648,6 +1654,7 @@ def plot_inhomogeneous_generalized_xi(
     axes[2].grid(alpha=0.3)
     axes[2].ticklabel_format(axis="y", style="plain", useOffset=False)
     axes[2].legend()
+    axes[2].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     for idx, _, label in curve_specs:
         axes[3].plot(
@@ -1661,6 +1668,7 @@ def plot_inhomogeneous_generalized_xi(
     axes[3].set_title(r"Active-manifold excited fraction $\langle e\rangle$")
     axes[3].grid(alpha=0.3)
     axes[3].legend()
+    axes[3].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     for axis in axes:
         for boundary in phase_boundaries:

@@ -102,7 +102,7 @@ def heff_for_sector(
         H_delta - i/2 Gamma J_+ J_-,
     """
     if not shifted_jump_operator:
-        drive_op = ops.J_x_drive if ops.J_x_drive is not None else ops.J_x
+        drive_op = ops.J_drive if ops.J_drive is not None else ops.J_x
         decay_term = ops.AdagA_weighted if ops.AdagA_weighted is not None else ops.JpJm
         H = omega * drive_op - delta * ops.N_e
         Heff = H - 0.5j * Gamma * decay_term

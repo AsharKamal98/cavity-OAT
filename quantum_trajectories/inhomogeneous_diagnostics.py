@@ -309,6 +309,7 @@ def plot_inhomogeneous_mfe_residuals(
         ax.set_ylabel(label)
         ax.grid(alpha=0.3)
         ax.legend()
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     if data["phase_boundaries"] is not None:
         t_step1_end, t_step2_end = data["phase_boundaries"]
@@ -391,6 +392,7 @@ def plot_inhomogeneous_group_angles(
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.3)
         ax.legend()
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     fig.suptitle("Inhomogeneous group active-manifold angles")
     fig.tight_layout()

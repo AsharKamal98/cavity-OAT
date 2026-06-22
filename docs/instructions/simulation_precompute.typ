@@ -208,7 +208,7 @@ In both cases, the function returns a `SectorOperators` object for a given secto
   N_e^("groups") = (N_(e,1), N_(e,2)).
   $
 
-- `J_x_drive`, `A_weighted`, `AdagA_weighted` --- drive/jump operators, used for propagation.
+- `J_drive`, `A_weighted`, `AdagA_weighted` --- drive/jump operators, used for propagation.
 
   $
   "homogeneous:" quad J_(x,"drive") = J_x, quad A = J^-,
@@ -225,7 +225,7 @@ The simulation code should use the generic fields on `SectorOperators`:
 ```python
 ops.A_weighted
 ops.AdagA_weighted
-ops.J_x_drive
+ops.J_drive
 ```
 
 For homogeneous sectors these fields are aliases of the ordinary unweighted
@@ -358,7 +358,7 @@ $
 In code, the regular picture corresponds to:
 
 ```python
-H = omega * ops.J_x_drive - delta * ops.N_e
+H = omega * ops.J_drive - delta * ops.N_e
 H_eff = H - 0.5j * Gamma * ops.AdagA_weighted
 ```
 
