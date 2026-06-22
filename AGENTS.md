@@ -82,7 +82,7 @@ AGENTS.md
       -> docs/instructions/plot_spin_components.typ
       -> docs/instructions/squeezing.typ
       -> docs/instructions/dephasing_diagnostics.typ
-      -> docs/instructions/plotting_workflows.md (planned/missing)
+      -> docs/instructions/plotting_workflows.md
 ```
 
 Keep task-specific routing in `docs/instructions/implementation_overview.md`,
