@@ -27,7 +27,6 @@ from quantum_trajectories.operator_helpers import (
 # -----------------------------------------------------------------------------
 
 _sector_ne_arrays: Dict[int, Array] = {}
-_sector_jz_diagonals: Dict[int, Array] = {}
 
 
 def _cached_ne_array(Nj: int) -> Array:
@@ -36,14 +35,6 @@ def _cached_ne_array(Nj: int) -> Array:
         ne = np.arange(Nj + 1, dtype=float)
         _sector_ne_arrays[Nj] = ne
     return ne
-
-
-def _cached_jz_diag(Nj: int) -> Array:
-    jz_diag = _sector_jz_diagonals.get(Nj)
-    if jz_diag is None:
-        jz_diag = _cached_ne_array(Nj) - 0.5 * Nj
-        _sector_jz_diagonals[Nj] = jz_diag
-    return jz_diag
 
 
 def _compute_snapshot_j_moments(
@@ -71,20 +62,21 @@ def _compute_snapshot_j_moments(
             Jy=0.0,
             Jz=0.0,
             N_e=0.0,
-            jump_rate=0.0,
             N_j=0.0,
-            Jx_drive=0.0,
+            jump_rate=0.0,
+            J_drive=0.0,
             Jx_groups=zero_groups,
             Jy_groups=zero_groups,
             Jz_groups=zero_groups,
             N_e_groups=zero_groups,
+            N_j_groups=zero_groups,
         )
 
     jx_total = 0.0
     jy_total = 0.0
     jz_total = 0.0
     ne_total = 0.0
-    jx_drive_total = 0.0
+    j_drive_total = 0.0
     jump_rate = 0.0
     nj_total = 0.0
     omega = phases[snapshot.phase_index].omega
@@ -93,12 +85,17 @@ def _compute_snapshot_j_moments(
         jy_groups = np.zeros(2, dtype=float)
         jz_groups = np.zeros(2, dtype=float)
         ne_groups = np.zeros(2, dtype=float)
+        nj_groups = np.zeros(2, dtype=float)
     else:
-        jx_groups = jy_groups = jz_groups = ne_groups = None
+        jx_groups = jy_groups = jz_groups = ne_groups = nj_groups = None
 
     for sector_key, psi in blocks.items():
         if psi.size == 0:
             continue
+
+        # FIXME: use cache operators. Either compute new local cache operators
+        # and store them in j_moments, or save cache operators from simulation,
+        # e.g. by attatching to TrajectoryEnsamble.
         ops = build_sector_ops_for_key(
             sector_key,
             omega_1=omega_1,
@@ -110,12 +107,13 @@ def _compute_snapshot_j_moments(
 
         jx_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
         jy_total += float(np.vdot(psi, ops.J_y.dot(psi)).real)
+        jz_total += float(np.vdot(psi, ops.J_z.dot(psi)).real)
         ne_total += float(np.vdot(psi, ops.N_e.dot(psi)).real)
         nj_total += total_active_atoms_in_sector(sector_key) * psi_norm2
-        if ops.J_x_drive is not None:
-            jx_drive_total += float(np.vdot(psi, ops.J_x_drive.dot(psi)).real)
+        if ops.J_drive is not None:
+            j_drive_total += float(np.vdot(psi, ops.J_drive.dot(psi)).real)
         else:
-            jx_drive_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
+            j_drive_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
 
         jump_operator = build_phase_jump_operator_for_sector(
             ops,
@@ -132,28 +130,30 @@ def _compute_snapshot_j_moments(
             Nj1, Nj2 = sector_key
             ne1_diag = np.repeat(np.arange(Nj1 + 1, dtype=float), Nj2 + 1)
             ne2_diag = np.tile(np.arange(Nj2 + 1, dtype=float), Nj1 + 1)
-            jz1_diag = ne1_diag - 0.5 * Nj1
-            jz2_diag = ne2_diag - 0.5 * Nj2
-            jz_total += float(np.dot(psi_prob, jz1_diag + jz2_diag))
-            if ops.J_x_groups is not None and ops.J_y_groups is not None:
+            if (
+                ops.J_x_groups is not None
+                and ops.J_y_groups is not None
+                and ops.J_z_groups is not None
+            ):
                 jx_groups[0] += float(np.vdot(psi, ops.J_x_groups[0].dot(psi)).real)
                 jx_groups[1] += float(np.vdot(psi, ops.J_x_groups[1].dot(psi)).real)
                 jy_groups[0] += float(np.vdot(psi, ops.J_y_groups[0].dot(psi)).real)
                 jy_groups[1] += float(np.vdot(psi, ops.J_y_groups[1].dot(psi)).real)
-            jz_groups[0] += float(np.dot(psi_prob, jz1_diag))
-            jz_groups[1] += float(np.dot(psi_prob, jz2_diag))
+                jz_groups[0] += float(np.vdot(psi, ops.J_z_groups[0].dot(psi)).real)
+                jz_groups[1] += float(np.vdot(psi, ops.J_z_groups[1].dot(psi)).real)
             ne_groups[0] += float(np.dot(psi_prob, ne1_diag))
             ne_groups[1] += float(np.dot(psi_prob, ne2_diag))
+            nj_groups[0] += Nj1 * psi_norm2
+            nj_groups[1] += Nj2 * psi_norm2
         else:
             Nj = int(sector_key)
             ne = _cached_ne_array(Nj)
-            jz_diag = _cached_jz_diag(Nj)
-            jz_total += float(np.dot(psi_prob, jz_diag))
             if has_groups:
                 jx_groups[0] += float(np.vdot(psi, ops.J_x.dot(psi)).real)
                 jy_groups[0] += float(np.vdot(psi, ops.J_y.dot(psi)).real)
-                jz_groups[0] += float(np.dot(psi_prob, jz_diag))
+                jz_groups[0] += float(np.vdot(psi, ops.J_z.dot(psi)).real)
                 ne_groups[0] += float(np.dot(psi_prob, ne))
+                nj_groups[0] += Nj * psi_norm2
 
     # Guard against tiny negative values from floating-point noise.
     if jump_rate < 0.0 and abs(jump_rate) < 1e-10:
@@ -166,13 +166,14 @@ def _compute_snapshot_j_moments(
         Jy=jy_total / norm2,
         Jz=jz_total / norm2,
         N_e=ne_total / norm2,
-        jump_rate=jump_rate / norm2,
         N_j=nj_total / norm2,
-        Jx_drive=jx_drive_total / norm2,
+        jump_rate=jump_rate / norm2,
+        J_drive=j_drive_total / norm2,
         Jx_groups=None if jx_groups is None else tuple(jx_groups / norm2),
         Jy_groups=None if jy_groups is None else tuple(jy_groups / norm2),
         Jz_groups=None if jz_groups is None else tuple(jz_groups / norm2),
         N_e_groups=None if ne_groups is None else tuple(ne_groups / norm2),
+        N_j_groups=None if nj_groups is None else tuple(nj_groups / norm2),
     )
 
 
@@ -231,13 +232,14 @@ def compute_trajectory_j_moments(
         Jy=series("Jy"),
         Jz=series("Jz"),
         N_e=series("N_e"),
-        jump_rate=series("jump_rate"),
         N_j=series("N_j"),
-        Jx_drive=series("Jx_drive"),
+        jump_rate=series("jump_rate"),
+        J_drive=series("J_drive"),
         Jx_groups=group_series("Jx_groups"),
         Jy_groups=group_series("Jy_groups"),
         Jz_groups=group_series("Jz_groups"),
         N_e_groups=group_series("N_e_groups"),
+        N_j_groups=group_series("N_j_groups"),
     )
 
 
@@ -298,13 +300,14 @@ def compute_average_j_moments(samples: list[JMomentSeries]) -> JMomentSeries:
         Jy=mean_series("Jy"),
         Jz=mean_series("Jz"),
         N_e=mean_series("N_e"),
-        jump_rate=mean_series("jump_rate"),
         N_j=mean_series("N_j"),
-        Jx_drive=mean_series("Jx_drive"),
+        jump_rate=mean_series("jump_rate"),
+        J_drive=mean_series("J_drive"),
         Jx_groups=mean_group_series("Jx_groups"),
         Jy_groups=mean_group_series("Jy_groups"),
         Jz_groups=mean_group_series("Jz_groups"),
         N_e_groups=mean_group_series("N_e_groups"),
+        N_j_groups=mean_group_series("N_j_groups"),
     )
 
 

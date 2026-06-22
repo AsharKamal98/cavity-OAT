@@ -42,7 +42,7 @@ class ObservableSeries:
     sy: Array
     sz: Array
 
-    Jx_drive: Optional[Array] = None
+    J_drive: Optional[Array] = None
     Jx_groups: Optional[Tuple[Array, ...]] = None
     Jy_groups: Optional[Tuple[Array, ...]] = None
     Jz_groups: Optional[Tuple[Array, ...]] = None

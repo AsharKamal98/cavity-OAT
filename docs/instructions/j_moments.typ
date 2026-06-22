@@ -19,8 +19,8 @@ _compute_snapshot_j_moments(snapshot, ...)
     -> JMomentSnapshot:
     # Compute J moments for one saved snapshot of one trajectory.
     return JMomentSnapshot(
-        t, phase_index, Jx, Jy, Jz, N_e, jump_rate, N_j,
-        Jx_drive, Jx_groups, Jy_groups, Jz_groups, N_e_groups,
+        t, phase_index, Jx, Jy, Jz, N_e, N_j, jump_rate,
+        J_drive, Jx_groups, Jy_groups, Jz_groups, N_e_groups,
     )
 
 compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
@@ -88,27 +88,13 @@ frac(
 ).
 $
 
-Use this rule for $J_x$, $J_y$, and $N_(e)$ with the sector-local operators from
-the precomputed `ops_list` described in `docs/instructions/simulation_precompute.typ`.
-
-Implementation caveat: $J_z$ should follow the same expectation-value rule, but
-the current code evaluates it directly from the reduced-basis diagonal
-$n_(e) - N_(J) / 2$ rather than constructing a separate sparse operator.
-
-The full wavefunction average active-sector atom number field `N_j` is the sector-weighted active
-manifold size:
-
-$
-N_(J)(t_(k)) =
-frac(
-  sum_(alpha) N_(J)(alpha) chevron.l psi_(alpha)(t_(k)) | psi_(alpha)(t_(k)) chevron.r,
-  Z(t_(k))
-).
-$
-
-For homogeneous sectors, $N_(J)(alpha)=N_(J)$. For group-resolved sectors,
-$N_(J)(alpha)=sum_g N_(J,g)$.
-For strong-symmetry-preserving dynamics, this weighted sector number is expected
+Use this rule for $J_x$, $J_y$, $J_z$ and $N_(e)$ with the sector-local
+operators from the precomputed `ops_list` described in
+`docs/instructions/simulation_precompute.typ`. For the full wavefunction
+average active-sector atom number field $N_(J)$, do not construct an operator.
+Use the scalar active-sector atom number for each sector and replace each
+numerator term by
+$N_(J)(alpha) chevron.l psi_(alpha) | psi_(alpha) chevron.r$. For strong-symmetry-preserving dynamics, this weighted sector number is expected
 to remain constant in time.
 
 == Jump Rate
@@ -133,43 +119,39 @@ Tiny negative rates caused by floating-point noise should be clipped to zero.
 The jump rate should not be normalized by $N$, $N_(J)$, or the number of
 trajectories.
 
-== Drive and Group Fields
+== Group Fields
 
-The drive field `Jx_drive` should use the drive-coupled operator defined by
-`build_sector_ops_for_key(...)`; its construction is covered in
-`docs/instructions/simulation_precompute.typ`. In this file it is just another
-normalized sector expectation value following the rule above.
-
-For group-resolved inhomogeneous results, group-resolved fields should be
-returned for each group $g$:
+Group-resolved fields should be returned for each group $g$ (if two or more groups used). For a group-local operator $O_(g,alpha)$,
 
 $
-chevron.l J_(i,g)(t_(k)) chevron.r =
+chevron.l O_g(t_(k)) chevron.r =
 frac(
   sum_(alpha) chevron.l psi_(alpha)(t_(k)) |
-    J_(i,g,alpha) |
-    psi_(alpha)(t_(k)) chevron.r,
-  Z(t_(k))
-),
-quad i in {x,y,z},
-$
-
-and
-
-$
-chevron.l N_(e,g)(t_(k)) chevron.r =
-frac(
-  sum_(alpha) chevron.l psi_(alpha)(t_(k)) |
-    N_(e,g,alpha) |
+    O_(g,alpha) |
     psi_(alpha)(t_(k)) chevron.r,
   Z(t_(k))
 ).
 $
+Use this rule for $J_(i,g)$ with $i in {x,y,z}$ and for $N_(e,g)$ with the
+group-local operators from `build_sector_ops_for_key(...)`.
 
-For homogeneous results, group fields should be `None`. The current
-implementation supports homogeneous scalar sector keys and group-resolved tuple
-sector keys; mixed or malformed sector structures should not be introduced
-silently.
+The group-resolved active-sector atom number `N_j_groups[g]` should be the
+same sector-weighted average as `N_j`, but using $N_(J,g)(alpha)$ for each
+group.
+
+For homogeneous / single-group results, group fields should be `None`. The current implementation supports homogeneous scalar sector keys and group-resolved tuple sector keys; mixed or malformed sector structures should not be introduced silently.
+
+The full-system fields (`Ji`,`N_e`, `N_j` etc.) should still be
+computed by the full-system rules above. Group-resolved fields are additional diagnostic outputs and should not replace the full fields.
+
+== Drive Term
+
+The drive field `J_drive` should use the drive-coupled operator defined by
+`build_sector_ops_for_key(...)`; its construction is covered in
+`docs/instructions/simulation_precompute.typ`. This field was previously called
+`J_x_drive` or `Jx_drive`; future code should use `J_drive` instead. In this
+file it is just another normalized sector expectation value following the rule
+above.
 
 = Output
 
@@ -180,13 +162,14 @@ JMomentSnapshot(
     t, phase_index,
     Jx, Jy, Jz,
     N_e,
-    jump_rate,
     N_j,
-    Jx_drive,
+    jump_rate,
+    J_drive,
     Jx_groups=None or tuple[float, ...],
     Jy_groups=None or tuple[float, ...],
     Jz_groups=None or tuple[float, ...],
     N_e_groups=None or tuple[float, ...],
+    N_j_groups=None or tuple[float, ...],
 )
 ```
 
@@ -198,13 +181,14 @@ JMomentSeries(
     t, phase_index,
     Jx, Jy, Jz,
     N_e,
-    jump_rate,
     N_j,
-    Jx_drive,
+    jump_rate,
+    J_drive,
     Jx_groups=None or tuple[array, ...],
     Jy_groups=None or tuple[array, ...],
     Jz_groups=None or tuple[array, ...],
     N_e_groups=None or tuple[array, ...],
+    N_j_groups=None or tuple[array, ...],
 )
 ```
 

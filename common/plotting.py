@@ -63,6 +63,7 @@ def plot_trajectory_angles_and_excitation(
         ax.axvline(t_step1_end, linestyle="--", color="black", alpha=0.6)
         ax.axvline(t_step2_end, linestyle="--", color="black", alpha=0.6)
         ax.grid(alpha=0.3)
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     if show_phase1_ss:
         Nj_ref = result.N // 2
@@ -138,6 +139,7 @@ def plot_qutip_angles_and_excitation(
         ax.axvline(t_step1_end, linestyle="--", color="black", alpha=0.6)
         ax.axvline(t_step2_end, linestyle="--", color="black", alpha=0.6)
         ax.grid(alpha=0.3)
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     if show_phase1_ss and Gamma is not None:
         Omega1 = phases[0].omega
@@ -203,6 +205,7 @@ def plot_mse_vs_time(
         ax.set_ylabel(f"{key} MSE")
         ax.grid(alpha=0.3)
         ax.legend()
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     axes[-1].set_xlabel(r"$\Gamma t$")
     fig.tight_layout()
@@ -243,6 +246,7 @@ def plot_paper_jump_rate_comparison(
     ax.set_ylabel(r"Jump rate")
     ax.grid(alpha=0.3)
     ax.legend()
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
     fig.tight_layout()
     if output_path is not None:
