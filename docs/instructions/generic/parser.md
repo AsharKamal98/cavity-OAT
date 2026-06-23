@@ -13,6 +13,8 @@ already exist, create one.
 - Use explicit field types for all saved data.
 - Use the nullable union convention for optional fields.
 - Use `= None` when the default value is `None`.
+- Use modern built-in generic types such as `list[T]`, `tuple[T, ...]`,
+  `dict[K, V]`, and `T | None`.
 - Prefer named fields over generic dictionaries or lists when the output shape
   is part of the public API.
 - Use consistent class names that make related classes easy to recognize.
@@ -24,12 +26,14 @@ class SMomentSeries(BaseModel):
     phase_index: Array
     Sx: Array
     Sy: Array
+    Sx_groups: tuple[Array, ...] | None = None
 
 
 class JMomentSeries(BaseModel):
     phase_index: Array
     Jx: Array
     Jy: Array
+    Jx_groups: tuple[Array, ...] | None = None
 
 
 class MomentSeries(BaseModel):

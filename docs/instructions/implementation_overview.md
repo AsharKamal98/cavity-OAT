@@ -338,6 +338,8 @@ moments.J = compute_ensemble_j_moments(ensemble)
 Current top-level fields are:
 
 - `moments.t`: the shared saved-time grid.
+- `moments.parameters`: simulation metadata needed by moment-level diagnostics,
+  such as `Gamma`, `phases`, `omega_groups`, and `N_groups`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments and
   optional derived J-vector direction fields and angles.
 - `moments.S`: placeholder for future S-moment or spin-direction data.

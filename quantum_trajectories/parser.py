@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from common.parser import Array, AveragedResult, ObservableSeries, Phase
 from pydantic import BaseModel, root_validator
 from scipy.sparse import csc_matrix
 
-SectorKey = Union[int, Tuple[int, int]]
+SectorKey = int | tuple[int, int]
 
 
 # ----------------------------------------------------
@@ -26,16 +26,16 @@ class SectorOperators:
     J_z: csc_matrix
     N_e: csc_matrix
     JpJm: csc_matrix
-    sector_key: Optional[SectorKey] = None
-    Nj_groups: Optional[Tuple[int, ...]] = None
-    omega_groups: Optional[Tuple[float, ...]] = None
-    J_drive: Optional[csc_matrix] = None
-    A_weighted: Optional[csc_matrix] = None
-    AdagA_weighted: Optional[csc_matrix] = None
-    N_e_groups: Optional[Tuple[csc_matrix, ...]] = None
-    J_x_groups: Optional[Tuple[csc_matrix, ...]] = None
-    J_y_groups: Optional[Tuple[csc_matrix, ...]] = None
-    J_z_groups: Optional[Tuple[csc_matrix, ...]] = None
+    sector_key: SectorKey | None = None
+    Nj_groups: tuple[int, ...] | None = None
+    omega_groups: tuple[float, ...] | None = None
+    J_drive: csc_matrix | None = None
+    A_weighted: csc_matrix | None = None
+    AdagA_weighted: csc_matrix | None = None
+    N_e_groups: tuple[csc_matrix, ...] | None = None
+    J_x_groups: tuple[csc_matrix, ...] | None = None
+    J_y_groups: tuple[csc_matrix, ...] | None = None
+    J_z_groups: tuple[csc_matrix, ...] | None = None
 
 
 @dataclass
@@ -49,7 +49,7 @@ class SectorWavefunction:
 @dataclass
 class TrajectorySnapshot:
     time: float
-    sector_blocks: Dict[SectorKey, Array]
+    sector_blocks: dict[SectorKey, Array]
     norm: float
     phase_index: int
 
@@ -58,20 +58,20 @@ class TrajectorySnapshot:
 class TrajectoryResult:
     N: int
     Gamma: float
-    phases: List[Phase]
+    phases: list[Phase]
     shifted_jump_operator: bool
     t_eval: Array
-    sectors: List[SectorKey]
-    sector_multiplicities: Dict[SectorKey, int]
-    final_sector_blocks: Dict[SectorKey, Array]
-    snapshots: List[TrajectorySnapshot]
-    jump_times: List[float]
+    sectors: list[SectorKey]
+    sector_multiplicities: dict[SectorKey, int]
+    final_sector_blocks: dict[SectorKey, Array]
+    snapshots: list[TrajectorySnapshot]
+    jump_times: list[float]
     jump_count: int
-    sector_dimensions: Dict[SectorKey, int]
-    omega_1: Optional[float] = None
-    omega_2: Optional[float] = None
-    N1: Optional[int] = None
-    N2: Optional[int] = None
+    sector_dimensions: dict[SectorKey, int]
+    omega_1: float | None = None
+    omega_2: float | None = None
+    N1: int | None = None
+    N2: int | None = None
     total_step_count: int = 0
     non_precomputed_step_count: int = 0
 
@@ -91,11 +91,11 @@ class JMomentSnapshot(BaseModel):
     N_j: float
     jump_rate: float
     J_drive: float
-    x_groups: Tuple[float, ...] | None = None
-    y_groups: Tuple[float, ...] | None = None
-    z_groups: Tuple[float, ...] | None = None
-    N_e_groups: Tuple[float, ...] | None = None
-    N_j_groups: Tuple[float, ...] | None = None
+    x_groups: tuple[float, ...] | None = None
+    y_groups: tuple[float, ...] | None = None
+    z_groups: tuple[float, ...] | None = None
+    N_e_groups: tuple[float, ...] | None = None
+    N_j_groups: tuple[float, ...] | None = None
 
 
 class JMomentSeries(BaseModel):
@@ -112,23 +112,35 @@ class JMomentSeries(BaseModel):
     N_j: Array
     jump_rate: Array
     J_drive: Array
-    x_groups: Tuple[Array, ...] | None = None
-    y_groups: Tuple[Array, ...] | None = None
-    z_groups: Tuple[Array, ...] | None = None
-    N_e_groups: Tuple[Array, ...] | None = None
-    N_j_groups: Tuple[Array, ...] | None = None
+    x_groups: tuple[Array, ...] | None = None
+    y_groups: tuple[Array, ...] | None = None
+    z_groups: tuple[Array, ...] | None = None
+    N_e_groups: tuple[Array, ...] | None = None
+    N_j_groups: tuple[Array, ...] | None = None
     length: Array | None = None
     nx: Array | None = None
     ny: Array | None = None
     nz: Array | None = None
-    length_groups: Tuple[Array, ...] | None = None
-    nx_groups: Tuple[Array, ...] | None = None
-    ny_groups: Tuple[Array, ...] | None = None
-    nz_groups: Tuple[Array, ...] | None = None
+    length_groups: tuple[Array, ...] | None = None
+    nx_groups: tuple[Array, ...] | None = None
+    ny_groups: tuple[Array, ...] | None = None
+    nz_groups: tuple[Array, ...] | None = None
     theta: Array | None = None
     phi: Array | None = None
-    theta_groups: Tuple[Array, ...] | None = None
-    phi_groups: Tuple[Array, ...] | None = None
+    theta_groups: tuple[Array, ...] | None = None
+    phi_groups: tuple[Array, ...] | None = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class MomentParameters(BaseModel):
+    """Simulation parameters needed by moment-level diagnostics."""
+
+    Gamma: float
+    phases: list[Phase]
+    omega_groups: tuple[float, ...] | None = None
+    N_groups: tuple[int, ...] | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -138,11 +150,12 @@ class MomentSeries(BaseModel):
     """Container for moment series computed on a shared time grid."""
 
     t: Array
+    parameters: MomentParameters | None = None
     J: JMomentSeries | None = None
     S: Any | None = None
 
     @root_validator(pre=True)
-    def build_t_eval_from_num_snapshots(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def build_t_eval_from_num_snapshots(cls, values: dict[str, Any]) -> dict[str, Any]:
         if values.get("t") is not None:
             return values
 
@@ -166,5 +179,5 @@ class MomentSeries(BaseModel):
 
 @dataclass
 class TrajectoryEnsemble:
-    trajectories: List[TrajectoryResult]
-    seeds: List[Tuple[int, ...]]
+    trajectories: list[TrajectoryResult]
+    seeds: list[tuple[int, ...]]
