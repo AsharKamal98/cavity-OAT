@@ -6,6 +6,7 @@ import numpy as np
 
 from quantum_trajectories.utils import map_with_optional_pool
 from common.parser import Phase
+from common.utils import angles_from_norm_spin_components, norm_spin_components
 from quantum_trajectories.parser import (
     Array,
     JMomentSnapshot,
@@ -58,16 +59,16 @@ def _compute_snapshot_j_moments(
         return JMomentSnapshot(
             t=snapshot.time,
             phase_index=snapshot.phase_index,
-            Jx=0.0,
-            Jy=0.0,
-            Jz=0.0,
+            x=0.0,
+            y=0.0,
+            z=0.0,
             N_e=0.0,
             N_j=0.0,
             jump_rate=0.0,
             J_drive=0.0,
-            Jx_groups=zero_groups,
-            Jy_groups=zero_groups,
-            Jz_groups=zero_groups,
+            x_groups=zero_groups,
+            y_groups=zero_groups,
+            z_groups=zero_groups,
             N_e_groups=zero_groups,
             N_j_groups=zero_groups,
         )
@@ -162,16 +163,16 @@ def _compute_snapshot_j_moments(
     return JMomentSnapshot(
         t=snapshot.time,
         phase_index=snapshot.phase_index,
-        Jx=jx_total / norm2,
-        Jy=jy_total / norm2,
-        Jz=jz_total / norm2,
+        x=jx_total / norm2,
+        y=jy_total / norm2,
+        z=jz_total / norm2,
         N_e=ne_total / norm2,
         N_j=nj_total / norm2,
         jump_rate=jump_rate / norm2,
         J_drive=j_drive_total / norm2,
-        Jx_groups=None if jx_groups is None else tuple(jx_groups / norm2),
-        Jy_groups=None if jy_groups is None else tuple(jy_groups / norm2),
-        Jz_groups=None if jz_groups is None else tuple(jz_groups / norm2),
+        x_groups=None if jx_groups is None else tuple(jx_groups / norm2),
+        y_groups=None if jy_groups is None else tuple(jy_groups / norm2),
+        z_groups=None if jz_groups is None else tuple(jz_groups / norm2),
         N_e_groups=None if ne_groups is None else tuple(ne_groups / norm2),
         N_j_groups=None if nj_groups is None else tuple(nj_groups / norm2),
     )
@@ -183,7 +184,7 @@ def compute_trajectory_j_moments(
     tol: float = 1e-12,
 ) -> JMomentSeries:
     """
-    Convert saved snapshots into time series for Jx, Jy, Jz, Ne, jump rate,
+    Convert saved snapshots into time series for x, y, z, Ne, jump rate,
     Nj, and the saved phase index.
 
     This uses the same first-order moment extraction as
@@ -228,16 +229,16 @@ def compute_trajectory_j_moments(
     return JMomentSeries(
         t=series("t"),
         phase_index=series("phase_index", dtype=int),
-        Jx=series("Jx"),
-        Jy=series("Jy"),
-        Jz=series("Jz"),
+        x=series("x"),
+        y=series("y"),
+        z=series("z"),
         N_e=series("N_e"),
         N_j=series("N_j"),
         jump_rate=series("jump_rate"),
         J_drive=series("J_drive"),
-        Jx_groups=group_series("Jx_groups"),
-        Jy_groups=group_series("Jy_groups"),
-        Jz_groups=group_series("Jz_groups"),
+        x_groups=group_series("x_groups"),
+        y_groups=group_series("y_groups"),
+        z_groups=group_series("z_groups"),
         N_e_groups=group_series("N_e_groups"),
         N_j_groups=group_series("N_j_groups"),
     )
@@ -255,7 +256,92 @@ def _compute_trajectory_j_moments_worker(args: tuple[TrajectoryResult, float]) -
     return compute_trajectory_j_moments(trajectory, tol=tol)
 
 
-def compute_average_j_moments(samples: list[JMomentSeries]) -> JMomentSeries:
+def _attach_spin_direction_fields(j_moments: JMomentSeries, *, tol: float) -> None:
+    """
+    Attach derived fields that should be computed from averaged J components.
+    """
+    # TODO: move to a utils file and re-use for S moments.
+    (
+        j_moments.length,
+        j_moments.nx,
+        j_moments.ny,
+        j_moments.nz,
+    ) = norm_spin_components(j_moments.x, j_moments.y, j_moments.z, tol=tol)
+
+    if (
+        j_moments.x_groups is None
+        or j_moments.y_groups is None
+        or j_moments.z_groups is None
+    ):
+        return
+
+    group_results = [
+        norm_spin_components(x_g, y_g, z_g, tol=tol)
+        for x_g, y_g, z_g in zip(
+            j_moments.x_groups,
+            j_moments.y_groups,
+            j_moments.z_groups,
+        )
+    ]
+    j_moments.length_groups = tuple(result[0] for result in group_results)
+    j_moments.nx_groups = tuple(result[1] for result in group_results)
+    j_moments.ny_groups = tuple(result[2] for result in group_results)
+    j_moments.nz_groups = tuple(result[3] for result in group_results)
+
+
+def _attach_spin_angles(j_moments: JMomentSeries, *, tol: float) -> None:
+    """
+    Attach angles computed from already-normalized spin direction fields.
+    """
+    if (
+        j_moments.length is None
+        or j_moments.nx is None
+        or j_moments.ny is None
+        or j_moments.nz is None
+    ):
+        raise ValueError("Spin direction fields must be attached before angles.")
+
+    valid = np.asarray(j_moments.length, dtype=float) > tol
+    j_moments.theta, j_moments.phi = angles_from_norm_spin_components(
+        j_moments.nx,
+        j_moments.ny,
+        j_moments.nz,
+        valid=valid,
+        tol=tol,
+    )
+
+    if (
+        j_moments.length_groups is None
+        or j_moments.nx_groups is None
+        or j_moments.ny_groups is None
+        or j_moments.nz_groups is None
+    ):
+        return
+
+    group_results = [
+        angles_from_norm_spin_components(
+            nx_g,
+            ny_g,
+            nz_g,
+            valid=np.asarray(length_g, dtype=float) > tol,
+            tol=tol,
+        )
+        for length_g, nx_g, ny_g, nz_g in zip(
+            j_moments.length_groups,
+            j_moments.nx_groups,
+            j_moments.ny_groups,
+            j_moments.nz_groups,
+        )
+    ]
+    j_moments.theta_groups = tuple(result[0] for result in group_results)
+    j_moments.phi_groups = tuple(result[1] for result in group_results)
+
+
+def compute_average_j_moments(
+    samples: list[JMomentSeries],
+    *,
+    tol: float = 1e-12,
+) -> JMomentSeries:
     """
     Average already-computed per-trajectory J moments on a shared time grid.
     """
@@ -293,22 +379,33 @@ def compute_average_j_moments(samples: list[JMomentSeries]) -> JMomentSeries:
             for g in range(group_count)
         )
 
-    return JMomentSeries(
+    x_groups = mean_group_series("x_groups")
+    y_groups = mean_group_series("y_groups")
+    z_groups = mean_group_series("z_groups")
+
+    averaged = JMomentSeries(
         t=t_ref,
         phase_index=phase_ref,
-        Jx=mean_series("Jx"),
-        Jy=mean_series("Jy"),
-        Jz=mean_series("Jz"),
+        x=mean_series("x"),
+        y=mean_series("y"),
+        z=mean_series("z"),
         N_e=mean_series("N_e"),
         N_j=mean_series("N_j"),
         jump_rate=mean_series("jump_rate"),
         J_drive=mean_series("J_drive"),
-        Jx_groups=mean_group_series("Jx_groups"),
-        Jy_groups=mean_group_series("Jy_groups"),
-        Jz_groups=mean_group_series("Jz_groups"),
+        x_groups=x_groups,
+        y_groups=y_groups,
+        z_groups=z_groups,
         N_e_groups=mean_group_series("N_e_groups"),
         N_j_groups=mean_group_series("N_j_groups"),
     )
+    
+    # normalized spin components 
+    _attach_spin_direction_fields(averaged, tol=tol)
+    # theta, phi
+    _attach_spin_angles(averaged, tol=tol)
+    
+    return averaged
 
 
 def compute_ensemble_j_moments(
@@ -323,7 +420,7 @@ def compute_ensemble_j_moments(
 
     This is the moment-only counterpart of `ensemble_observables(...)`: it
     averages per-trajectory moment series without constructing theta/phi or
-    sx/sy/sz.
+    nx/ny/nz.
 
     Returns
     -------
@@ -341,21 +438,21 @@ def compute_ensemble_j_moments(
         dtype=float,
     )
 
-    samples = map_with_optional_pool(
+    moments = map_with_optional_pool(
         _compute_trajectory_j_moments_worker,
         [(traj, tol) for traj in ensemble.trajectories],
         n_processes=n_processes,
         progress_desc="compute_ensemble_j_moments",
     )
 
-    for sample in samples:
-        if len(sample.t) != len(t_ref) or not np.allclose(sample.t, t_ref, atol=1e-12, rtol=0.0):
+    for m in moments:
+        if len(m.t) != len(t_ref) or not np.allclose(m.t, t_ref, atol=1e-12, rtol=0.0):
             raise ValueError(
                 "All trajectories must share the same t_eval snapshot grid. "
                 "Run the ensemble through the common num_snapshots API."
             )
 
-    return compute_average_j_moments(samples)
+    return compute_average_j_moments(moments, tol=tol)
 
 
 __all__ = [

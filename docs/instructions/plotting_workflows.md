@@ -40,6 +40,14 @@ or diagnostics rather than recomputing expensive physics.
 8. Labels should name the physical quantity being plotted, using math labels
    when appropriate.
 
+9. Plotting functions should accept optional `phases` when the x-axis is time.
+   If provided, add black dashed vertical lines at phase boundaries, following
+   the old pipeline style:
+
+   ```python
+   ax.axvline(boundary, linestyle="--", color="black", alpha=0.6)
+   ```
+
 ## `fig, axes = plot_j_spin_components(...)`
 
 1. `plot_j_spin_components` lives in `quantum_trajectories/plotting_j_moments.py`.
@@ -54,17 +62,17 @@ or diagnostics rather than recomputing expensive physics.
    ```
 
 4. The function should support `spin_component="j"` and `spin_component="s"`.
-   For `spin_component="j"`, it reads `Jx`, `Jy`, `Jz` and optional
-   `Jx_groups`, `Jy_groups`, `Jz_groups`. For `spin_component="s"`, it should
-   read the analogous `sx`, `sy`, `sz` fields once they exist.
+   For `spin_component="j"`, it reads `x`, `y`, `z` and optional
+   `x_groups`, `y_groups`, `z_groups`. For `spin_component="s"`, it should
+   read the analogous normalized-direction fields `nx`, `ny`, `nz`.
 
 5. The output should be a `3x1` panel showing the x, y, and z components.
 
 6. Each panel should include the full-system curve. If group fields exist, each
    panel should also include all group-resolved curves.
 
-7. The function should support `axes`, `output_path`, and `label` so multiple
-   results can be plotted into the same figure.
+7. The function should support `axes`, `output_path`, `label`, and `phases` so
+   multiple results can be plotted into the same figure.
 
 ## `fig, axes = plot_j_angles(...)`
 
@@ -72,31 +80,18 @@ or diagnostics rather than recomputing expensive physics.
 
 2. The function should take `moments.J` as input.
 
-3. The output should be a `2x1` panel showing `theta` and `phi`.
+3. The output should be a `1x2` panel showing `theta` and `phi`.
 
-4. Angles should be computed from the direction of the mean J vector. For each
-   full-system or group-resolved curve, first compute
+4. `plot_j_angles` should read stored `theta` and `phi` fields from
+   `moments.J`. Angle construction should happen upstream in the moment
+   pipeline; the plotting function should not recompute angles from
+   `x/y/z`, `length`, or `nx/ny/nz`.
 
-   ```python
-   J_len = sqrt(Jx**2 + Jy**2 + Jz**2)
-   sx = Jx / J_len
-   sy = Jy / J_len
-   sz = Jz / J_len
-   ```
+5. If group-resolved `theta_groups` and `phi_groups` exist, plot group angles
+   first using dashed group-colored curves. Plot the full-system angles last
+   using a solid gray curve.
 
-   for points with `J_len > tol`.
+6. The function should support `axes`, `output_path`, `label`, and `phases`.
 
-5. The angle convention should match the old active-manifold angle convention:
-
-   ```python
-   theta = arccos(-sz)
-   phi = atan2(sy, sx)
-   ```
-
-   If the transverse length is below tolerance, set `phi = 0`.
-
-6. If group-resolved J fields exist, plot group angles first using dashed
-   group-colored curves. Plot the full-system angles last using a solid gray
-   curve.
-
-7. The function should support `axes`, `output_path`, `label`, and `tol`.
+Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
+`Jx_groups`, `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.

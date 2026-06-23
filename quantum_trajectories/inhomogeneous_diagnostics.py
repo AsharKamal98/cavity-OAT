@@ -73,10 +73,12 @@ def _require_two_group_observables(obs: ObservableSeries) -> tuple[Tuple[np.ndar
 
 def _print_phase_end_residuals(data: dict) -> None:
     """
-    Print residual magnitude sums at the saved snapshot closest to each phase end.
+    Print component-wise residual sums at the saved snapshot closest to each phase end.
 
     The residuals are computed only on the saved t_eval grid, so the printed
     value is evaluated at the nearest saved snapshot to each phase-end time.
+    The summary matches the plotted component curves by summing
+    |Re R1| + |Im R1| + |Re R2| + |Im R2| at that snapshot.
     """
     t = np.asarray(data["t"], dtype=float)
     phase_end_times = data.get("phase_end_times")
@@ -85,9 +87,15 @@ def _print_phase_end_residuals(data: dict) -> None:
 
     for phase_idx, phase_end in enumerate(phase_end_times, start=1):
         snapshot_idx = int(np.argmin(np.abs(t - phase_end)))
-        residual_sum = abs(data["R1"][snapshot_idx]) + abs(data["R2"][snapshot_idx])
+        residual_sum = (
+            abs(np.real(data["R1"][snapshot_idx]))
+            + abs(np.imag(data["R1"][snapshot_idx]))
+            + abs(np.real(data["R2"][snapshot_idx]))
+            + abs(np.imag(data["R2"][snapshot_idx]))
+        )
         print(
-            f"Phase {phase_idx}: |R1| + |R2| = {residual_sum:.6e}"
+            "Phase "
+            f"{phase_idx}: |Re R1| + |Im R1| + |Re R2| + |Im R2| = {residual_sum:.6e}"
         )
 
 
@@ -269,12 +277,12 @@ def plot_inhomogeneous_mfe_residuals(
     tol: float = 1e-12,
 ):
     """
-    Plot absolute real and imaginary parts of the two inhomogeneous MFE residuals.
+    Plot signed real and imaginary parts of the two inhomogeneous MFE residuals.
 
     The grid is
-        |Re R1|    |Im R1|
-        |Re R2|    |Im R2|
-    and the curves should be near zero when the saved states are close to the
+        Re R1    Im R1
+        Re R2    Im R2
+    and the curves should stay near zero when the saved states are close to the
     inhomogeneous mean-field steady state.
     """
     data = inhomogeneous_mfe_residuals(
@@ -297,10 +305,10 @@ def plot_inhomogeneous_mfe_residuals(
 
     t = data["t"]
     specs = [
-        (axes[0, 0], np.abs(np.real(data["R1"])), r"$|\mathrm{Re}\,R_1|$"),
-        (axes[0, 1], np.abs(np.imag(data["R1"])), r"$|\mathrm{Im}\,R_1|$"),
-        (axes[1, 0], np.abs(np.real(data["R2"])), r"$|\mathrm{Re}\,R_2|$"),
-        (axes[1, 1], np.abs(np.imag(data["R2"])), r"$|\mathrm{Im}\,R_2|$"),
+        (axes[0, 0], np.real(data["R1"]), r"$\mathrm{Re}\,R_1$"),
+        (axes[0, 1], np.imag(data["R1"]), r"$\mathrm{Im}\,R_1$"),
+        (axes[1, 0], np.real(data["R2"]), r"$\mathrm{Re}\,R_2$"),
+        (axes[1, 1], np.imag(data["R2"]), r"$\mathrm{Im}\,R_2$"),
     ]
 
     for ax, values, label in specs:
@@ -310,6 +318,15 @@ def plot_inhomogeneous_mfe_residuals(
         ax.grid(alpha=0.3)
         ax.legend()
         ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
+        finite_values = np.asarray(values, dtype=float)
+        finite_values = finite_values[np.isfinite(finite_values)]
+        if finite_values.size == 0:
+            ax.set_ylim(-1.0, 1.0)
+        else:
+            max_abs = float(np.max(np.abs(finite_values)))
+            if max_abs <= 0.0:
+                max_abs = 1.0
+            ax.set_ylim(-max_abs, max_abs)
 
     if data["phase_boundaries"] is not None:
         t_step1_end, t_step2_end = data["phase_boundaries"]

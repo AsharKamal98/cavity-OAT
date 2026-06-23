@@ -69,14 +69,56 @@ def active_manifold_angles(
         raise ValueError("sz values must lie in [-1, 1] to compute angles.")
     sz = np.clip(sz, -1.0, 1.0)
 
+    theta, phi = angles_from_norm_spin_components(sx, sy, sz, valid=valid, tol=tol)
+    return theta, phi, N_active, sx, sy, sz
+
+
+def norm_spin_components(
+    x: Array,
+    y: Array,
+    z: Array,
+    *,
+    tol: float = 1e-12,
+) -> Tuple[Array, Array, Array, Array]:
+    """
+    Compute Euclidean length, normalized direction, and angles of a spin vector.
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    z = np.asarray(z, dtype=float)
+
+    len = np.sqrt(x**2 + y**2 + z**2)
+    valid = len > tol
+
+    sx = np.zeros_like(x, dtype=float)
+    sy = np.zeros_like(y, dtype=float)
+    sz = np.zeros_like(z, dtype=float)
+    sx[valid] = x[valid] / len[valid]
+    sy[valid] = y[valid] / len[valid]
+    sz[valid] = z[valid] / len[valid]
+
+    return len, sx, sy, sz
+
+
+def angles_from_norm_spin_components(
+    sx: Array,
+    sy: Array,
+    sz: Array,
+    valid: Array,
+    tol: float = 1e-12,
+) -> Tuple[Array, Array]:
+    sx = np.asarray(sx, dtype=float)
+    sy = np.asarray(sy, dtype=float)
+    sz = np.asarray(sz, dtype=float)
+    valid = np.asarray(valid, dtype=bool)
     theta = np.zeros_like(sz, dtype=float)
-    theta[valid] = np.arccos(-sz[valid])
+    theta[valid] = np.arccos(np.clip(-sz[valid], -1.0, 1.0))
 
     phi = np.arctan2(sy, sx)
     r_perp = np.sqrt(sx**2 + sy**2)
     phi[r_perp < tol] = 0.0
 
-    return theta, phi, N_active, sx, sy, sz
+    return theta, phi
 
 
 def observable_mse_by_time(

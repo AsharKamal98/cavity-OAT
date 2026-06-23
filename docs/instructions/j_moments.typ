@@ -19,8 +19,8 @@ _compute_snapshot_j_moments(snapshot, ...)
     -> JMomentSnapshot:
     # Compute J moments for one saved snapshot of one trajectory.
     return JMomentSnapshot(
-        t, phase_index, Jx, Jy, Jz, N_e, N_j, jump_rate,
-        J_drive, Jx_groups, Jy_groups, Jz_groups, N_e_groups,
+        t, phase_index, x, y, z, N_e, N_j, jump_rate,
+        J_drive, x_groups, y_groups, z_groups, N_e_groups,
     )
 
 compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
@@ -160,14 +160,14 @@ The snapshot helper should return a `JMomentSnapshot` with scalar fields:
 ```python
 JMomentSnapshot(
     t, phase_index,
-    Jx, Jy, Jz,
+    x, y, z,
     N_e,
     N_j,
     jump_rate,
     J_drive,
-    Jx_groups=None or tuple[float, ...],
-    Jy_groups=None or tuple[float, ...],
-    Jz_groups=None or tuple[float, ...],
+    x_groups=None or tuple[float, ...],
+    y_groups=None or tuple[float, ...],
+    z_groups=None or tuple[float, ...],
     N_e_groups=None or tuple[float, ...],
     N_j_groups=None or tuple[float, ...],
 )
@@ -179,24 +179,42 @@ return `JMomentSeries`:
 ```python
 JMomentSeries(
     t, phase_index,
-    Jx, Jy, Jz,
+    x, y, z,
     N_e,
     N_j,
     jump_rate,
     J_drive,
-    Jx_groups=None or tuple[array, ...],
-    Jy_groups=None or tuple[array, ...],
-    Jz_groups=None or tuple[array, ...],
+    x_groups=None or tuple[array, ...],
+    y_groups=None or tuple[array, ...],
+    z_groups=None or tuple[array, ...],
     N_e_groups=None or tuple[array, ...],
     N_j_groups=None or tuple[array, ...],
+    length=None or array,
+    nx=None or array,
+    ny=None or array,
+    nz=None or array,
+    length_groups=None or tuple[array, ...],
+    nx_groups=None or tuple[array, ...],
+    ny_groups=None or tuple[array, ...],
+    nz_groups=None or tuple[array, ...],
+    theta=None or array,
+    phi=None or array,
+    theta_groups=None or tuple[array, ...],
+    phi_groups=None or tuple[array, ...],
 )
 ```
 
 All trajectory arrays should be defined on the trajectory's saved `t_eval`
 grid. `JMomentSeries` returned by `compute_ensemble_j_moments(...)` has the
-same fields, but each numeric field is averaged across trajectories. These
-helpers should not compute active-manifold angles, normalized spin directions,
-squeezing, or covariance matrices.
+same fields, but each numeric moment field is averaged across trajectories.
+For averaged outputs, the J-vector length and normalized direction fields
+should be attached after averaging by calling the shared J-vector direction
+helper. Angle fields may then be attached later from those normalized
+directions when needed by a plotting or diagnostic step. These helpers should
+not compute active-manifold angles, squeezing, or covariance matrices.
+
+Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
+`Jx_groups`, `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
 
 
 = Invariants
@@ -204,6 +222,9 @@ squeezing, or covariance matrices.
 - `compute_trajectory_j_moments(...)` should return per-trajectory moments only.
 - `compute_average_j_moments(...)` should average moments, not nonlinear derived
   quantities.
+- `compute_average_j_moments(...)` should attach `length`, `nx`, `ny`, and
+  `nz` from the averaged J components, plus group-resolved versions when group
+  fields exist.
 - `compute_ensemble_j_moments(...)` should return trajectory-averaged moments and
   should be the preferred input for plots that do not need per-trajectory
   samples.

@@ -315,6 +315,92 @@ Detailed plotting conventions live in:
 
 - `docs/instructions/plotting_workflows.md`
 
+## 9. New pipeline
+
+Sections 6-8 describe the established observable, diagnostic, and plotting
+pipeline. This section documents the newer moment-first pipeline that is being
+built to replace parts of the old observable flow. Use this section when the
+task explicitly mentions the new pipeline, `MomentSeries`, J moments, or
+`quantum_trajectories/plotting_j_moments.py`.
+
+### 9.1 Moment Container
+
+The notebook-level container is `MomentSeries`, defined in
+`quantum_trajectories/parser.py`. It should be initialized on the shared
+`t_eval` grid, from `phases` and `num_snapshots`, and then filled in as
+post-processing steps are run:
+
+```python
+moments = MomentSeries(phases=phases, num_snapshots=num_snapshots)
+moments.J = compute_ensemble_j_moments(ensemble)
+```
+
+Current top-level fields are:
+
+- `moments.t`: the shared saved-time grid.
+- `moments.J`: a `JMomentSeries` containing first-order J-sphere moments and
+  optional derived J-vector direction fields and angles.
+- `moments.S`: placeholder for future S-moment or spin-direction data.
+
+Parser container conventions live in `docs/instructions/generic/parser.md`.
+
+### 9.2 J-Sphere Moments
+
+Use `compute_ensemble_j_moments(...)` from `quantum_trajectories/j_moments.py`
+as the main new-pipeline entry point for trajectory-averaged J moments:
+
+```python
+moments.J = compute_ensemble_j_moments(ensemble, n_processes=n_processes)
+```
+
+The returned `JMomentSeries` contains arrays on the saved `t_eval` grid,
+including `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, `J_drive`, and optional
+group-resolved fields such as `x_groups`, `y_groups`, `z_groups`,
+`N_e_groups`, and `N_j_groups`.
+
+Detailed definitions and averaging rules live in
+`docs/instructions/j_moments.typ`.
+
+### 9.3 J-Vector Direction Fields
+
+After the raw first-order moments are averaged across trajectories, derived
+direction fields include `length`, `nx`, `ny`, and `nz`, plus group-resolved
+counterparts when present. The current J-moment pipeline uses the Euclidean
+direction of the averaged J vector:
+
+```python
+moments.J.x
+moments.J.y
+moments.J.z
+```
+
+rather than the older active-manifold normalization by `N_active`. The derived
+direction fields are attached inside `compute_average_j_moments(...)` after
+ensemble averaging. Angle fields such as `theta`, `phi`, `theta_groups`, and
+`phi_groups` can then be attached later from those normalized directions when a
+downstream plotting or diagnostic step needs them.
+
+Legacy note: these fields were previously named `Jx`, `Jy`, `Jz`, `Jx_groups`,
+`Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
+
+### 9.4 New-Pipeline Plotting
+
+New-pipeline plotting functions should take moment series objects directly,
+usually `moments.J`, and should visualize already-computed fields rather than
+recomputing moments.
+
+Current plotting functions live in `quantum_trajectories/plotting_j_moments.py`:
+
+- `plot_j_spin_components(moments.J, ...)`: plots `x`, `y`, and `z`, plus
+  group-resolved curves when present.
+- `plot_j_angles(moments.J, ...)`: plots stored `theta` and `phi`, plus stored
+  group-resolved angle curves when present.
+
+Detailed plotting conventions live in `docs/instructions/plotting_workflows.md`.
+Future new-pipeline diagnostics should consume `MomentSeries` or
+`JMomentSeries` when the required data are already present, instead of rerunning
+old observable extraction.
+
 ## General Rules
 
 - This implementation overview should mainly point to task-specific

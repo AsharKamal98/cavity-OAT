@@ -80,18 +80,20 @@ class TrajectoryResult:
 class JMomentSnapshot(BaseModel):
     """First-order J-sphere moments for one saved trajectory snapshot."""
 
+    # Legacy note: these fields were previously named Jx/Jy/Jz and
+    # Jx_groups/Jy_groups/Jz_groups.
     t: float
     phase_index: int
-    Jx: float
-    Jy: float
-    Jz: float
+    x: float
+    y: float
+    z: float
     N_e: float
     N_j: float
     jump_rate: float
     J_drive: float
-    Jx_groups: Tuple[float, ...] | None = None
-    Jy_groups: Tuple[float, ...] | None = None
-    Jz_groups: Tuple[float, ...] | None = None
+    x_groups: Tuple[float, ...] | None = None
+    y_groups: Tuple[float, ...] | None = None
+    z_groups: Tuple[float, ...] | None = None
     N_e_groups: Tuple[float, ...] | None = None
     N_j_groups: Tuple[float, ...] | None = None
 
@@ -99,20 +101,34 @@ class JMomentSnapshot(BaseModel):
 class JMomentSeries(BaseModel):
     """Per-timestep first-order J-sphere moments for one (single or averaged) trajectory."""
 
+    # Legacy note: these fields were previously named Jx/Jy/Jz, Jx_groups/
+    # Jy_groups/Jz_groups, J_len, and sx/sy/sz.
     t: Array
     phase_index: Array
-    Jx: Array
-    Jy: Array
-    Jz: Array
+    x: Array
+    y: Array
+    z: Array
     N_e: Array
     N_j: Array
     jump_rate: Array
     J_drive: Array
-    Jx_groups: Tuple[Array, ...] | None = None
-    Jy_groups: Tuple[Array, ...] | None = None
-    Jz_groups: Tuple[Array, ...] | None = None
+    x_groups: Tuple[Array, ...] | None = None
+    y_groups: Tuple[Array, ...] | None = None
+    z_groups: Tuple[Array, ...] | None = None
     N_e_groups: Tuple[Array, ...] | None = None
     N_j_groups: Tuple[Array, ...] | None = None
+    length: Array | None = None
+    nx: Array | None = None
+    ny: Array | None = None
+    nz: Array | None = None
+    length_groups: Tuple[Array, ...] | None = None
+    nx_groups: Tuple[Array, ...] | None = None
+    ny_groups: Tuple[Array, ...] | None = None
+    nz_groups: Tuple[Array, ...] | None = None
+    theta: Array | None = None
+    phi: Array | None = None
+    theta_groups: Tuple[Array, ...] | None = None
+    phi_groups: Tuple[Array, ...] | None = None
 
     class Config:
         arbitrary_types_allowed = True
