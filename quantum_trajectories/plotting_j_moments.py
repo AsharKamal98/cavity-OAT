@@ -13,11 +13,11 @@ from quantum_trajectories.plotting_diagnostics import (
 
 from quantum_trajectories.plotting_utils import (
     GROUP_CURVE_COLORS,
-    add_phase_regions,
+    curve_label,
+    finish_time_plot,
     format_time_axis,
     full_curve_color,
-    prepare_figure,
-    save_figure,
+    get_axes,
     style_axis,
 )
 
@@ -39,35 +39,8 @@ def _spin_component_fields(spin_component: str) -> tuple[tuple[str, str, str], t
     raise ValueError("spin_component must be 'j' or 's'.")
 
 
-def _curve_label(base_label: str, *, label: Optional[str]) -> str:
-    if label is None:
-        return base_label
-    return f"{label} {base_label}"
-
-
 def _spin_symbol(spin_component: str) -> str:
     return "J" if spin_component.lower() == "j" else "n"
-
-
-def _get_axes(axes, *, n_axes: int, create_figure, error_message: str):
-    if axes is None:
-        fig, axes = create_figure()
-    else:
-        axes = np.asarray(axes)
-        fig = axes.flat[0].figure
-    prepare_figure(fig)
-
-    axes = np.asarray(axes).ravel()
-    if axes.size != n_axes:
-        raise ValueError(error_message)
-    return fig, axes
-
-
-def _finish_time_plot(fig, axes, *, phases, title: str, output_path, title_y: float = 1.05) -> None:
-    add_phase_regions(axes, phases)
-    fig.supxlabel(r"$\Gamma t$")
-    fig.suptitle(title, y=title_y, fontsize=14)
-    save_figure(fig, output_path)
 
 
 def plot_j_spin_components(
@@ -91,7 +64,7 @@ def plot_j_spin_components(
     spin_symbol = _spin_symbol(spin_component)
     full_color = full_curve_color(colour_index)
 
-    fig, axes = _get_axes(
+    fig, axes = get_axes(
         axes,
         n_axes=4,
         create_figure=lambda: plt.subplots(2, 2, figsize=(10, 7), sharex=True, constrained_layout=True),
@@ -130,7 +103,7 @@ def plot_j_spin_components(
                     linewidth=1.8,
                     color=group_color,
                     linestyle="--",
-                    label=_curve_label(group_label, label=label),
+                    label=curve_label(group_label, label=label),
                 )
 
         ax.plot(
@@ -139,7 +112,7 @@ def plot_j_spin_components(
             linewidth=1.8,
             color=full_color,
             linestyle="-",
-            label=_curve_label(component_label, label=label),
+            label=curve_label(component_label, label=label),
         )
 
         ax.set_ylabel(component_label)
@@ -148,7 +121,7 @@ def plot_j_spin_components(
         ax.legend()
         format_time_axis(ax)
 
-    _finish_time_plot(fig, axes, phases=phases, title=title, output_path=output_path)
+    finish_time_plot(fig, axes, phases=phases, title=title, output_path=output_path)
 
     return fig, axes
 
@@ -167,7 +140,7 @@ def plot_j_angles(
 
     The angle arrays must already be stored on the input moment series.
     """
-    fig, axes = _get_axes(
+    fig, axes = get_axes(
         axes,
         n_axes=2,
         create_figure=lambda: plt.subplots(2, 1, figsize=(8, 6), sharex=True, constrained_layout=True),
@@ -195,7 +168,7 @@ def plot_j_angles(
                 linewidth=1.8,
                 color=group_color,
                 linestyle="--",
-                label=_curve_label(rf"$\theta_{group_index}$", label=label),
+                label=curve_label(rf"$\theta_{group_index}$", label=label),
             )
             axes[1].plot(
                 t,
@@ -203,7 +176,7 @@ def plot_j_angles(
                 linewidth=1.8,
                 color=group_color,
                 linestyle="--",
-                label=_curve_label(rf"$\phi_{group_index}$", label=label),
+                label=curve_label(rf"$\phi_{group_index}$", label=label),
             )
 
     axes[0].plot(
@@ -212,7 +185,7 @@ def plot_j_angles(
         linewidth=1.8,
         color=full_color,
         linestyle="-",
-        label=_curve_label(r"$\theta$", label=label),
+        label=curve_label(r"$\theta$", label=label),
     )
     axes[1].plot(
         t,
@@ -220,7 +193,7 @@ def plot_j_angles(
         linewidth=1.8,
         color=full_color,
         linestyle="-",
-        label=_curve_label(r"$\phi$", label=label),
+        label=curve_label(r"$\phi$", label=label),
     )
 
     angle_specs = (
@@ -234,6 +207,6 @@ def plot_j_angles(
         ax.legend()
         format_time_axis(ax)
 
-    _finish_time_plot(fig, axes, phases=phases, title="J-vector angles", output_path=output_path)
+    finish_time_plot(fig, axes, phases=phases, title="J-vector angles", output_path=output_path)
 
     return fig, axes

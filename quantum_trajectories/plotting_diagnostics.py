@@ -7,42 +7,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from quantum_trajectories.plotting_utils import (
-    add_phase_regions,
+    curve_label,
+    finish_time_plot,
     format_time_axis,
     full_curve_color,
-    prepare_figure,
-    save_figure,
+    get_axes,
     sector_curve_color,
     style_axis,
 )
 from quantum_trajectories.parser import TrajectoryEnsemble, TrajectoryResult
-
-
-def _curve_label(base_label: str, *, label: Optional[str]) -> str:
-    if label is None:
-        return base_label
-    return f"{label} {base_label}"
-
-
-def _get_axes(axes, *, n_axes: int, create_figure, error_message: str):
-    if axes is None:
-        fig, axes = create_figure()
-    else:
-        axes = np.asarray(axes)
-        fig = axes.flat[0].figure
-    prepare_figure(fig)
-
-    axes = np.asarray(axes).ravel()
-    if axes.size != n_axes:
-        raise ValueError(error_message)
-    return fig, axes
-
-
-def _finish_time_plot(fig, axes, *, phases, title: str, output_path, title_y: float = 1.05) -> None:
-    add_phase_regions(axes, phases)
-    fig.supxlabel(r"$\Gamma t$")
-    fig.suptitle(title, y=title_y, fontsize=14)
-    save_figure(fig, output_path)
 
 
 def _set_symmetric_ylim_from_lines(ax) -> None:
@@ -111,7 +84,7 @@ def plot_mfe_residuals(
         raise ValueError("plot_mfe_residuals currently requires exactly two residual groups.")
     full_color = full_curve_color(colour_index)
 
-    fig, axes = _get_axes(
+    fig, axes = get_axes(
         axes,
         n_axes=1,
         create_figure=lambda: plt.subplots(1, 1, figsize=(9, 4), constrained_layout=True),
@@ -136,7 +109,7 @@ def plot_mfe_residuals(
             linewidth=1.8,
             color=color,
             linestyle="--",
-            label=_curve_label(residual_label, label=label),
+            label=curve_label(residual_label, label=label),
         )
     axes[0].plot(
         t,
@@ -144,7 +117,7 @@ def plot_mfe_residuals(
         linewidth=1.8,
         color=full_color,
         linestyle="-",
-        label=_curve_label("L2 norm", label=label),
+        label=curve_label("L2 norm", label=label),
     )
     axes[0].axhline(0.0, linestyle=":", color="black", alpha=0.7)
     axes[0].set_ylabel("Residual")
@@ -153,7 +126,7 @@ def plot_mfe_residuals(
     format_time_axis(axes[0])
     _set_symmetric_ylim_from_lines(axes[0])
 
-    _finish_time_plot(
+    finish_time_plot(
         fig,
         axes,
         phases=phases,
@@ -217,7 +190,7 @@ def plot_sector_probabilities(
     """
     Plot normalized represented-sector probabilities from saved sector blocks.
     """
-    fig, axes = _get_axes(
+    fig, axes = get_axes(
         axes,
         n_axes=1,
         create_figure=lambda: plt.subplots(1, 1, figsize=(9, 4), constrained_layout=True),
@@ -235,7 +208,7 @@ def plot_sector_probabilities(
             linewidth=1.8,
             color=sector_curve_color(sector_index),
             linestyle="-",
-            label=_curve_label(_sector_label(sector), label=label),
+            label=curve_label(_sector_label(sector), label=label),
         )
 
     axes[0].set_ylabel(r"$p_\alpha$")
@@ -244,7 +217,7 @@ def plot_sector_probabilities(
     axes[0].legend()
     format_time_axis(axes[0])
 
-    _finish_time_plot(
+    finish_time_plot(
         fig,
         axes,
         phases=phases,

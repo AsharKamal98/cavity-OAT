@@ -58,6 +58,26 @@ def sector_curve_color(sector_index: int) -> str:
     return SECTOR_CURVE_COLORS[sector_index % len(SECTOR_CURVE_COLORS)]
 
 
+def curve_label(base_label: str, *, label: Optional[str]) -> str:
+    if label is None:
+        return base_label
+    return f"{label} {base_label}"
+
+
+def get_axes(axes, *, n_axes: int, create_figure, error_message: str):
+    if axes is None:
+        fig, axes = create_figure()
+    else:
+        axes = np.asarray(axes)
+        fig = axes.flat[0].figure
+    prepare_figure(fig)
+
+    axes = np.asarray(axes).ravel()
+    if axes.size != n_axes:
+        raise ValueError(error_message)
+    return fig, axes
+
+
 def add_phase_regions(axes, phases) -> None:
     if phases is None:
         return
@@ -100,3 +120,18 @@ def save_figure(fig, output_path: Optional[Union[str, Path]]) -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
+
+
+def finish_time_plot(
+    fig,
+    axes,
+    *,
+    phases,
+    title: str,
+    output_path,
+    title_y: float = 1.05,
+) -> None:
+    add_phase_regions(axes, phases)
+    fig.supxlabel(r"$\Gamma t$")
+    fig.suptitle(title, y=title_y, fontsize=14)
+    save_figure(fig, output_path)
