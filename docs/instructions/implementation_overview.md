@@ -163,7 +163,8 @@ The ensemble function should:
 - create trajectory seeds consistently;
 - build reusable precomputed data once;
 - run single trajectories serially or with multiprocessing;
-- return a `TrajectoryEnsemble` containing the individual trajectory results.
+- return a `TrajectoryEnsemble` containing the individual trajectory results
+  and shared simulation parameters.
 
 High-level data flow should look like:
 
@@ -173,17 +174,22 @@ def run_trajectory_ensemble(
 ) -> TrajectoryEnsemble:
     precomputed = build_precomputed_trajectory_data(...)
     trajectories = [simulate_single_trajectory(..., precomputed) for _ in range(ntraj)]
-    return TrajectoryEnsemble(trajectories=trajectories)
+    return TrajectoryEnsemble(trajectories=trajectories, parameters=parameters)
 ```
+
+`parameters` should contain shared metadata from the ensemble inputs, including
+computed `omega_groups` and `N_groups`; `TrajectoryEnsemble` should validate it
+into `MomentParameters`.
 
 For precomputation rules, use:
 
 - `docs/instructions/simulation_precompute.typ`
+- `docs/instructions/sector_operators.typ`
 
-This file should cover reusable sector operators, phase generators,
+These files should cover reusable sector operators, phase generators,
 full-`dt` propagators, and when precomputed data can or cannot be used.
 
-It should be read before changing build precomputed trajectory data(...), 
+They should be read before changing build precomputed trajectory data(...),
 phase-dependent jump operators, non-Hermitian generators, full-dt propagators, 
 or the logic that chooses between precomputed and variable-step propagation.
 
@@ -331,7 +337,12 @@ The notebook-level container is `MomentSeries`, defined in
 post-processing steps are run:
 
 ```python
-moments = MomentSeries(phases=phases, num_snapshots=num_snapshots)
+ensemble = run_trajectory_ensemble(...)
+moments = MomentSeries(
+    phases=phases,
+    num_snapshots=num_snapshots,
+    parameters=ensemble.parameters,
+)
 moments.J = compute_ensemble_j_moments(ensemble)
 ```
 
@@ -339,9 +350,11 @@ Current top-level fields are:
 
 - `moments.t`: the shared saved-time grid.
 - `moments.parameters`: simulation metadata needed by moment-level diagnostics,
-  such as `Gamma`, `phases`, `omega_groups`, and `N_groups`.
-- `moments.J`: a `JMomentSeries` containing first-order J-sphere moments and
-  optional derived J-vector direction fields and angles.
+  such as `Gamma`, `phases`, `omega_groups`, and `N_groups`; this can mirror
+  `ensemble.parameters`.
+- `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
+  derived J-vector direction fields and angles when produced by
+  `compute_ensemble_j_moments(...)`.
 - `moments.S`: placeholder for future S-moment or spin-direction data.
 
 Parser container conventions live in `docs/instructions/generic/parser.md`.
@@ -358,7 +371,10 @@ moments.J = compute_ensemble_j_moments(ensemble, n_processes=n_processes)
 The returned `JMomentSeries` contains arrays on the saved `t_eval` grid,
 including `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, `J_drive`, and optional
 group-resolved fields such as `x_groups`, `y_groups`, `z_groups`,
-`N_e_groups`, and `N_j_groups`.
+`N_e_groups`, and `N_j_groups`. It also includes derived fields attached after
+ensemble averaging: `length`, `nx`, `ny`, `nz`, `theta`, and `phi`, plus
+group-resolved versions when group fields exist. For two-group inhomogeneous
+runs, it also attaches `mfe_residuals_groups`.
 
 Detailed definitions and averaging rules live in
 `docs/instructions/j_moments.typ`.
@@ -377,10 +393,13 @@ moments.J.z
 ```
 
 rather than the older active-manifold normalization by `N_active`. The derived
-direction fields are attached inside `compute_average_j_moments(...)` after
-ensemble averaging. Angle fields such as `theta`, `phi`, `theta_groups`, and
-`phi_groups` can then be attached later from those normalized directions when a
-downstream plotting or diagnostic step needs them.
+direction fields are attached inside `compute_ensemble_j_moments(...)` after
+`compute_average_j_moments(...)` returns the raw ensemble average. Angle fields
+such as `theta`, `phi`, `theta_groups`, and `phi_groups` are then attached from
+those normalized directions before returning the final `JMomentSeries`.
+For two-group inhomogeneous runs, `mfe_residuals_groups` is attached from those
+new J-vector group angles, `N_j_groups`, and the phase-local protocol fields
+stored in `ensemble.parameters`.
 
 Legacy note: these fields were previously named `Jx`, `Jy`, `Jz`, `Jx_groups`,
 `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
@@ -391,12 +410,21 @@ New-pipeline plotting functions should take moment series objects directly,
 usually `moments.J`, and should visualize already-computed fields rather than
 recomputing moments.
 
-Current plotting functions live in `quantum_trajectories/plotting_j_moments.py`:
+Current moment plotting functions live in `quantum_trajectories/plotting_j_moments.py`:
 
 - `plot_j_spin_components(moments.J, ...)`: plots `x`, `y`, and `z`, plus
   group-resolved curves when present.
 - `plot_j_angles(moments.J, ...)`: plots stored `theta` and `phi`, plus stored
   group-resolved angle curves when present.
+
+Current diagnostic plotting functions live in
+`quantum_trajectories/plotting_diagnostics.py`:
+
+- `plot_mfe_residuals(moments.J, ...)`: plots stored two-group
+  `mfe_residuals_groups` in a single residual panel with the L2 norm.
+- `plot_sector_probabilities(result, ...)`: plots normalized represented-sector
+  probabilities `p_alpha(t)` computed directly from saved snapshot sector
+  blocks.
 
 Detailed plotting conventions live in `docs/instructions/plotting_workflows.md`.
 Future new-pipeline diagnostics should consume `MomentSeries` or
@@ -432,3 +460,7 @@ old observable extraction.
 - Do not automatically modify instruction files or parts of instruction files
   unrelated to the given task, unless it is a smaller typo. If a larger
   inconsistency is found in unrelated instructions to the task, let the user know.
+
+## TODOs
+
+Open implementation cleanup notes are tracked in `docs/instructions/TODOs.md`.

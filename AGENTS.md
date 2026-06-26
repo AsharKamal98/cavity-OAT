@@ -73,6 +73,7 @@ AGENTS.md
       -> docs/instructions/initial_sector_state.md (planned/missing)
       -> docs/instructions/parameter_validation.md (planned/missing)
       -> docs/instructions/simulation_precompute.typ
+      -> docs/instructions/sector_operators.typ
       -> docs/instructions/paper_inhomogeneous_couplings.typ
       -> docs/instructions/ensemble_simulation.typ
       -> docs/instructions/single_trajectory_simulation.typ

@@ -78,6 +78,7 @@ simulate_single_trajectory(
     shifted_jump_operator=False,
     precomputed=None,
     omega_1=None,
+    omega_2=None,
     N1=None,
     N2=None,
 ) -> TrajectoryResult
@@ -94,6 +95,7 @@ The function should validate at least:
 If any sector key is a tuple, the solver should require:
 
 - `omega_1 is not None`;
+- `omega_2 is not None`;
 - `N1 is not None` and `N2 is not None`;
 - `N1 + N2 = N`.
 
@@ -124,9 +126,9 @@ TrajectoryResult(
 )
 ```
 
-For inhomogeneous runs, `omega_2` should be derived once at the end through
-`omega2_from_weighted_average(...)`. For homogeneous runs it should remain
-`None`.
+For inhomogeneous runs, `omega_2` should be computed once by the ensemble
+runner and passed into `simulate_single_trajectory(...)`. The single-trajectory
+function should not recompute `omega_2`.
 
 = Initialization
 
@@ -438,7 +440,6 @@ def simulate_single_trajectory(...):
 
     renormalize final state
     ensure all t_eval snapshots were saved
-    derive omega_2 when needed
     return TrajectoryResult(...)
 ```
 

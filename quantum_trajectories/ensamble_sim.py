@@ -6,6 +6,7 @@ from quantum_trajectories.sim import (
     build_precomputed_trajectory_data,
     simulate_single_trajectory,
 )
+from quantum_trajectories.operator_helpers import omega2_from_weighted_average
 from quantum_trajectories.parser import (
     Array,
     Phase,
@@ -45,6 +46,7 @@ def _init_trajectory_worker(
     shifted_jump_operator,
     precomputed,
     omega_1,
+    omega_2,
     N1,
     N2,
 ):
@@ -68,6 +70,7 @@ def _init_trajectory_worker(
         "shifted_jump_operator": shifted_jump_operator,
         "precomputed": precomputed,
         "omega_1": omega_1,
+        "omega_2": omega_2,
         "N1": N1,
         "N2": N2,
     }
@@ -95,9 +98,11 @@ def _simulate_single_trajectory_worker(seed_sequence: np.random.SeedSequence) ->
         shifted_jump_operator=_WORKER_STATE["shifted_jump_operator"],
         precomputed=_WORKER_STATE["precomputed"],
         omega_1=_WORKER_STATE["omega_1"],
+        omega_2=_WORKER_STATE["omega_2"],
         N1=_WORKER_STATE["N1"],
         N2=_WORKER_STATE["N2"],
     )
+
 
 def run_trajectory_ensemble(
     N: int,
@@ -168,6 +173,19 @@ def run_trajectory_ensemble(
     parent_seed_sequence = np.random.SeedSequence(seed)
     seed_sequences = parent_seed_sequence.spawn(ntraj)
     seed_keys = [tuple(child.spawn_key) for child in seed_sequences]
+    omega_2 = (
+        omega2_from_weighted_average(float(omega_1), int(N1), int(N2))
+        if omega_1 is not None and N1 is not None and N2 is not None
+        else None
+    )
+    omega_groups = None if omega_2 is None else (float(omega_1), omega_2)
+    N_groups = None if N1 is None or N2 is None else (int(N1), int(N2))
+    parameters = {
+        "Gamma": Gamma,
+        "phases": phases,
+        "omega_groups": omega_groups,
+        "N_groups": N_groups,
+    }
 
     # Build all sector operators, effective generators, jump operators and
     # propagators once. These are reused by every trajectory.
@@ -180,6 +198,7 @@ def run_trajectory_ensemble(
         dt=dt,
         shifted_jump_operator=shifted_jump_operator,
         omega_1=omega_1,
+        omega_2=omega_2,
         N1=N1,
         N2=N2,
     )
@@ -207,6 +226,7 @@ def run_trajectory_ensemble(
                 shifted_jump_operator=shifted_jump_operator,
                 precomputed=precomputed,
                 omega_1=omega_1,
+                omega_2=omega_2,
                 N1=N1,
                 N2=N2,
             )
@@ -221,7 +241,11 @@ def run_trajectory_ensemble(
             f"total steps={avg_total_steps:.2f}, "
             f"steps without precompute={avg_non_precomputed_steps:.2f}"
         )
-        return TrajectoryEnsemble(trajectories=trajectories, seeds=seed_keys)
+        return TrajectoryEnsemble(
+            trajectories=trajectories,
+            seeds=seed_keys,
+            parameters=parameters,
+        )
 
     # -------------------------------------------------------------------------
     # Parallel execution
@@ -250,6 +274,7 @@ def run_trajectory_ensemble(
             shifted_jump_operator,
             precomputed,
             omega_1,
+            omega_2,
             N1,
             N2,
         ),
@@ -279,4 +304,8 @@ def run_trajectory_ensemble(
         f"total steps={avg_total_steps:.2f}, "
         f"steps without precompute={avg_non_precomputed_steps:.2f}"
     )
-    return TrajectoryEnsemble(trajectories=trajectories, seeds=seed_keys)
+    return TrajectoryEnsemble(
+        trajectories=trajectories,
+        seeds=seed_keys,
+        parameters=parameters,
+    )

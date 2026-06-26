@@ -8,7 +8,6 @@ from scipy.sparse.linalg import expm, expm_multiply
 
 from quantum_trajectories.operator_helpers import (
     build_sector_ops_for_key,
-    omega2_from_weighted_average,
     sector_multiplicity,
     split_sector_key,
     total_active_atoms_in_sector,
@@ -198,6 +197,7 @@ def build_precomputed_trajectory_data(
     *,
     shifted_jump_operator: bool = False,
     omega_1: Optional[float] = None,
+    omega_2: Optional[float] = None,
     N1: Optional[int] = None,
     N2: Optional[int] = None,
 ) -> Dict[str, Any]:
@@ -210,6 +210,8 @@ def build_precomputed_trajectory_data(
     if has_inhomogeneous_sectors:
         if omega_1 is None:
             raise ValueError("omega_1 must be provided for inhomogeneous sector coefficients.")
+        if omega_2 is None:
+            raise ValueError("omega_2 must be provided for inhomogeneous sector coefficients.")
         if N1 is None or N2 is None:
             raise ValueError(
                 "N1 and N2 must be provided for inhomogeneous sector coefficients."
@@ -225,6 +227,7 @@ def build_precomputed_trajectory_data(
         build_sector_ops_for_key(
             sector_key,
             omega_1=omega_1,
+            omega_2=omega_2,
             N1=N1,
             N2=N2,
         )
@@ -308,6 +311,7 @@ def simulate_single_trajectory(
     shifted_jump_operator: bool = False,
     precomputed: Optional[Dict[str, Any]] = None,
     omega_1: Optional[float] = None,
+    omega_2: Optional[float] = None,
     N1: Optional[int] = None,
     N2: Optional[int] = None,
 ) -> TrajectoryResult:
@@ -339,7 +343,7 @@ def simulate_single_trajectory(
         common output grid t_eval = linspace(0, total_time, num_snapshots) and
         saves the state exactly at those times by splitting internal evolution
         steps when needed.
-    omega_1, N1, N2
+    omega_1, omega_2, N1, N2
         Inhomogeneous-coupling metadata.  Tuple sector keys (Nj1, Nj2) require
         these values so the solver can use one fixed group-2 coupling,
         N1 * omega_1 + N2 * omega_2 = N1 + N2.
@@ -369,6 +373,8 @@ def simulate_single_trajectory(
     if has_inhomogeneous_sectors:
         if omega_1 is None:
             raise ValueError("omega_1 must be provided for inhomogeneous sector coefficients.")
+        if omega_2 is None:
+            raise ValueError("omega_2 must be provided for inhomogeneous sector coefficients.")
         if N1 is None or N2 is None:
             raise ValueError(
                 "N1 and N2 must be provided for inhomogeneous sector coefficients."
@@ -394,6 +400,7 @@ def simulate_single_trajectory(
             dt,
             shifted_jump_operator=shifted_jump_operator,
             omega_1=omega_1,
+            omega_2=omega_2,
             N1=N1,
             N2=N2,
         )
@@ -544,12 +551,6 @@ def simulate_single_trajectory(
                 phase_index=max(len(phases) - 1, 0),
             )
         )
-
-    omega_2 = (
-        omega2_from_weighted_average(float(omega_1), int(N1), int(N2))
-        if has_inhomogeneous_sectors
-        else None
-    )
 
     return TrajectoryResult(
         N=N,

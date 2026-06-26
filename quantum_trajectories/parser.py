@@ -100,42 +100,49 @@ class JMomentSnapshot(BaseModel):
 
 class JMomentSeries(BaseModel):
     """Per-timestep first-order J-sphere moments for one (single or averaged) trajectory."""
-
     # Legacy note: these fields were previously named Jx/Jy/Jz, Jx_groups/
     # Jy_groups/Jz_groups, J_len, and sx/sy/sz.
+
     t: Array
     phase_index: Array
+    # spin components
     x: Array
     y: Array
     z: Array
-    N_e: Array
-    N_j: Array
-    jump_rate: Array
-    J_drive: Array
     x_groups: tuple[Array, ...] | None = None
     y_groups: tuple[Array, ...] | None = None
     z_groups: tuple[Array, ...] | None = None
-    N_e_groups: tuple[Array, ...] | None = None
-    N_j_groups: tuple[Array, ...] | None = None
     length: Array | None = None
+    length_groups: tuple[Array, ...] | None = None
+    # normalized spin components / directions
     nx: Array | None = None
     ny: Array | None = None
     nz: Array | None = None
-    length_groups: tuple[Array, ...] | None = None
     nx_groups: tuple[Array, ...] | None = None
     ny_groups: tuple[Array, ...] | None = None
     nz_groups: tuple[Array, ...] | None = None
+    # atom numbers
+    N_e: Array
+    N_j: Array
+    N_e_groups: tuple[Array, ...] | None = None
+    N_j_groups: tuple[Array, ...] | None = None
+    # angles
     theta: Array | None = None
     phi: Array | None = None
     theta_groups: tuple[Array, ...] | None = None
     phi_groups: tuple[Array, ...] | None = None
+    # residual diagnostics
+    mfe_residuals_groups: tuple[Array, ...] | None = None
+    # other
+    jump_rate: Array
+    J_drive: Array
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MomentParameters(BaseModel):
-    """Simulation parameters needed by moment-level diagnostics."""
+    """Shared simulation parameters needed by moment-level diagnostics."""
 
     Gamma: float
     phases: list[Phase]
@@ -181,3 +188,24 @@ class MomentSeries(BaseModel):
 class TrajectoryEnsemble:
     trajectories: list[TrajectoryResult]
     seeds: list[tuple[int, ...]]
+    parameters: MomentParameters | dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        self.parameters = self._validate_parameters(self.parameters)
+
+    @staticmethod
+    def _validate_parameters(
+        parameters: MomentParameters | dict[str, Any] | None,
+    ) -> MomentParameters | None:
+        if parameters is None or isinstance(parameters, MomentParameters):
+            return parameters
+
+        values = dict(parameters)
+        if "phases" in values:
+            values["phases"] = list(values["phases"])
+        if values.get("omega_groups") is not None:
+            values["omega_groups"] = tuple(float(value) for value in values["omega_groups"])
+        if values.get("N_groups") is not None:
+            values["N_groups"] = tuple(int(value) for value in values["N_groups"])
+
+        return MomentParameters(**values)

@@ -11,6 +11,7 @@ from quantum_trajectories.parser import (
     Array,
     JMomentSnapshot,
     JMomentSeries,
+    MomentParameters,
     TrajectoryEnsemble,
     TrajectoryResult,
     TrajectorySnapshot,
@@ -46,6 +47,7 @@ def _compute_snapshot_j_moments(
     Gamma: float,
     shifted_jump_operator: bool,
     omega_1: Optional[float],
+    omega_2: Optional[float],
     N1: Optional[int],
     N2: Optional[int],
 ) -> JMomentSnapshot:
@@ -100,6 +102,7 @@ def _compute_snapshot_j_moments(
         ops = build_sector_ops_for_key(
             sector_key,
             omega_1=omega_1,
+            omega_2=omega_2,
             N1=N1,
             N2=N2,
         )
@@ -203,6 +206,7 @@ def compute_trajectory_j_moments(
             Gamma=trajectory.Gamma,
             shifted_jump_operator=trajectory.shifted_jump_operator,
             omega_1=trajectory.omega_1,
+            omega_2=trajectory.omega_2,
             N1=trajectory.N1,
             N2=trajectory.N2,
         )
@@ -232,15 +236,15 @@ def compute_trajectory_j_moments(
         x=series("x"),
         y=series("y"),
         z=series("z"),
-        N_e=series("N_e"),
-        N_j=series("N_j"),
-        jump_rate=series("jump_rate"),
-        J_drive=series("J_drive"),
         x_groups=group_series("x_groups"),
         y_groups=group_series("y_groups"),
         z_groups=group_series("z_groups"),
+        N_e=series("N_e"),
+        N_j=series("N_j"),
         N_e_groups=group_series("N_e_groups"),
         N_j_groups=group_series("N_j_groups"),
+        jump_rate=series("jump_rate"),
+        J_drive=series("J_drive"),
     )
 
 
@@ -337,6 +341,80 @@ def _attach_spin_angles(j_moments: JMomentSeries, *, tol: float) -> None:
     j_moments.phi_groups = tuple(result[1] for result in group_results)
 
 
+def _attach_mfe_residuals(
+    j_moments: JMomentSeries,
+    *,
+    parameters: MomentParameters,
+    tol: float,
+) -> None:
+    """
+    Attach two-group MFE residuals computed from averaged J-vector angles.
+    """
+    if (
+        j_moments.theta_groups is None
+        or j_moments.phi_groups is None
+        or j_moments.N_j_groups is None
+    ):
+        return
+
+    group_count = len(j_moments.theta_groups)
+    if group_count != 2:
+        return
+    if (
+        len(j_moments.phi_groups) != group_count
+        or len(j_moments.N_j_groups) != group_count
+    ):
+        raise ValueError("MFE residuals require matching two-group moment fields.")
+    omega_groups = parameters.omega_groups
+    if omega_groups is None or len(omega_groups) != group_count:
+        raise ValueError("MFE residuals require two inhomogeneous coupling weights.")
+
+    phase_indices = np.asarray(j_moments.phase_index, dtype=int)
+    omega_t = np.asarray([parameters.phases[idx].omega for idx in phase_indices], dtype=float)
+    delta_t = np.asarray([parameters.phases[idx].delta for idx in phase_indices], dtype=float)
+
+    theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta_groups)
+    phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi_groups)
+    nj_groups = tuple(np.asarray(nj, dtype=float) for nj in j_moments.N_j_groups)
+    omega_groups = tuple(float(omega_g) for omega_g in omega_groups)
+
+    weighted_collective_transverse_sum = sum(
+        omega_g * nj_g * np.exp(1j * phi_g) * np.sin(theta_g)
+        for theta_g, phi_g, nj_g, omega_g in zip(
+            theta_groups,
+            phi_groups,
+            nj_groups,
+            omega_groups,
+        )
+    )
+
+    residuals = []
+    for theta_g, phi_g, omega_g in zip(theta_groups, phi_groups, omega_groups):
+        sin_theta = np.sin(theta_g)
+        cos_theta = np.cos(theta_g)
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            detuning_factor = np.where(
+                np.abs(cos_theta) > tol,
+                sin_theta * np.tan(theta_g),
+                np.nan,
+            )
+
+        drive_term = 0.5 * omega_t * omega_g * np.exp(-1j * phi_g) * sin_theta
+        detuning_term = -0.5 * delta_t * detuning_factor
+        decay_term = (
+            0.25j
+            * parameters.Gamma
+            * omega_g
+            * np.exp(-1j * phi_g)
+            * sin_theta
+            * weighted_collective_transverse_sum
+        )
+        residuals.append(drive_term + detuning_term + decay_term)
+
+    j_moments.mfe_residuals_groups = tuple(residuals)
+
+
 def compute_average_j_moments(
     samples: list[JMomentSeries],
     *,
@@ -344,6 +422,9 @@ def compute_average_j_moments(
 ) -> JMomentSeries:
     """
     Average already-computed per-trajectory J moments on a shared time grid.
+
+    This only averages raw moment fields. Nonlinear derived fields, such as
+    normalized directions and angles, are attached after ensemble averaging.
     """
     if len(samples) == 0:
         raise ValueError("No J-moment samples to average.")
@@ -383,29 +464,22 @@ def compute_average_j_moments(
     y_groups = mean_group_series("y_groups")
     z_groups = mean_group_series("z_groups")
 
-    averaged = JMomentSeries(
+    return JMomentSeries(
         t=t_ref,
         phase_index=phase_ref,
         x=mean_series("x"),
         y=mean_series("y"),
         z=mean_series("z"),
-        N_e=mean_series("N_e"),
-        N_j=mean_series("N_j"),
-        jump_rate=mean_series("jump_rate"),
-        J_drive=mean_series("J_drive"),
         x_groups=x_groups,
         y_groups=y_groups,
         z_groups=z_groups,
+        N_e=mean_series("N_e"),
+        N_j=mean_series("N_j"),
         N_e_groups=mean_group_series("N_e_groups"),
         N_j_groups=mean_group_series("N_j_groups"),
+        jump_rate=mean_series("jump_rate"),
+        J_drive=mean_series("J_drive"),
     )
-    
-    # normalized spin components 
-    _attach_spin_direction_fields(averaged, tol=tol)
-    # theta, phi
-    _attach_spin_angles(averaged, tol=tol)
-    
-    return averaged
 
 
 def compute_ensemble_j_moments(
@@ -419,8 +493,8 @@ def compute_ensemble_j_moments(
     Compute trajectory-averaged first-order J moments for an ensemble.
 
     This is the moment-only counterpart of `ensemble_observables(...)`: it
-    averages per-trajectory moment series without constructing theta/phi or
-    nx/ny/nz.
+    averages per-trajectory moment series, then attaches normalized direction
+    and angle fields to the averaged result.
 
     Returns
     -------
@@ -452,7 +526,14 @@ def compute_ensemble_j_moments(
                 "Run the ensemble through the common num_snapshots API."
             )
 
-    return compute_average_j_moments(moments, tol=tol)
+    averaged = compute_average_j_moments(moments, tol=tol)
+    # normalized spin components
+    _attach_spin_direction_fields(averaged, tol=tol)
+    # theta, phi
+    _attach_spin_angles(averaged, tol=tol)
+    # two-group MFE residuals
+    _attach_mfe_residuals(averaged, parameters=ensemble.parameters, tol=tol)
+    return averaged
 
 
 __all__ = [

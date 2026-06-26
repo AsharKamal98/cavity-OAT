@@ -82,8 +82,10 @@ The ensemble function should validate at least:
 - `n_processes` is one of `None`, `1`, `-1`, or a positive integer.
 
 Tuple sector keys should continue to require `omega_1`, `N1`, and `N2`.
-The ensemble layer should pass these through unchanged to precompute and
-single-trajectory helpers.
+The ensemble layer should compute `omega_2` once through
+`omega2_from_weighted_average(...)`, pass `omega_1`, `omega_2`, `N1`, and `N2`
+to single-trajectory helpers, and pass the same `omega_1`, `omega_2`, `N1`,
+and `N2` to precompute.
 
 = Seed Construction and Reproducibility
 
@@ -174,6 +176,7 @@ _init_trajectory_worker(
     shifted_jump_operator,
     precomputed,
     omega_1,
+    omega_2,
     N1,
     N2,
 )
@@ -231,7 +234,11 @@ def run_trajectory_ensemble(...):
     non_precomputed_steps = sum(traj.non_precomputed_step_count for traj in trajectories)
     print average step diagnostics
 
-    return TrajectoryEnsemble(trajectories=trajectories, seeds=seed_keys)
+    return TrajectoryEnsemble(
+        trajectories=trajectories,
+        seeds=seed_keys,
+        parameters=parameters,
+    )
 ```
 
 The ensemble layer should reuse the existing helpers:
@@ -252,11 +259,16 @@ The returned object should be:
 TrajectoryEnsemble(
     trajectories=trajectories,
     seeds=seed_keys,
+    parameters=parameters,
 )
 ```
 
 `TrajectoryEnsemble.trajectories` should preserve submission order, not sorted
 post hoc by jump count, runtime, or seed.
+`TrajectoryEnsemble.parameters` should store shared simulation metadata such as
+`Gamma`, `phases`, `omega_groups`, and `N_groups`. The ensemble runner should
+pass `omega_groups=(omega_1, omega_2)` and `N_groups=(N1, N2)` once those
+values are available.
 
 Each element should already be a complete `TrajectoryResult`, including:
 

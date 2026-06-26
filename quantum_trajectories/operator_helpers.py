@@ -118,6 +118,7 @@ def build_two_group_sector_ops(
     Nj1: int,
     Nj2: int,
     omega1: float,
+    omega2: float,
     N1: int,
     N2: int,
 ) -> SectorOperators:
@@ -125,10 +126,8 @@ def build_two_group_sector_ops(
     Build cached reduced operators for one two-group active-manifold sector.
 
     The basis is the product Dicke basis |n_{e,1}, n_{e,2}> with dimension
-    (Nj1 + 1)(Nj2 + 1). Group 2 uses a single fixed omega2 chosen from the
-    physical group sizes:
-
-        N1 * omega1 + N2 * omega2 = N1 + N2.
+    (Nj1 + 1)(Nj2 + 1). Group couplings are fixed by the ensemble layer and
+    passed in here.
     """
     if Nj1 < 0 or Nj2 < 0:
         raise ValueError("Two-group sector sizes must be non-negative.")
@@ -137,7 +136,6 @@ def build_two_group_sector_ops(
             f"Sector ({Nj1}, {Nj2}) exceeds physical group sizes N1={N1}, N2={N2}."
         )
 
-    omega2 = omega2_from_weighted_average(omega1, N1, N2)
     ops1 = build_sector_ops(Nj1)
     ops2 = build_sector_ops(Nj2)
 
@@ -194,6 +192,7 @@ def build_sector_ops_for_key(
     sector_key: SectorKey,
     *,
     omega_1: Optional[float] = None,
+    omega_2: Optional[float] = None,
     N1: Optional[int] = None,
     N2: Optional[int] = None,
 ) -> SectorOperators:
@@ -202,15 +201,17 @@ def build_sector_ops_for_key(
             raise ValueError("Only two-group inhomogeneous sectors are currently supported.")
         if omega_1 is None:
             raise ValueError("omega_1 must be provided for inhomogeneous sector keys.")
+        if omega_2 is None:
+            raise ValueError("omega_2 must be provided for inhomogeneous sector keys.")
         if N1 is None or N2 is None:
             raise ValueError(
-                "N1 and N2 must be provided for inhomogeneous sector keys so omega_2 "
-                "can be fixed from the physical group sizes."
+                "N1 and N2 must be provided for inhomogeneous sector keys."
             )
         return build_two_group_sector_ops(
             int(sector_key[0]),
             int(sector_key[1]),
             float(omega_1),
+            float(omega_2),
             int(N1),
             int(N2),
         )

@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Optional, Union
+
+import numpy as np
+
+FIGURE_FACE_COLOR = "white"
+AXES_FACE_COLOR = "white"
+GRID_COLOR = "#d7d7d7"
+SPINE_COLOR = "#b8b8b8"
+FULL_CURVE_COLOR = "#4d4d4d"
+FULL_CURVE_COLORS = (
+    FULL_CURVE_COLOR,
+    "#800000",
+    "#556b2f",
+    "#2f4f4f",
+)
+GROUP_CURVE_COLORS = ("#0072B2", "#D55E00", "#009E73", "#CC79A7")
+SECTOR_CURVE_COLORS = (
+    "#0072B2",
+    "#D55E00",
+    "#009E73",
+    "#CC79A7",
+    "#56B4E9",
+    "#E69F00",
+    "#000000",
+    "#F0E442",
+)
+PHASE_SHADE_COLORS = ("#efe7bd", "#dcecf2", "#f2ddd2")
+PHASE_BOUNDARY_COLOR = "black"
+
+
+def prepare_figure(fig) -> None:
+    fig.patch.set_facecolor(FIGURE_FACE_COLOR)
+
+
+def style_axis(ax) -> None:
+    ax.set_facecolor(AXES_FACE_COLOR)
+    ax.grid(color=GRID_COLOR, linewidth=0.8, alpha=0.85)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color(SPINE_COLOR)
+    ax.spines["bottom"].set_color(SPINE_COLOR)
+    ax.tick_params(color=SPINE_COLOR)
+    ax.margins(x=0.01)
+
+
+def format_time_axis(ax) -> None:
+    ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
+
+
+def full_curve_color(colour_index: int = 0) -> str:
+    return FULL_CURVE_COLORS[colour_index % len(FULL_CURVE_COLORS)]
+
+
+def sector_curve_color(sector_index: int) -> str:
+    return SECTOR_CURVE_COLORS[sector_index % len(SECTOR_CURVE_COLORS)]
+
+
+def add_phase_regions(axes, phases) -> None:
+    if phases is None:
+        return
+
+    durations = np.asarray([phase.duration for phase in phases], dtype=float)
+    starts = np.concatenate(([0.0], np.cumsum(durations)[:-1]))
+    ends = np.cumsum(durations)
+    for ax in np.asarray(axes).ravel():
+        has_shading = any(patch.get_gid() == "phase_shading" for patch in ax.patches)
+        has_boundaries = any(line.get_gid() == "phase_boundary" for line in ax.lines)
+
+        if not has_shading:
+            for phase_index, (start, end) in enumerate(zip(starts, ends)):
+                span = ax.axvspan(
+                    start,
+                    end,
+                    color=PHASE_SHADE_COLORS[phase_index % len(PHASE_SHADE_COLORS)],
+                    alpha=0.35,
+                    zorder=0,
+                )
+                span.set_gid("phase_shading")
+
+        if not has_boundaries:
+            for boundary in starts[1:]:
+                line = ax.axvline(
+                    boundary,
+                    color=PHASE_BOUNDARY_COLOR,
+                    linewidth=1.2,
+                    linestyle="--",
+                    alpha=0.75,
+                    zorder=10,
+                )
+                line.set_gid("phase_boundary")
+
+
+def save_figure(fig, output_path: Optional[Union[str, Path]]) -> None:
+    if output_path is None:
+        return
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")

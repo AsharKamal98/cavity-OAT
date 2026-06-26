@@ -103,6 +103,7 @@ build_precomputed_trajectory_data(
     dt,
     shifted_jump_operator=False,
     omega_1=None,
+    omega_2=None,
     N1=None,
     N2=None,
 ) -> dict
@@ -120,8 +121,11 @@ Inhomogeneous two-group sector keys should be tuples:
 sector_coeffs = {(Nj1, Nj2): coeff}
 ```
 Tuple sector keys require `N1` and `N2`. The function should
-validate that $N_1 + N_2 = N$. Tuple sector keys  also require `omega_1`, from which the group-2 coupling should be fixed by `omega2_from_weighted_average(...)` in
-`quantum_trajectories/operator_helpers.py`; it should not be recomputed per sector.
+validate that $N_1 + N_2 = N$. Tuple sector keys also require `omega_1` and
+`omega_2`. The group-2 coupling should be computed once by the ensemble layer
+through `omega2_from_weighted_average(...)` in
+`quantum_trajectories/operator_helpers.py`; sector-operator construction should
+receive this fixed value and should not recompute it per sector.
 
 = Data Out
 
@@ -182,16 +186,23 @@ $
 
 == Sector Operators (`ops_list`)
 
+Detailed construction rules for `build_sector_ops_for_key(...)`,
+`build_sector_ops(...)`, and `build_two_group_sector_ops(...)` are in
+`docs/instructions/sector_operators.typ`. Below is a summary focusing mostly on the operator forms.
+
 Sector operators should be constructed through:
 
 ```python ops_list = [
-    build_sector_ops_for_key(key, omega_1, N1, N2)
+    build_sector_ops_for_key(key, omega_1, omega_2, N1, N2)
     for key in sector_list
 ]
 ```
 
-For homogeneous integer keys, `omega_1`, `N1`, and `N2` are nullable and the function should return the usual single-sector operators on
-the `|n_e>` basis. For inhomogeneous tuple keys, `omega_1`, `N1`, and `N2` are required and the function should return product Dicke-basis operators on `|n_e1, n_e2>`.
+For homogeneous integer keys, `omega_1`, `omega_2`, `N1`, and `N2` are nullable
+and the function should return the usual single-sector operators on the `|n_e>`
+basis. For inhomogeneous tuple keys, `omega_1`, `omega_2`, `N1`, and `N2` are
+required and the function should return product Dicke-basis operators on
+`|n_e1, n_e2>`.
 
 In both cases, the function returns a `SectorOperators` object for a given sector key. Each object is one element of `ops_list`. In pseudo-code, `ops` means the `SectorOperators` object for the current sector. This object should contain the following fields:
 - `Jp`, `Jm`, `JpJm`, `J_x`, `J_y`, `N_e` --- unweighted sector operators, used for physical observables.

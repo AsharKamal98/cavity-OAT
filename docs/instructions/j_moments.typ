@@ -21,6 +21,7 @@ _compute_snapshot_j_moments(snapshot, ...)
     return JMomentSnapshot(
         t, phase_index, x, y, z, N_e, N_j, jump_rate,
         J_drive, x_groups, y_groups, z_groups, N_e_groups,
+        N_j_groups,
     )
 
 compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
@@ -40,25 +41,38 @@ compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
 compute_ensemble_j_moments(ensemble: TrajectoryEnsemble, ...)
     -> JMomentSeries
 
-    samples = [
+    samples = map_with_optional_pool(
         compute_trajectory_j_moments(traj)
         for traj in ensemble.trajectories
-    ]
-      
-    return compute_average_j_moments(samples)
+    )
+    averaged = compute_average_j_moments(samples)
+    _attach_spin_direction_fields(averaged, tol=tol)
+    _attach_spin_angles(averaged, tol=tol)
+    _attach_mfe_residuals(averaged, parameters=ensemble.parameters, tol=tol)
+    return averaged
   
 compute_average_j_moments(samples: list[JMomentSeries])
     -> JMomentSeries
-    "average J-moment samples across trajectories"
+    "average raw J-moment samples across trajectories"
 ```
 
 `_compute_snapshot_j_moments(...)` computes the J-moments for one snapshot of
 one trajectory. If the trajectory uses tuple sector keys, it should also return
 group-resolved moment fields. It is called once per saved snapshot in
 `compute_trajectory_j_moments(...)`. `compute_average_j_moments(...)` averages
-the per-trajectory moment fields across the shared saved time grid. Ensemble and
-plotting code should call `compute_ensemble_j_moments(...)`, which performs
-both steps and returns trajectory-averaged moments.
+the raw per-trajectory moment fields across the shared saved time grid.
+
+
+Ensemble and plotting code should call `compute_ensemble_j_moments(...)`,
+which collects trajectory samples, averages them, and attaches derived
+direction and angle fields to the averaged result.
+`_attach_spin_direction_fields(...)` attaches `length`, `nx`, `ny`, and `nz`,
+plus group-resolved versions when group fields exist.
+`_attach_spin_angles(...)` attaches `theta` and `phi`, plus group-resolved
+versions when group direction fields exist.
+`_attach_mfe_residuals(...)` attaches the two-group MFE residuals in
+`mfe_residuals_groups` when two group-resolved angle and atom-number fields
+exist.
 
 = J-Moment Definitions
 
@@ -153,6 +167,73 @@ The drive field `J_drive` should use the drive-coupled operator defined by
 file it is just another normalized sector expectation value following the rule
 above.
 
+== Normalized Spin Components
+
+After the trajectory-averaged fields $J_i(t_(k))$ have been computed, define
+the J-vector length
+
+$
+J_("len")(t_(k)) =
+sqrt(J_x(t_(k))^2 + J_y(t_(k))^2 + J_z(t_(k))^2).
+$
+
+The normalized spin component for $i in {x,y,z}$ is
+
+$
+n_i(t_(k)) = frac(J_i(t_(k)), J_("len")(t_(k))).
+$
+
+If $J_("len")(t_(k))$ is below the numerical tolerance, set the normalized
+components to zero. For group-resolved fields, apply the same rule separately
+to each group using $J_(i,g)$ and $J_("len",g)$.
+This is implemented by `_attach_spin_direction_fields(...)`.
+
+== Angles
+
+Angles should be computed from the normalized spin components:
+
+$
+theta(t_(k)) = arccos(-n_z(t_(k))),
+$
+
+The minus sign keeps the same active-manifold convention as the old angle
+pipeline: $theta=0$ points along the south/down pole.
+
+$
+phi(t_(k)) = "atan2"(n_y(t_(k)), n_x(t_(k))).
+$
+
+For group-resolved fields, apply the same rule separately to each group's
+normalized components $n_(i,g)$.
+This is implemented by `_attach_spin_angles(...)`.
+
+== Two-Group MFE Residuals
+
+For two-group inhomogeneous results, define the weighted collective transverse
+sum using the new J-vector angles:
+
+$
+C(t_(k)) =
+sum_(g=1)^2 omega_g N_(J,g)(t_(k))
+  e^(i phi_g(t_(k))) sin(theta_g(t_(k))).
+$
+
+The residual for group $g$ is
+
+$
+R_g(t_(k)) =
+frac(1,2) omega(t_(k)) omega_g e^(-i phi_g(t_(k))) sin(theta_g(t_(k)))
+- frac(1,2) delta(t_(k)) sin(theta_g(t_(k))) tan(theta_g(t_(k)))
++ frac(i Gamma,4) omega_g e^(-i phi_g(t_(k))) sin(theta_g(t_(k))) C(t_(k)).
+$
+
+Here $omega(t_(k))$ and $delta(t_(k))$ are selected from the saved
+`phase_index`, while $omega_g$ is read from the inhomogeneous coupling weights.
+The group atom-number weights are `N_j_groups[g]`, not the fixed total group
+sizes. This is implemented by `_attach_mfe_residuals(...)`, which stores
+`mfe_residuals_groups=(R_1, R_2)`. The helper should read shared protocol
+metadata from `TrajectoryEnsemble.parameters` when available.
+
 = Output
 
 The snapshot helper should return a `JMomentSnapshot` with scalar fields:
@@ -180,27 +261,28 @@ return `JMomentSeries`:
 JMomentSeries(
     t, phase_index,
     x, y, z,
-    N_e,
-    N_j,
-    jump_rate,
-    J_drive,
     x_groups=None or tuple[array, ...],
     y_groups=None or tuple[array, ...],
     z_groups=None or tuple[array, ...],
-    N_e_groups=None or tuple[array, ...],
-    N_j_groups=None or tuple[array, ...],
     length=None or array,
+    length_groups=None or tuple[array, ...],
     nx=None or array,
     ny=None or array,
     nz=None or array,
-    length_groups=None or tuple[array, ...],
     nx_groups=None or tuple[array, ...],
     ny_groups=None or tuple[array, ...],
     nz_groups=None or tuple[array, ...],
+    N_e,
+    N_j,
+    N_e_groups=None or tuple[array, ...],
+    N_j_groups=None or tuple[array, ...],
     theta=None or array,
     phi=None or array,
     theta_groups=None or tuple[array, ...],
     phi_groups=None or tuple[array, ...],
+    mfe_residuals_groups=None or tuple[array, ...],
+    jump_rate,
+    J_drive,
 )
 ```
 
@@ -208,10 +290,10 @@ All trajectory arrays should be defined on the trajectory's saved `t_eval`
 grid. `JMomentSeries` returned by `compute_ensemble_j_moments(...)` has the
 same fields, but each numeric moment field is averaged across trajectories.
 For averaged outputs, the J-vector length and normalized direction fields
-should be attached after averaging by calling the shared J-vector direction
-helper. Angle fields may then be attached later from those normalized
-directions when needed by a plotting or diagnostic step. These helpers should
-not compute active-manifold angles, squeezing, or covariance matrices.
+should be attached inside `compute_ensemble_j_moments(...)` after
+`compute_average_j_moments(...)` returns the raw averaged series. Angle fields
+should then be attached there from those normalized directions. These helpers
+should not compute active-manifold angles, squeezing, or covariance matrices.
 
 Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
 `Jx_groups`, `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
@@ -222,11 +304,13 @@ Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
 - `compute_trajectory_j_moments(...)` should return per-trajectory moments only.
 - `compute_average_j_moments(...)` should average moments, not nonlinear derived
   quantities.
-- `compute_average_j_moments(...)` should attach `length`, `nx`, `ny`, and
-  `nz` from the averaged J components, plus group-resolved versions when group
-  fields exist.
 - `compute_ensemble_j_moments(...)` should return trajectory-averaged moments and
   should be the preferred input for plots that do not need per-trajectory
   samples.
+- `compute_ensemble_j_moments(...)` should attach `length`, `nx`, `ny`, `nz`,
+  `theta`, and `phi` from the averaged J components, plus group-resolved
+  versions when group fields exist.
+- `compute_ensemble_j_moments(...)` should attach `mfe_residuals_groups` for
+  two-group inhomogeneous results using the new J-vector group angles.
 - `compute_ensemble_j_moments(...)` should require all internally computed
   samples to share the same `t` and `phase_index` grids.
