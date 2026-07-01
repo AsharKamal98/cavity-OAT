@@ -263,6 +263,8 @@ field.
 
 Use task-specific rules for nonlinear diagnostics:
 
+- MFE residuals:
+  `docs/instructions/mfe_residuals.typ`
 - Bloch angles and active-manifold directions:
   `docs/instructions/bloch_vector_averaging.typ`
 - Normalized active-manifold spin-component plots:
@@ -355,6 +357,8 @@ Current top-level fields are:
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles when produced by
   `compute_ensemble_j_moments(...)`.
+- `moments.MFE_residuals`: an `MFEResidualSeries` containing two-group MFE
+  residual diagnostics when computed from `moments.J`.
 - `moments.S`: placeholder for future S-moment or spin-direction data.
 
 Parser container conventions live in `docs/instructions/generic/parser.md`.
@@ -373,8 +377,7 @@ including `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, `J_drive`, and optional
 group-resolved fields such as `x_groups`, `y_groups`, `z_groups`,
 `N_e_groups`, and `N_j_groups`. It also includes derived fields attached after
 ensemble averaging: `length`, `nx`, `ny`, `nz`, `theta`, and `phi`, plus
-group-resolved versions when group fields exist. For two-group inhomogeneous
-runs, it also attaches `mfe_residuals_groups`.
+group-resolved versions when group fields exist.
 
 Detailed definitions and averaging rules live in
 `docs/instructions/j_moments.typ`.
@@ -397,14 +400,25 @@ direction fields are attached inside `compute_ensemble_j_moments(...)` after
 `compute_average_j_moments(...)` returns the raw ensemble average. Angle fields
 such as `theta`, `phi`, `theta_groups`, and `phi_groups` are then attached from
 those normalized directions before returning the final `JMomentSeries`.
-For two-group inhomogeneous runs, `mfe_residuals_groups` is attached from those
-new J-vector group angles, `N_j_groups`, and the phase-local protocol fields
-stored in `ensemble.parameters`.
 
 Legacy note: these fields were previously named `Jx`, `Jy`, `Jz`, `Jx_groups`,
 `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
 
-### 9.4 New-Pipeline Plotting
+### 9.4 MFE Residuals
+
+Use `compute_mfe_residuals(...)` from `quantum_trajectories/mfe_residuals.py`
+after `moments.J` has been computed:
+
+```python
+moments.MFE_residuals = compute_mfe_residuals(
+    moments.J,
+    parameters=moments.parameters,
+)
+```
+
+Detailed residual definitions live in `docs/instructions/mfe_residuals.typ`.
+
+### 9.5 New-Pipeline Plotting
 
 New-pipeline plotting functions should take moment series objects directly,
 usually `moments.J`, and should visualize already-computed fields rather than
@@ -418,10 +432,14 @@ Current moment plotting functions live in `quantum_trajectories/plotting_j_momen
   group-resolved angle curves when present.
 
 Current diagnostic plotting functions live in
+`quantum_trajectories/plotting_mfe_residuals.py`:
+
+- `plot_mfe_residuals(moments.MFE_residuals, ...)`: plots stored two-group
+  residuals in a single residual panel with the L2 norm.
+
+General diagnostic plotting functions live in
 `quantum_trajectories/plotting_diagnostics.py`:
 
-- `plot_mfe_residuals(moments.J, ...)`: plots stored two-group
-  `mfe_residuals_groups` in a single residual panel with the L2 norm.
 - `plot_sector_probabilities(result, ...)`: plots normalized represented-sector
   probabilities `p_alpha(t)` computed directly from saved snapshot sector
   blocks.

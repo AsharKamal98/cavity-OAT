@@ -6,10 +6,7 @@ from typing import Any, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from quantum_trajectories.plotting_diagnostics import (
-    plot_mfe_residuals,
-    plot_sector_probabilities,
-)
+from common.utils import phase1_ss_angles_for_nj
 
 from quantum_trajectories.plotting_utils import (
     GROUP_CURVE_COLORS,
@@ -134,6 +131,8 @@ def plot_j_angles(
     output_path: Optional[Union[str, Path]] = None,
     label: Optional[str] = None,
     phases=None,
+    show_phase1_ss: bool = False,
+    Gamma: Optional[float] = None,
 ):
     """
     Plot stored polar and azimuthal angles.
@@ -195,6 +194,28 @@ def plot_j_angles(
         linestyle="-",
         label=curve_label(r"$\phi$", label=label),
     )
+
+    # FIXME: should be moved to moment claculations in the future
+    if show_phase1_ss:
+        if phases is None:
+            raise ValueError("plot_j_angles requires phases when show_phase1_ss=True.")
+        if Gamma is None:
+            raise ValueError("plot_j_angles requires Gamma when show_phase1_ss=True.")
+        n_j = np.asarray(j_moments.N_j, dtype=float)
+        finite_nj = n_j[np.isfinite(n_j)]
+        if finite_nj.size == 0:
+            raise ValueError("plot_j_angles requires finite j_moments.N_j values.")
+        theta_ss, _ = phase1_ss_angles_for_nj(float(finite_nj[0]), phases[0].omega, Gamma)
+        if np.isfinite(theta_ss):
+            axes[0].hlines(
+                y=theta_ss,
+                xmin=0.0,
+                xmax=phases[0].duration,
+                linewidth=1.8,
+                color="#009E73",
+                linestyle=":",
+                label=curve_label(r"phase 1 ss", label=label),
+            )
 
     angle_specs = (
         (axes[0], r"$\theta$", r"Polar angle $\theta(t)$"),

@@ -131,11 +131,20 @@ class JMomentSeries(BaseModel):
     phi: Array | None = None
     theta_groups: tuple[Array, ...] | None = None
     phi_groups: tuple[Array, ...] | None = None
-    # residual diagnostics
-    mfe_residuals_groups: tuple[Array, ...] | None = None
     # other
     jump_rate: Array
     J_drive: Array
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class MFEResidualSeries(BaseModel):
+    """Per-timestep mean-field-equation residual diagnostics."""
+
+    t: Array
+    phase_index: Array
+    residuals_groups: tuple[Array, ...]
 
     class Config:
         arbitrary_types_allowed = True
@@ -159,6 +168,7 @@ class MomentSeries(BaseModel):
     t: Array
     parameters: MomentParameters | None = None
     J: JMomentSeries | None = None
+    MFE_residuals: MFEResidualSeries | None = None
     S: Any | None = None
 
     @root_validator(pre=True)

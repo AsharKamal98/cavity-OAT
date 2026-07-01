@@ -91,15 +91,20 @@ or diagnostics rather than recomputing expensive physics.
 
 6. The function should support `axes`, `output_path`, `label`, and `phases`.
 
+7. The function may support `show_phase1_ss=True` with a required `Gamma`
+   argument. In that case, it should draw the phase-1 steady-state reference
+   on the theta panel using `phases[0].omega`, the stored full-system `N_j`,
+   and `phase1_ss_angles_for_nj(...)`.
+
 ## `fig, axes = plot_mfe_residuals(...)`
 
 1. `plot_mfe_residuals` lives in
-   `quantum_trajectories/plotting_diagnostics.py`.
+   `quantum_trajectories/plotting_mfe_residuals.py`.
 
-2. The function should take `moments.J` as input.
+2. The function should take `moments.MFE_residuals` as input.
 
 3. The function should only plot already-computed residuals from
-   `moments.J.mfe_residuals_groups`. It should not recompute MFE residuals or
+   `moments.MFE_residuals.residuals_groups`. It should not recompute MFE residuals or
    call old observable extraction.
 
 4. The output should be a single panel showing `Re R_1`, `Im R_1`,
@@ -144,6 +149,9 @@ or diagnostics rather than recomputing expensive physics.
 
 5. `plot_sector_probabilities` should live in
    `quantum_trajectories/plotting_diagnostics.py`.
+
+6. The function should support `style_index`, where `style_index=0` gives solid
+   curves and `style_index=1` gives dashed curves for overlay comparisons.
 
 
 Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,

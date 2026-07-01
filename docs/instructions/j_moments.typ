@@ -48,7 +48,6 @@ compute_ensemble_j_moments(ensemble: TrajectoryEnsemble, ...)
     averaged = compute_average_j_moments(samples)
     _attach_spin_direction_fields(averaged, tol=tol)
     _attach_spin_angles(averaged, tol=tol)
-    _attach_mfe_residuals(averaged, parameters=ensemble.parameters, tol=tol)
     return averaged
   
 compute_average_j_moments(samples: list[JMomentSeries])
@@ -70,9 +69,8 @@ direction and angle fields to the averaged result.
 plus group-resolved versions when group fields exist.
 `_attach_spin_angles(...)` attaches `theta` and `phi`, plus group-resolved
 versions when group direction fields exist.
-`_attach_mfe_residuals(...)` attaches the two-group MFE residuals in
-`mfe_residuals_groups` when two group-resolved angle and atom-number fields
-exist.
+MFE residuals are computed separately; use
+`docs/instructions/mfe_residuals.typ` for that diagnostic.
 
 = J-Moment Definitions
 
@@ -207,33 +205,6 @@ For group-resolved fields, apply the same rule separately to each group's
 normalized components $n_(i,g)$.
 This is implemented by `_attach_spin_angles(...)`.
 
-== Two-Group MFE Residuals
-
-For two-group inhomogeneous results, define the weighted collective transverse
-sum using the new J-vector angles:
-
-$
-C(t_(k)) =
-sum_(g=1)^2 omega_g N_(J,g)(t_(k))
-  e^(i phi_g(t_(k))) sin(theta_g(t_(k))).
-$
-
-The residual for group $g$ is
-
-$
-R_g(t_(k)) =
-frac(1,2) omega(t_(k)) omega_g e^(-i phi_g(t_(k))) sin(theta_g(t_(k)))
-- frac(1,2) delta(t_(k)) sin(theta_g(t_(k))) tan(theta_g(t_(k)))
-+ frac(i Gamma,4) omega_g e^(-i phi_g(t_(k))) sin(theta_g(t_(k))) C(t_(k)).
-$
-
-Here $omega(t_(k))$ and $delta(t_(k))$ are selected from the saved
-`phase_index`, while $omega_g$ is read from the inhomogeneous coupling weights.
-The group atom-number weights are `N_j_groups[g]`, not the fixed total group
-sizes. This is implemented by `_attach_mfe_residuals(...)`, which stores
-`mfe_residuals_groups=(R_1, R_2)`. The helper should read shared protocol
-metadata from `TrajectoryEnsemble.parameters` when available.
-
 = Output
 
 The snapshot helper should return a `JMomentSnapshot` with scalar fields:
@@ -280,7 +251,6 @@ JMomentSeries(
     phi=None or array,
     theta_groups=None or tuple[array, ...],
     phi_groups=None or tuple[array, ...],
-    mfe_residuals_groups=None or tuple[array, ...],
     jump_rate,
     J_drive,
 )
@@ -310,7 +280,5 @@ Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
 - `compute_ensemble_j_moments(...)` should attach `length`, `nx`, `ny`, `nz`,
   `theta`, and `phi` from the averaged J components, plus group-resolved
   versions when group fields exist.
-- `compute_ensemble_j_moments(...)` should attach `mfe_residuals_groups` for
-  two-group inhomogeneous results using the new J-vector group angles.
 - `compute_ensemble_j_moments(...)` should require all internally computed
   samples to share the same `t` and `phase_index` grids.

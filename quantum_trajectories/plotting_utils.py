@@ -119,7 +119,8 @@ def save_figure(fig, output_path: Optional[Union[str, Path]]) -> None:
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    # fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    fig.savefig(output_path, dpi=200)
 
 
 def finish_time_plot(

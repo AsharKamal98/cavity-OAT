@@ -11,7 +11,6 @@ from quantum_trajectories.parser import (
     Array,
     JMomentSnapshot,
     JMomentSeries,
-    MomentParameters,
     TrajectoryEnsemble,
     TrajectoryResult,
     TrajectorySnapshot,
@@ -341,80 +340,6 @@ def _attach_spin_angles(j_moments: JMomentSeries, *, tol: float) -> None:
     j_moments.phi_groups = tuple(result[1] for result in group_results)
 
 
-def _attach_mfe_residuals(
-    j_moments: JMomentSeries,
-    *,
-    parameters: MomentParameters,
-    tol: float,
-) -> None:
-    """
-    Attach two-group MFE residuals computed from averaged J-vector angles.
-    """
-    if (
-        j_moments.theta_groups is None
-        or j_moments.phi_groups is None
-        or j_moments.N_j_groups is None
-    ):
-        return
-
-    group_count = len(j_moments.theta_groups)
-    if group_count != 2:
-        return
-    if (
-        len(j_moments.phi_groups) != group_count
-        or len(j_moments.N_j_groups) != group_count
-    ):
-        raise ValueError("MFE residuals require matching two-group moment fields.")
-    omega_groups = parameters.omega_groups
-    if omega_groups is None or len(omega_groups) != group_count:
-        raise ValueError("MFE residuals require two inhomogeneous coupling weights.")
-
-    phase_indices = np.asarray(j_moments.phase_index, dtype=int)
-    omega_t = np.asarray([parameters.phases[idx].omega for idx in phase_indices], dtype=float)
-    delta_t = np.asarray([parameters.phases[idx].delta for idx in phase_indices], dtype=float)
-
-    theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta_groups)
-    phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi_groups)
-    nj_groups = tuple(np.asarray(nj, dtype=float) for nj in j_moments.N_j_groups)
-    omega_groups = tuple(float(omega_g) for omega_g in omega_groups)
-
-    weighted_collective_transverse_sum = sum(
-        omega_g * nj_g * np.exp(1j * phi_g) * np.sin(theta_g)
-        for theta_g, phi_g, nj_g, omega_g in zip(
-            theta_groups,
-            phi_groups,
-            nj_groups,
-            omega_groups,
-        )
-    )
-
-    residuals = []
-    for theta_g, phi_g, omega_g in zip(theta_groups, phi_groups, omega_groups):
-        sin_theta = np.sin(theta_g)
-        cos_theta = np.cos(theta_g)
-
-        with np.errstate(divide="ignore", invalid="ignore"):
-            detuning_factor = np.where(
-                np.abs(cos_theta) > tol,
-                sin_theta * np.tan(theta_g),
-                np.nan,
-            )
-
-        drive_term = 0.5 * omega_t * omega_g * np.exp(-1j * phi_g) * sin_theta
-        detuning_term = -0.5 * delta_t * detuning_factor
-        decay_term = (
-            0.25j
-            * parameters.Gamma
-            * omega_g
-            * np.exp(-1j * phi_g)
-            * sin_theta
-            * weighted_collective_transverse_sum
-        )
-        residuals.append(drive_term + detuning_term + decay_term)
-
-    j_moments.mfe_residuals_groups = tuple(residuals)
-
-
 def compute_average_j_moments(
     samples: list[JMomentSeries],
     *,
@@ -531,8 +456,6 @@ def compute_ensemble_j_moments(
     _attach_spin_direction_fields(averaged, tol=tol)
     # theta, phi
     _attach_spin_angles(averaged, tol=tol)
-    # two-group MFE residuals
-    _attach_mfe_residuals(averaged, parameters=ensemble.parameters, tol=tol)
     return averaged
 
 

@@ -79,6 +79,7 @@ AGENTS.md
       -> docs/instructions/single_trajectory_simulation.typ
       -> docs/instructions/observable_moment_pipeline.typ
       -> docs/instructions/j_moments.typ
+      -> docs/instructions/mfe_residuals.typ
       -> docs/instructions/bloch_vector_averaging.typ
       -> docs/instructions/plot_spin_components.typ
       -> docs/instructions/squeezing.typ

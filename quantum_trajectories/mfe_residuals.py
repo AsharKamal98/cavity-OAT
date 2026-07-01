@@ -1,0 +1,117 @@
+from __future__ import annotations
+
+import numpy as np
+
+from quantum_trajectories.parser import (
+    JMomentSeries,
+    MFEResidualSeries,
+    MomentParameters,
+    MomentSeries,
+)
+
+
+def compute_mfe_residuals(
+    j_moments: JMomentSeries,
+    *,
+    parameters: MomentParameters | None,
+    tol: float = 1e-12,
+) -> MFEResidualSeries | None:
+    """
+    Compute two-group MFE residuals from averaged J-vector angles.
+    """
+    if (
+        j_moments.theta_groups is None
+        or j_moments.phi_groups is None
+        or j_moments.N_j_groups is None
+    ):
+        return None
+
+    group_count = len(j_moments.theta_groups)
+    if group_count != 2:
+        return None
+    if (
+        len(j_moments.phi_groups) != group_count
+        or len(j_moments.N_j_groups) != group_count
+    ):
+        raise ValueError("MFE residuals require matching two-group moment fields.")
+    if parameters is None:
+        raise ValueError("MFE residuals require moments.parameters.")
+    omega_groups = parameters.omega_groups
+    if omega_groups is None or len(omega_groups) != group_count:
+        raise ValueError("MFE residuals require two inhomogeneous coupling weights.")
+
+    phase_indices = np.asarray(j_moments.phase_index, dtype=int)
+    omega_t = np.asarray([parameters.phases[idx].omega for idx in phase_indices], dtype=float)
+    delta_t = np.asarray([parameters.phases[idx].delta for idx in phase_indices], dtype=float)
+
+    theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta_groups)
+    phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi_groups)
+    nj_groups = tuple(np.asarray(nj, dtype=float) for nj in j_moments.N_j_groups)
+    omega_groups = tuple(float(omega_g) for omega_g in omega_groups)
+
+    weighted_collective_transverse_sum = sum(
+        omega_g * nj_g * np.exp(1j * phi_g) * np.sin(theta_g)
+        for theta_g, phi_g, nj_g, omega_g in zip(
+            theta_groups,
+            phi_groups,
+            nj_groups,
+            omega_groups,
+        )
+    )
+
+    residuals = []
+    for theta_g, phi_g, omega_g in zip(theta_groups, phi_groups, omega_groups):
+        sin_theta = np.sin(theta_g)
+        cos_theta = np.cos(theta_g)
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            detuning_factor = np.where(
+                np.abs(cos_theta) > tol,
+                sin_theta * np.tan(theta_g),
+                np.nan,
+            )
+
+        drive_term = 0.5 * omega_t * omega_g * np.exp(-1j * phi_g) * sin_theta
+        detuning_term = -0.5 * delta_t * detuning_factor
+        decay_term = (
+            0.25j
+            * parameters.Gamma
+            * omega_g
+            * np.exp(-1j * phi_g)
+            * sin_theta
+            * weighted_collective_transverse_sum
+        )
+        residuals.append(drive_term + detuning_term + decay_term)
+
+    return MFEResidualSeries(
+        t=j_moments.t,
+        phase_index=j_moments.phase_index,
+        residuals_groups=tuple(residuals),
+    )
+
+
+def attach_mfe_residuals(
+    moments: MomentSeries,
+    *,
+    tol: float = 1e-12,
+) -> MFEResidualSeries | None:
+    """
+    Compute and attach MFE residuals to a top-level moment container.
+    """
+    if moments.J is None:
+        raise ValueError("attach_mfe_residuals requires moments.J.")
+    if moments.parameters is None:
+        raise ValueError("attach_mfe_residuals requires moments.parameters.")
+
+    moments.MFE_residuals = compute_mfe_residuals(
+        moments.J,
+        parameters=moments.parameters,
+        tol=tol,
+    )
+    return moments.MFE_residuals
+
+
+__all__ = [
+    "attach_mfe_residuals",
+    "compute_mfe_residuals",
+]
