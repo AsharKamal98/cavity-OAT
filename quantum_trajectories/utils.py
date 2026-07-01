@@ -10,6 +10,7 @@ from common.utils import (
     default_three_phase_protocol,
     omega_c,
     phase_change_times,
+    phase_values_at_time,
     phase1_ss_angles_for_nj,
 )
 
@@ -46,5 +47,6 @@ __all__ = [
     "map_with_optional_pool",
     "omega_c",
     "phase_change_times",
+    "phase_values_at_time",
     "phase1_ss_angles_for_nj",
 ]

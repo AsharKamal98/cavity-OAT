@@ -3,6 +3,7 @@ from common.utils import (
     default_three_phase_protocol,
     omega_c,
     phase_change_times,
+    phase_values_at_time,
     phase1_ss_angles_for_nj,
 )
 from common.parser import Phase
@@ -13,5 +14,6 @@ __all__ = [
     "default_three_phase_protocol",
     "omega_c",
     "phase_change_times",
+    "phase_values_at_time",
     "phase1_ss_angles_for_nj",
 ]

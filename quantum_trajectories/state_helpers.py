@@ -250,19 +250,17 @@ def centered_group_resolved_sector_initial_coeffs(
     if not valid_pairs_by_total:
         raise ValueError("No valid group-resolved sectors found in the selected total-N_J window.")
 
-    # TEMPORARY DEBUG TEST DISABLED:
-    # Uncomment this block to keep only one (Nj1, Nj2) tuple for each selected
-    # total N_J sector while debugging single group-resolved sectors.
-    #
-    # valid_pairs_by_total = {
-    #     total_nj: [
-    #         min(
-    #             pairs,
-    #             key=lambda pair: abs(pair[0] - (total_nj * N1 / N)),
-    #         )
-    #     ]
-    #     for total_nj, pairs in valid_pairs_by_total.items()
-    # }
+    # Keep only one (Nj1, Nj2) tuple for each selected total N_J sector while
+    # debugging single group-resolved sectors.
+    valid_pairs_by_total = {
+        total_nj: [
+            min(
+                pairs,
+                key=lambda pair: abs(pair[0] - (total_nj * N1 / N)),
+            )
+        ]
+        for total_nj, pairs in valid_pairs_by_total.items()
+    }
 
     coeffs: Dict[tuple[int, int], complex] = {}
 

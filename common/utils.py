@@ -15,6 +15,29 @@ def phase_change_times(phases: Sequence[Phase]) -> Tuple[float, float]:
     return t1, t2
 
 
+def phase_values_at_time(t: float, phases: Sequence[Phase]) -> Tuple[float, float]:
+    """
+    Return phase-local (Omega, delta) values for a piecewise-constant protocol.
+    """
+    if not phases:
+        raise ValueError("Need at least one phase.")
+
+    t_value = float(t)
+    total_time = float(sum(phase.duration for phase in phases))
+    if t_value < 0.0 or t_value > total_time:
+        raise ValueError(f"t must lie in [0, {total_time}], got {t_value}.")
+
+    phase_end = 0.0
+    for index, phase in enumerate(phases):
+        phase_end += phase.duration
+        if t_value <= phase_end or index == len(phases) - 1:
+            return float(phase.omega), float(phase.delta)
+
+    # The loop always returns for non-empty phases, but keep type checkers happy.
+    phase = phases[-1]
+    return float(phase.omega), float(phase.delta)
+
+
 def phase1_ss_angles_for_nj(Nj: int, Omega: float, Gamma: float):
     Omega_c = 0.5 * Nj * Gamma
     if Omega_c <= 0:

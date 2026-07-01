@@ -68,13 +68,15 @@ The instruction-document hierarchy should be:
 
 ```text
 AGENTS.md
-  -> docs/instructions/implementation_overview.md
+      -> docs/instructions/implementation_overview.md
+      -> docs/instructions/common_utils.typ
       -> docs/instructions/simulation_parameters.typ
       -> docs/instructions/initial_sector_state.md (planned/missing)
       -> docs/instructions/parameter_validation.md (planned/missing)
       -> docs/instructions/simulation_precompute.typ
       -> docs/instructions/sector_operators.typ
       -> docs/instructions/paper_inhomogeneous_couplings.typ
+      -> docs/instructions/mfe-solver.typ
       -> docs/instructions/ensemble_simulation.typ
       -> docs/instructions/single_trajectory_simulation.typ
       -> docs/instructions/observable_moment_pipeline.typ

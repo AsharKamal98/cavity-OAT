@@ -11,6 +11,9 @@ should not duplicate detailed theory or document every line of code.
 Generic reusable instruction files live in `docs/instructions/generic/` and can
 be copied between projects.
 
+Shared repository utility helpers are summarized in
+`docs/instructions/common_utils.typ`.
+
 When implementing a feature:
 
 - Read the relevant theory file for equations and physical meaning.
@@ -44,6 +47,7 @@ helpers.
 
 Detailed implementation conventions should live in:
 
+- `docs/instructions/common_utils.typ`
 - `docs/instructions/simulation_parameters.typ` (needs cleaning!)
 
 ## 2. Phase Protocol
@@ -64,6 +68,7 @@ phases = default_three_phase_protocol(
 
 Each phase should carry duration, `Omega`, and `delta`. Phases are piecewise
 constant, which enables phase-level operator and propagator precomputation.
+Shared phase helpers are summarized in `docs/instructions/common_utils.typ`.
 
 ## 3. Initial Sector State
 
@@ -263,6 +268,8 @@ field.
 
 Use task-specific rules for nonlinear diagnostics:
 
+- Numerical MFE solving:
+  `docs/instructions/mfe-solver.typ`
 - MFE residuals:
   `docs/instructions/mfe_residuals.typ`
 - Bloch angles and active-manifold directions:

@@ -9,14 +9,18 @@
   #text(size: 1.6em, weight: "bold")[Generalized Three-Level Squeezing Parameter]
   ]
 
+= Purpose
 This instruction specifies how to construct the generalized three-level squeezing parameter. The goal is to compute $xi^2_("gen")(t)$ at each saved timestep after the simulation has run.
 
 The squeezing calculation should be implemented as a standalone post-processing function that takes the simulation result or observable output as input.
-= Per-timestep calculation
+
+= Theory
+
+== Per-timestep calculation
 
 At each timestep, do the following.
 
-== Define the effective dressed state $|1⟩$
+=== Define the effective dressed state $|1⟩$
 Step 1: Identify the $theta_J, phi_J$ effective qubit angles.
 
 
@@ -39,20 +43,7 @@ docs/instructions/bloch_vector_averaging.typ
 
 Reuse `active_manifold_angles` where appropriate.
 
-*Implementation note:* the current homogeneous squeezing code should define one
-effective qubit for the full saved wavefunction, or for the full
-ensemble-averaged state, at each timestep. Do not select the central
-$N_J=N/2$ sector and do not define one separate effective qubit per
-$N_J$ sector. Instead, it should compute the collective moments
-
-$
-⟨J_x⟩, quad ⟨J_y⟩, quad ⟨J_z⟩, quad ⟨N_e⟩
-$
-
-using the full sector-block wavefunction and the Bloch-vector averaging rule,
-then convert those moments into one $theta_J(t),phi_J(t)$.
-
-== Define the instantaneous mean direction $|c⟩$
+=== Define the instantaneous mean direction $|c⟩$
 Step 2: Using the $J$ angles from step 1, identify the $theta_S, phi_S$ effective $S$-Bloch angles.
 
 Use the ansatz
@@ -68,41 +59,7 @@ $
 |c⟩ = mat(cos(theta_S/2); e^(-i phi_S) sin(theta_S/2) cos(theta_J/2); e^(-i(phi_S+phi_J)) sin(theta_S/2) sin(theta_J/2)).
 $
 
-*Implementation note:* Rewrite the $S$-Bloch sphere operators $S_i$ into the $(u,d,e)$ basis.
-
-So when we want
-
-$
-S_x =
-frac(1,2) (ket(1) bra(u) + ket(u) bra(1)),
-$
-
-the code expands $|1⟩$ in the original basis:
-
-$
-|1⟩ =
-cos(theta_J / 2) |d⟩
-+ e^(-i phi_J) sin(theta_J / 2) |e⟩.
-$
-
-Therefore
-
-$
-ket(1) bra(u) =
-cos(theta_J / 2) ket(d) bra(u)
-+ e^(-i phi_J) sin(theta_J / 2) ket(e) bra(u).
-$
-with $theta_J,phi_J$ fixed from the effective qubit construction.
-
-Using the above basis for the spin operators allows $theta_S,phi_S$ to be
-computed in the regular way in
-```
-docs/instructions/bloch_vector_averaging.typ
-```
-
-
-
-== Define the $J$-fluctuation direction $|j⟩$
+=== Define the $J$-fluctuation direction $|j⟩$
 Step 3: Using the $J$ angles from step 1and $S$ angles from step 2, construct the state orthogonal to $|c⟩$ on the $J$-sphere ($(d,e)$ manifold):
 
 $
@@ -115,7 +72,7 @@ $
 |j⟩ = mat(0; -sin(theta_J/2); e^(-i phi_J) cos(theta_J/2)).
 $
 
-== Define the $S$-fluctuation direction $|s⟩$
+=== Define the $S$-fluctuation direction $|s⟩$
 
 Step 4: Using the $J$-angles from step 1 and the $S$-angles from step 2, construct the state orthogonal to $|c⟩$ on the $S$-sphere ($(u,1)$ manifold):
 
@@ -131,7 +88,7 @@ $
 
 The three states $|c⟩,|j⟩,|s⟩$ should form an orthonormal single-particle basis up to numerical precision.
 
-== Construct the four local fluctuation operators
+=== Construct the four local fluctuation operators
 
 Construct the four $3 times 3$ single-particle operators:
 
@@ -157,23 +114,7 @@ $
 O_a = sum_i o_a^((i)), quad a=1,2,3,4.
 $
 
-Do not construct full $3^N$-dimensional tensor-product operators unless absolutely necessary. Use the existing reduced $(N_J,n_e)$ basis and exploit symmetry. Each collective operator should be represented as a sparse operator acting on the reduced simulation basis.
-
-If possible, construct $O_a$ from precomputed collective one-body transition operators
-
-$
-A_(mu nu)=sum_i ket(mu_i) bra(nu_i), quad mu,nu in (u,d,e).
-$
-
-Then
-
-$
-O_a = sum_(mu,nu) (o_a)_(mu nu) A_(mu nu).
-$
-
-This avoids building large tensor-product matrices.
-
-== Construct the covariance matrix
+=== Construct the covariance matrix
 
 For the current state $|psi(t)⟩$, compute
 
@@ -187,13 +128,7 @@ $
 C_(a,b) = frac(1, 2) ⟨ O_a O_b+O_b O_a⟩ - mu_a mu_b.
 $
 
-For efficiency, avoid explicitly constructing $O_a O_b$. Instead use
-
-$
-C_(a,b) = "Re" [ ⟨ O_a psi | O_b psi⟩ ] - mu_a mu_b.
-$
-
-== Minimum fluctuation direction
+=== Minimum fluctuation direction
 
 Diagonalize the $4 times 4$ covariance matrix and take
 
@@ -203,7 +138,7 @@ $
 
 This is the minimum generalized transverse variance.
 
-== Generalized squeezing parameter
+=== Generalized squeezing parameter
 
 Compute
 $
@@ -221,35 +156,17 @@ N_c = sum_(mu,nu) (ket(c) bra(c))_(mu nu) A_(mu nu).
 $
 If the state is well polarized along $|c⟩$, then $⟨ N_c/2⟩ approx N/2$, but the code should compute it explicitly rather than assuming this.
 
-For ensemble results, the required operator moments should be averaged over
-trajectories before constructing the covariance matrix and squeezing
-parameter. Do not compute one covariance matrix or one $xi^2$ per trajectory
-and then average those final nonlinear quantities.
-
-= Inhomogeneous Coupling Extension
+== Inhomogeneous Coupling Extension
 
 This section should be used for two-group inhomogeneous simulations whose
 sector keys are $(N_(J,1),N_(J,2))$. The homogeneous squeezing instruction above
 remains the base algorithm. The inhomogeneous extension should only change how
 the local dressed bases and fluctuation operators are grouped and combined.
 
-Angle and Bloch-vector averages should follow:
-
-```
-  docs/instructions/bloch_vector_averaging.typ
-```
-
-== 1. Per-group squeezing
+=== Per-group squeezing
 
 For each group $g in {1,2}$, compute a group-local squeezing parameter by
 applying the homogeneous squeezing construction to that subgroup only.
-
-When the saved wavefunction is organized by tuple sectors
-$(N_(J,1),N_(J,2))$, the group-local angles should be extracted by supplying the
-local operators for the relevant group, e.g. $J_(x,g),J_(y,g),J_(z,g),N_(e,g)$ to the bloch-vector averaging routine.
-This should follow the same active-manifold angle logic as
-in the single-group case, except that the operators act only on the chosen
-group factor of the product basis.
 
 For group $g$, first compute group-resolved active-manifold moments and obtain
 one group-local effective qubit direction,
@@ -295,7 +212,7 @@ frac(N_g lambda_("min")(C_g), ⟨N_(c,g) / 2⟩^2),
 quad g=1,2.
 $
 
-== 2. Full-system inhomogeneous squeezing
+=== Full-system inhomogeneous squeezing
 
 The full inhomogeneous squeezing should keep the group-local dressed bases, but
 combine the group fluctuation operators before constructing the covariance
@@ -375,27 +292,192 @@ metadata once, then recomputing these derived squeezing series during
 post-processing rather than storing redundant per-timestep angle or covariance
 arrays.
 
-The plotting entry points should use this data flow:
+= Pseudo-code
+
+The new-pipeline squeezing code should keep the old pipeline physics order, but
+split it into small post-processing functions.
 
 ```python
-ensemble = run_trajectory_ensemble(...)
+compute_squeezing_reference_angles(result, moments=None, ...)
+    -> SqueezingReferenceAngles:
+    # 1. Compute averaged J moments on the saved t grid.
+    #    Reuse moments.J when available.
+    # 2. Convert the averaged J moments into theta_J, phi_J.
+    # 3. Expand the S operators into the (u,d,e) basis using theta_J, phi_J.
+    # 4. Extract S-Bloch moments per trajectory, average those moments, then
+    #    construct theta_S, phi_S.
+    # 5. For tuple-sector runs, repeat steps 1-4 for each group and return
+    #    group-resolved angle arrays as well as full-system angle arrays.
+```
 
-plot_generalized_xi(result: TrajectoryEnsemble, ...):
-    xi_data = generalized_squeezing_for_trajectory_or_ensemble(result)
+For the S-Bloch extraction, rewrite the $S$ operators into the $(u,d,e)$ basis.
+For example, with fixed $theta_J,phi_J$,
+
+$
+S_x =
+frac(1,2) (ket(1) bra(u) + ket(u) bra(1)),
+$
+
+where
+
+$
+|1⟩ =
+cos(theta_J / 2) |d⟩
++ e^(-i phi_J) sin(theta_J / 2) |e⟩.
+$
+
+Therefore
+
+$
+ket(1) bra(u) =
+cos(theta_J / 2) ket(d) bra(u)
++ e^(-i phi_J) sin(theta_J / 2) ket(e) bra(u).
+$
+
+The same construction gives $S_y$, $S_z$, and $N_("u1")$. The resulting
+trajectory moments should be averaged before constructing $theta_S,phi_S$.
+
+```python
+compute_trajectory_squeezing_moments(trajectory, reference_angles, ...)
+    -> SqueezingMomentSample:
+    for each saved snapshot:
+        build |c>, |j>, |s> from the reference angles
+        build local o_a for a = 1,2,3,4
+        build O_a on the reduced simulation basis
+        v_a = O_a @ psi
+        mu_a = <psi | O_a | psi>
+        second_ab = Re <v_a | v_b>
+        N_c = <psi | N_c | psi>
+        excited_fraction_active = <N_e> / <N_J>
+    return raw moment arrays
+```
+
+Do not construct full $3^N$-dimensional tensor-product operators. Use the
+existing reduced sector basis. When possible, construct each collective
+fluctuation operator from precomputed collective one-body transition operators:
+
+$
+A_(mu nu)=sum_i ket(mu_i) bra(nu_i), quad mu,nu in (u,d,e),
+$
+
+$
+O_a = sum_(mu,nu) (o_a)_(mu nu) A_(mu nu).
+$
+
+Do not explicitly construct $O_a O_b$. Use the vectors $v_a=O_a |psi⟩$ and set
+
+$
+"second"_(a,b) = "Re" [⟨ v_a | v_b ⟩].
+$
+
+For tuple-sector runs, the group-local angle extraction should supply the local
+operators for the relevant group, e.g.
+$J_(x,g),J_(y,g),J_(z,g),N_(e,g)$, to the same Bloch-vector averaging logic as
+the single-group case. The corresponding group-local fluctuation operators
+should act only on the chosen group factor of the product basis.
+
+```python
+compute_average_squeezing_moments(samples: list[SqueezingMomentSample])
+    -> SqueezingMomentSample:
+    average mu_a, second_ab, N_c, and excited_fraction_active over trajectories
+
+finalize_squeezing_series(averaged_moments, reference_angles, ...)
+    -> SqueezingSeries:
+    for each saved timestep:
+        C = averaged_second - outer(averaged_mu, averaged_mu)
+        covariance_eigvals = eigvalsh(C)
+        lambda_min = min(covariance_eigvals)
+        xi2 = N * lambda_min / (N_c / 2)^2
+        xi2_db = 10 * log10(xi2) where xi2 > 0
+    attach full-system fields
+    attach group-resolved fields when present
+    return SqueezingSeries
+
+compute_ensemble_squeezing(ensemble, moments=None, ...)
+    -> SqueezingSeries:
+    reference_angles = compute_squeezing_reference_angles(ensemble, moments)
+    samples = map_with_optional_pool(
+        compute_trajectory_squeezing_moments(traj, reference_angles)
+        for traj in ensemble.trajectories
+    )
+    averaged = compute_average_squeezing_moments(samples)
+    return finalize_squeezing_series(averaged, reference_angles)
+```
+
+The plotting entry points should be thin wrappers:
+
+```python
+plot_generalized_xi(squeezing: SqueezingSeries, ...):
     make_2x2_grid_plot(
-        squeezing_db=10 * log10(xi_data["xi2_gen"]),
-        covariance_eigenvalues=xi_data["covariance_eigvals"],
-        dressed_population=xi_data["N_c"],
-        excited_fraction=xi_data["excited_fraction_active"],
+        squeezing_db=squeezing.xi2_db,
+        covariance_eigenvalues=squeezing.covariance_eigvals,
+        dressed_population=squeezing.N_c,
+        excited_fraction=squeezing.excited_fraction_active,
     )
 
-plot_inhomogeneous_generalized_xi(result: TrajectoryEnsemble, ...):
-
-    xi_data = generalized_squeezing_for_inhomogeneous(result)
+plot_inhomogeneous_generalized_xi(squeezing: SqueezingSeries, ...):
     make_2x2_grid_plot(
-        squeezing_db=10 * log10(xi_data["xi2"]),
-        smallest_covariance_eigenvalue=xi_data["lambda_min"],
-        dressed_population=xi_data["N_c"],
-        excited_fraction=xi_data["excited_fraction_active"],
+        squeezing_db=squeezing.xi2_db and squeezing.xi2_db_groups,
+        smallest_covariance_eigenvalue=squeezing.lambda_min and squeezing.lambda_min_groups,
+        dressed_population=squeezing.N_c and squeezing.N_c_groups,
+        excited_fraction=squeezing.excited_fraction_active and squeezing.excited_fraction_active_groups,
     )
 ```
+
+= Output
+
+The planned squeezing output should be a Pydantic class:
+
+```python
+class SqueezingSeries(BaseModel):
+    t: Array
+
+    # full-system squeezing fields
+    xi2: Array
+    xi2_db: Array
+    lambda_min: Array
+    covariance_eigvals: Array  # shape (n_t, 4)
+    N_c: Array
+    excited_fraction_active: Array
+
+    # full-system reference angles
+    theta_J: Array
+    phi_J: Array
+    theta_S: Array
+    phi_S: Array
+
+    # optional group-resolved squeezing fields
+    xi2_groups: tuple[Array, ...] | None = None
+    xi2_db_groups: tuple[Array, ...] | None = None
+    lambda_min_groups: tuple[Array, ...] | None = None
+    covariance_eigvals_groups: tuple[Array, ...] | None = None
+    N_c_groups: tuple[Array, ...] | None = None
+    excited_fraction_active_groups: tuple[Array, ...] | None = None
+
+    # optional group-resolved reference angles
+    theta_J_groups: tuple[Array, ...] | None = None
+    phi_J_groups: tuple[Array, ...] | None = None
+    theta_S_groups: tuple[Array, ...] | None = None
+    phi_S_groups: tuple[Array, ...] | None = None
+```
+
+Internal helper outputs such as `SqueezingReferenceAngles` and
+`SqueezingMomentSample` may also be Pydantic classes if they are passed between
+public helpers. At minimum, they should make clear whether a field is a raw
+trajectory moment, an ensemble-averaged moment, or a nonlinear derived field.
+
+= Invariants
+
+- Squeezing should be computed as post-processing on saved snapshots; it should
+  not change the MCWF propagation path.
+- For ensemble results, average the required raw operator moments over
+  trajectories before constructing the covariance matrix and $xi^2$.
+- Do not compute one covariance matrix or one $xi^2$ per trajectory and then
+  average those final nonlinear quantities.
+- Homogeneous squeezing should define one effective qubit for the full saved
+  wavefunction or full ensemble-averaged state at each timestep. Do not select
+  only the central $N_J=N/2$ sector and do not define one separate effective
+  qubit per $N_J$ sector.
+- Inhomogeneous full-system squeezing should compute full and group-resolved
+  quantities separately. The full-system covariance should use
+  $O_a = O_(a,1) + O_(a,2)$ so cross-group covariance terms are retained.

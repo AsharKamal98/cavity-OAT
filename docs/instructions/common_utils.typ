@@ -1,0 +1,67 @@
+#set page(paper: "a4", margin: 1in)
+#set text(size: 11pt)
+#set par(first-line-indent: 0pt, spacing: 1em)
+#set heading(numbering: "1.")
+
+#align(center)[
+  #text(size: 1.6em, weight: "bold")[Common Utility Helpers]
+]
+
+= Purpose
+
+This file lists the shared helper functions in `common/utils.py`. Use it when
+adding, moving, or reusing generic helpers that should be available outside a
+specific simulation backend such as `quantum_trajectories`.
+
+Detailed physics conventions may live in more specific instruction files, such
+as `docs/instructions/simulation_parameters.typ` or
+`docs/instructions/bloch_vector_averaging.typ`.
+
+= Helper Summary
+
+== Phase Helpers
+
+- `phase_change_times(phases)` returns the first two phase-boundary times for a
+  phase protocol.
+- `phase_values_at_time(t, phases)` returns the phase-local `(Omega, delta)`
+  values for a piecewise-constant protocol.
+- `default_three_phase_protocol(T1, T2, T3, delta0, Omega0)` returns the
+  standard three-phase protocol as a list of `Phase` objects.
+
+== Angle and Spin-Direction Helpers
+
+- `phase1_ss_angles_for_nj(Nj, Omega, Gamma)` returns the phase-1 steady-state
+  angles `(theta_ss, phi_ss)` for one active sector.
+- `active_manifold_angles(Jx, Jy, Jz, N_e, tol=...)` converts active-manifold
+  observables into angles, active population, and normalized components.
+- `norm_spin_components(x, y, z, tol=...)` returns Euclidean vector length and
+  normalized vector components.
+- `angles_from_norm_spin_components(sx, sy, sz, valid, tol=...)` returns
+  `(theta, phi)` from normalized spin components.
+
+== Observable Comparison Helpers
+
+- `observable_mse_by_time(candidate, reference, keys=...)` computes
+  per-timestep mean-squared errors between observable containers.
+
+== Parameter Helpers
+
+- `omega_c(N_J, Gamma)` returns the critical drive $Omega_c$ for a fixed active
+  atom number.
+- `delta0_from_N_Gamma(N, Gamma)` returns the default notebook detuning scale.
+- `Omega0_from_N_Gamma(N, Gamma)` returns the default notebook drive scale.
+- `Omega_Gamma_from_cavity_parameters(...)` converts cavity parameters to the
+  effective spin-model `(Omega, Gamma)` and checks the bad-cavity condition.
+- `validated_mcwf_dt(dt, N, Gamma, safety_factor=...)` enforces the notebook
+  MCWF timestep rule.
+- `check_initial_sector_omega_ratio(sector_coeffs, Omega, Gamma, ...)` checks
+  the initial support against the smallest-sector critical drive.
+
+= Invariants
+
+- Helpers in `common/utils.py` should be backend-neutral and should not import
+  from `quantum_trajectories` or `quantum_trajectories_qutip`.
+- If a helper becomes backend-specific, move it out of `common/utils.py` rather
+  than hiding backend assumptions in the common layer.
+- When adding a new public helper to `common/utils.py`, add a short entry to
+  this file.

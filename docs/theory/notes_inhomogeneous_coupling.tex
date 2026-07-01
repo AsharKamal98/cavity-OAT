@@ -262,14 +262,14 @@ For a coherent spin state in group \(a\),
 \begin{equation}
 D_a
 =
-\sqrt{N_{J,a}}\cos\frac{\theta_a}{2},
+\sqrt{N_{J,a}}\cos\frac{\theta_{J,a}}{2},
 \qquad
 E_a
 =
-\sqrt{N_{J,a}}e^{-i\phi_a}\sin\frac{\theta_a}{2}.
+\sqrt{N_{J,a}}e^{-i\phi_{J,a}}\sin\frac{\theta_{J,a}}{2}.
 \end{equation}
 
-More generally, the two groups may have different steady-state angles and phases.
+More generally, the two groups may have different steady-state angles and phases. Note that the amplitudes $D_a$ and $E_a$ are defined within a two-level system with fixed $N_J$, the $J$ index has been omitted from the amplitude notation.
 
 \section{Equations of motion}
 
@@ -297,7 +297,6 @@ with weighted collective decay
 +
 \omega_2 \hat{J}_{2-}.
 \end{equation}
-
 Applying the bosonic commutation relations in Eq.~\ref{eq:bosonic_commutation_relations}, one finds the following mean-field equations for $\hat d_1$, $\hat d_2$, $\hat e_1$ and $\hat e_2$:
 \begin{equation}
 \begin{cases}
@@ -450,11 +449,11 @@ Using
 \begin{equation}
 |d_a|^2
 =
-N_{J,a}\cos^2\frac{\theta_a}{2},
+N_{J,a}\cos^2\frac{\theta_{J,a}}{2},
 \qquad
 |e_a|^2
 =
-N_{J,a}\sin^2\frac{\theta_a}{2},
+N_{J,a}\sin^2\frac{\theta_{J,a}}{2},
 \end{equation}
 we find
 \begin{equation} \label{eq:rotating_frame}
@@ -463,7 +462,7 @@ we find
 \frac{
 \delta 
 }{
-2\cos\theta_a
+2\cos\theta_{J,a}
 } - \frac{\delta}{2}.
 \end{equation}
 If we enforce that the two groups share the same rotating frame $\omega_{B,1} = \omega_{B,2}$, the above equation implies that they share the same excitation ratio as well then, meaning  $\theta_1 = \theta_2$. Therefore the inhomogeneous drive weights \(\omega_1\) and \(\omega_2\) must enter mainly through different phases \(\phi_1\) and \(\phi_2\) in that case.
@@ -496,40 +495,40 @@ After substituting
 d_a^{*}e_a
 =
 \frac{N_{J,a}}{2}
-e^{-i\phi_a}
-\sin\theta_a,
+e^{-i\phi_{J,a}}
+\sin\theta_{J,a},
 \\
 \omega_1 d_1e_1^{*}
 +
 \omega_2 d_2e_2^{*}
 =
 \frac{\omega_1 N_{J,1}}{2}
-e^{i\phi_1}
-\sin\theta_1
+e^{i\phi_{J,1}}
+\sin\theta_{J,1}
 +
 \frac{\omega_2 N_{J,2}}{2}
-e^{i\phi_2}
-\sin\theta_2,
+e^{i\phi_{J,2}}
+\sin\theta_{J,2},
 \end{gathered}
 \end{equation}
 and using the formula found for $\omega_B$ in Eq. \ref{eq:rotating_frame}, one arrives at:
-\begin{equation}
+\begin{equation} \label{eq:mfe}
 \boxed{
 \begin{aligned}
 \frac{\Omega\omega_a}{2}
-e^{-i\phi_a}
-\sin\theta_a
+e^{-i\phi_{J,a}}
+\sin\theta_{J,a}
 =
 &\frac{\delta}{2}
-\sin \theta_a \tan \theta_a
+\sin \theta_{J,a} \tan \theta_{J,a}
 -
 i\frac{\Gamma \omega_a}{4}
-e^{-i\phi_a}
-\sin\theta_a
+e^{-i\phi_{J,a}}
+\sin\theta_{J,a}
 \left[
-\omega_1 N_{J,1} e^{i\phi_1} \sin\theta_1
+\omega_1 N_{J,1} e^{i\phi_{J,1}} \sin\theta_{J,1}
 +
-\omega_2 N_{J,2}e^{i\phi_2} \sin\theta_2
+\omega_2 N_{J,2}e^{i\phi_{J,2}} \sin\theta_{J,2}
 \right].
 \end{aligned}
 }
@@ -537,20 +536,20 @@ e^{-i\phi_a}
 This is the steady-state phase equation for group \(a=1,2\).
 
 \section{Homogeneous limit}
-In the homogeneous limit,
+In the homogeneous limit of Eq. \ref{eq:mfe},
 \begin{equation}
 \omega_1=\omega_2=1,
 \qquad
-\theta_1=\theta_2=\theta_J,
+\theta_{J,1}=\theta_{J,2}=\theta_J,
 \qquad
-\phi_1=\phi_2=\phi_J.
+\phi_{J,1}=\phi_{J,2}=\phi_J.
 \end{equation}
 
 Then
 \begin{equation}
-N_{J,1}e^{i\phi_1}
+N_{J,1}e^{i\phi_{J,1}}
 +
-N_{J,2}e^{i\phi_2}
+N_{J,2}e^{i\phi_{J,2}}
 =
 N_J e^{i\phi_J},
 \end{equation}
@@ -570,6 +569,61 @@ i\frac{\Gamma N_J}{4}
 \end{equation}
 matching perfectly the equation for the homogeneous case derived in the original paper. 
 
+\section{Wavefunction coefficients (fix)}
+In homogeneous case, one single active manifold defined by  ....
+\\
+...
+\\
 
+Two-group sector coefficients given by
+\begin{equation}
+P(N_{J,1},N_{J,2})
+=
+\binom{N_1}{N_{J,1}}
+\binom{N_2}{N_{J,2}}
+2^{-N}.
+\end{equation}
+
+
+\section{Critical drive}
+
+Taking the real part of the mean field equations in Eq. \ref{eq:mfe}, and simplifying gives
+
+\begin{equation}
+\begin{aligned}
+\frac{\Omega}{2}
+=
+-\frac{\Gamma}{4}
+\left[
+\omega_1 N_{J,1} \sin \phi_{J,1} \sin\theta_{J,1}
++
+\omega_2 N_{J,2} \sin \phi_{J,2} \sin\theta_{J,2}
+\right].
+\end{aligned}
+\end{equation}
+In the central $(N_{J,1}, N_{J,2}) = (N_1/2,N_2/2)$ case
+\begin{equation}
+\begin{aligned}
+\frac{\Omega}{2}
+& \leq
+\frac{\Gamma}{4}
+\left[
+\omega_1 N_{J,1}
++
+\omega_2 N_{J,2} 
+\right] =
+\\
+& = \frac{\Gamma}{4} \frac{1}{2} \left[ \omega_1 N_1 + \omega_2 N_2 \right]
+\\
+& = \frac{\Gamma}{4} \frac{N}{2}
+\\
+& = \frac{\Gamma N_J}{4}
+\end{aligned}
+\end{equation}
+Therefore, the same critical drive may be assumed in the inhomogeneous setting as the homogeneous one:
+\begin{equation}
+    \Omega_c = \frac{\Gamma N_J}{2}
+\end{equation}
+where $N_J = N/2$, if effective couplings satisfy $\omega_1 N_1 + \omega_2 N_2 = N$.
 
 \end{document}

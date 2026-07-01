@@ -13,6 +13,7 @@ from common.utils import (
     observable_mse_by_time,
     omega_c,
     phase_change_times,
+    phase_values_at_time,
     phase1_ss_angles_for_nj,
 )
 
@@ -32,5 +33,6 @@ __all__ = [
     "observable_mse_by_time",
     "omega_c",
     "phase_change_times",
+    "phase_values_at_time",
     "phase1_ss_angles_for_nj",
 ]

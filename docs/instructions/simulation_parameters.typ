@@ -168,6 +168,14 @@ phase_change_times(phases) -> (t1, t2)
 
 instead of recomputing the cumulative times manually.
 
+Phase-local parameter lookup should reuse:
+
+```
+phase_values_at_time(t, phases) -> (Omega_t, delta_t)
+```
+
+instead of duplicating phase-boundary comparisons.
+
 = Inhomogeneous Coupling Parameters
 
 For two-group inhomogeneous coupling, group 2's coupling should be chosen with:
@@ -205,6 +213,8 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
   returns the standard phase list.
 - `phase_change_times` in `common/utils.py` returns phase
   boundaries.
+- `phase_values_at_time` in `common/utils.py` returns phase-local
+  $(Omega(t),delta(t))$.
 - `omega2_from_weighted_average` in
   `quantum_trajectories/operator_helpers.py` returns $omega_2$.
 
