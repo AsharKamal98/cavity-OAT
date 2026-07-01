@@ -10,7 +10,7 @@
 = Purpose
 This file specifies how to compute two-group mean-field-equation (MFE)
 residuals in `quantum_trajectories/mfe_residuals.py`. Use this file for tasks
-related to residual diagnostics or plots that consume `moments.MFE_residuals`.
+related to residual diagnostics or plots that consume `moments.mfe_residuals`.
 
 The MFE residual diagnostic consumes averaged J moments from
 `quantum_trajectories/j_moments.py`. It should not recompute J moments or old
@@ -29,12 +29,12 @@ compute_mfe_residuals(
 
 attach_mfe_residuals(moments: MomentSeries, *, tol=1e-12)
     -> MFEResidualSeries | None
-    moments.MFE_residuals = compute_mfe_residuals(
+    moments.mfe_residuals = compute_mfe_residuals(
         moments.J,
         parameters=moments.parameters,
         tol=tol,
     )
-    return moments.MFE_residuals
+    return moments.mfe_residuals
 ```
 
 = MFE Residual Definitions
@@ -88,7 +88,7 @@ MFEResidualSeries(
 The top-level notebook container should store this result as:
 
 ```python
-moments.MFE_residuals = compute_mfe_residuals(
+moments.mfe_residuals = compute_mfe_residuals(
     moments.J,
     parameters=moments.parameters,
 )

@@ -4,7 +4,7 @@ from typing import Iterable, List, Mapping, Sequence, Tuple
 
 import numpy as np
 
-from common.parser import Array, Phase
+from parser.common import Array, Phase
 
 
 def phase_change_times(phases: Sequence[Phase]) -> Tuple[float, float]:

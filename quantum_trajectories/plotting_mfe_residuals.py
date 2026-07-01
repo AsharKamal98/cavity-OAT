@@ -80,7 +80,7 @@ def plot_mfe_residuals(
     Plot stored two-group MFE residuals and their L2 norm.
     """
     if mfe_residuals is None:
-        raise ValueError("plot_mfe_residuals requires moments.MFE_residuals.")
+        raise ValueError("plot_mfe_residuals requires moments.mfe_residuals.")
     residuals = mfe_residuals.residuals_groups
     if len(residuals) != 2:
         raise ValueError("plot_mfe_residuals currently requires exactly two residual groups.")

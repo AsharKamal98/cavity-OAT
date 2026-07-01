@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from common.utils import omega_c
-from quantum_trajectories.parser import Array, TrajectoryEnsemble, TrajectoryResult
+from parser.common import Array
+from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.state_helpers import total_norm2
 
 

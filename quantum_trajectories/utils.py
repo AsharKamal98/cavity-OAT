@@ -3,7 +3,7 @@ from typing import Iterable, Optional
 
 from tqdm.auto import tqdm
 
-from common.parser import Phase
+from parser.common import Phase
 from common.utils import (
     Omega_Gamma_from_cavity_parameters,
     active_manifold_angles,

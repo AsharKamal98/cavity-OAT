@@ -8,10 +8,10 @@ import numpy as np
 
 from common.utils import active_manifold_angles
 from common.utils import phase_change_times, phase1_ss_angles_for_nj
-from common.parser import ObservableSeries
+from parser.common import Array, ObservableSeries
 from quantum_trajectories.aggregator import expected_collective_components, trajectory_observables
 from quantum_trajectories.operator_helpers import build_sector_ops
-from quantum_trajectories.parser import Array, SectorKey, TrajectoryEnsemble, TrajectoryResult
+from parser.quantum_trajectories import SectorKey, TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.state_helpers import total_norm2
 from quantum_trajectories.utils import map_with_optional_pool
 

@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 from scipy.sparse import csc_matrix, diags, eye, kron
 
-from quantum_trajectories.parser import SectorKey, SectorOperators
+from parser.quantum_trajectories import SectorKey, SectorOperators
 
 
 def is_inhomogeneous_sector_key(sector_key: SectorKey) -> bool:

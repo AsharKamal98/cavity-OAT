@@ -4,8 +4,10 @@ This file gives instructions for creating project data classes in parser files.
 These classes are used for data validation, clear function outputs, and easy
 attribute-style access to computed data.
 
-The parsing file can be found in `docs/instructions/parser.py`. If one does not
-already exist, create one.
+Parser classes should live in the repository's parser module or package. In
+this repo, parser classes live under `parser/` and are split by domain, for
+example `parser/common.py`, `parser/moments.py`, `parser/j_moments.py`,
+`parser/mfe.py`, and `parser/mfe_residuals.py`.
 
 ## Rules
 
@@ -22,22 +24,20 @@ already exist, create one.
 Follow this style for future parser output classes:
 
 ```python
-class SMomentSeries(BaseModel):
-    phase_index: Array
-    Sx: Array
-    Sy: Array
-    Sx_groups: tuple[Array, ...] | None = None
-
-
 class JMomentSeries(BaseModel):
+    t: Array
     phase_index: Array
-    Jx: Array
-    Jy: Array
-    Jx_groups: tuple[Array, ...] | None = None
+    x: Array
+    y: Array
+    z: Array
+    x_groups: tuple[Array, ...] | None = None
+    y_groups: tuple[Array, ...] | None = None
+    z_groups: tuple[Array, ...] | None = None
 
 
 class MomentSeries(BaseModel):
     t: Array
+    parameters: MomentParameters | None = None
     J: JMomentSeries | None = None
-    S: SMomentSeries | None = None
+    S: Any | None = None
 ```

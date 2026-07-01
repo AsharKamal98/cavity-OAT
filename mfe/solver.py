@@ -3,14 +3,15 @@ from __future__ import annotations
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from common.parser import Array
+from parser.common import Array
 from common.utils import phase_values_at_time
-from mfe.parser import (
+from parser.mfe import (
     MFEInitialState,
     MFEObservableSeries,
     MFEResult,
     MFESolverParameters,
 )
+from parser.moments import MomentSeries
 
 
 def amplitudes_from_initial_state(
@@ -105,7 +106,6 @@ def compute_mfe_observables(
         phi_groups=phi_groups,
     )
 
-
 def solve_mfe(
     parameters: MFESolverParameters,
     initial_state: MFEInitialState,
@@ -144,5 +144,4 @@ def solve_mfe(
         message=str(solution.message),
         parameters=parameters,
     )
-    result.observables = compute_mfe_observables(result)
     return result

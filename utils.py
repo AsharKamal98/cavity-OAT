@@ -6,7 +6,7 @@ from common.utils import (
     phase_values_at_time,
     phase1_ss_angles_for_nj,
 )
-from common.parser import Phase
+from parser.common import Phase
 
 __all__ = [
     "Phase",

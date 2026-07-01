@@ -5,16 +5,10 @@ from typing import Dict, Optional
 import numpy as np
 
 from quantum_trajectories.utils import map_with_optional_pool
-from common.parser import Phase
+from parser.common import Array, Phase
 from common.utils import angles_from_norm_spin_components, norm_spin_components
-from quantum_trajectories.parser import (
-    Array,
-    JMomentSnapshot,
-    JMomentSeries,
-    TrajectoryEnsemble,
-    TrajectoryResult,
-    TrajectorySnapshot,
-)
+from parser.j_moments import JMomentSnapshot, JMomentSeries
+from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult, TrajectorySnapshot
 from quantum_trajectories.sim import build_phase_jump_operator_for_sector
 from quantum_trajectories.state_helpers import total_norm2
 from quantum_trajectories.operator_helpers import (

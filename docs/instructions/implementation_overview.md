@@ -341,7 +341,7 @@ task explicitly mentions the new pipeline, `MomentSeries`, J moments, or
 ### 9.1 Moment Container
 
 The notebook-level container is `MomentSeries`, defined in
-`quantum_trajectories/parser.py`. It should be initialized on the shared
+`parser/moments.py`. It should be initialized on the shared
 `t_eval` grid, from `phases` and `num_snapshots`, and then filled in as
 post-processing steps are run:
 
@@ -364,7 +364,9 @@ Current top-level fields are:
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles when produced by
   `compute_ensemble_j_moments(...)`.
-- `moments.MFE_residuals`: an `MFEResidualSeries` containing two-group MFE
+- `moments.mfe`: an `MFEObservableSeries` containing the solved MFE observable
+  series when attached from the standalone MFE pipeline.
+- `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
 - `moments.S`: placeholder for future S-moment or spin-direction data.
 
@@ -417,7 +419,7 @@ Use `compute_mfe_residuals(...)` from `quantum_trajectories/mfe_residuals.py`
 after `moments.J` has been computed:
 
 ```python
-moments.MFE_residuals = compute_mfe_residuals(
+moments.mfe_residuals = compute_mfe_residuals(
     moments.J,
     parameters=moments.parameters,
 )
@@ -441,7 +443,7 @@ Current moment plotting functions live in `quantum_trajectories/plotting_j_momen
 Current diagnostic plotting functions live in
 `quantum_trajectories/plotting_mfe_residuals.py`:
 
-- `plot_mfe_residuals(moments.MFE_residuals, ...)`: plots stored two-group
+- `plot_mfe_residuals(moments.mfe_residuals, ...)`: plots stored two-group
   residuals in a single residual panel with the L2 norm.
 
 General diagnostic plotting functions live in

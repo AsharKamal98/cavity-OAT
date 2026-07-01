@@ -6,14 +6,8 @@ import numpy as np
 
 from common.utils import active_manifold_angles
 from quantum_trajectories.utils import map_with_optional_pool
-from quantum_trajectories.parser import (
-    Array,
-    AveragedResult,
-    ObservableSeries,
-    SectorKey,
-    TrajectoryResult,
-    TrajectoryEnsemble,
-)
+from parser.common import Array, AveragedResult, ObservableSeries
+from parser.quantum_trajectories import SectorKey, TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.sim import build_phase_jump_operator_for_sector
 from quantum_trajectories.state_helpers import (
     total_norm2,

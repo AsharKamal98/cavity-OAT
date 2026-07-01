@@ -7,13 +7,8 @@ from quantum_trajectories.sim import (
     simulate_single_trajectory,
 )
 from quantum_trajectories.operator_helpers import omega2_from_weighted_average
-from quantum_trajectories.parser import (
-    Array,
-    Phase,
-    SectorKey,
-    TrajectoryEnsemble,
-    TrajectoryResult
-)
+from parser.common import Array, Phase
+from parser.quantum_trajectories import SectorKey, TrajectoryEnsemble, TrajectoryResult
 
 from dataclasses import dataclass
 from math import comb

@@ -4,7 +4,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 
-from common.parser import AveragedResult, ObservableSeries
+from parser.common import AveragedResult, ObservableSeries
 from common.utils import active_manifold_angles
 from quantum_trajectories_qutip.sim import jump_rate_from_state
 

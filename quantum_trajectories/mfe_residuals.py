@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from quantum_trajectories.parser import (
-    JMomentSeries,
-    MFEResidualSeries,
-    MomentParameters,
-    MomentSeries,
-)
+from parser.j_moments import JMomentSeries
+from parser.mfe_residuals import MFEResidualSeries
+from parser.moments import MomentParameters, MomentSeries
 
 
 def compute_mfe_residuals(
@@ -103,12 +100,12 @@ def attach_mfe_residuals(
     if moments.parameters is None:
         raise ValueError("attach_mfe_residuals requires moments.parameters.")
 
-    moments.MFE_residuals = compute_mfe_residuals(
+    moments.mfe_residuals = compute_mfe_residuals(
         moments.J,
         parameters=moments.parameters,
         tol=tol,
     )
-    return moments.MFE_residuals
+    return moments.mfe_residuals
 
 
 __all__ = [

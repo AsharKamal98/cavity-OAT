@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from common.parser import Array, Phase
 from pydantic import BaseModel, ConfigDict, model_validator
+
+from parser.common import Array, Phase
 
 
 class MFESolverParameters(BaseModel):
@@ -70,6 +71,5 @@ class MFEResult(BaseModel):
     success: bool
     message: str
     parameters: MFESolverParameters
-    observables: MFEObservableSeries | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

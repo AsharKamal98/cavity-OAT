@@ -13,9 +13,8 @@ from quantum_trajectories.operator_helpers import (
     total_active_atoms_in_sector,
     two_group_sector_multiplicity,
 )
-from quantum_trajectories.parser import (
-    Array,
-    Phase,
+from parser.common import Array, Phase
+from parser.quantum_trajectories import (
     SectorKey,
     SectorOperators,
     TrajectoryResult,

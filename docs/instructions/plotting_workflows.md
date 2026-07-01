@@ -101,10 +101,10 @@ or diagnostics rather than recomputing expensive physics.
 1. `plot_mfe_residuals` lives in
    `quantum_trajectories/plotting_mfe_residuals.py`.
 
-2. The function should take `moments.MFE_residuals` as input.
+2. The function should take `moments.mfe_residuals` as input.
 
 3. The function should only plot already-computed residuals from
-   `moments.MFE_residuals.residuals_groups`. It should not recompute MFE residuals or
+   `moments.mfe_residuals.residuals_groups`. It should not recompute MFE residuals or
    call old observable extraction.
 
 4. The output should be a single panel showing `Re R_1`, `Im R_1`,

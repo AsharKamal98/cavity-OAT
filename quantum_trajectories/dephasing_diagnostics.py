@@ -5,10 +5,11 @@ from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
 
-from common.parser import ObservableSeries
+from parser.common import ObservableSeries
 from common.utils import active_manifold_angles, phase_change_times
 from quantum_trajectories.aggregator import ensemble_observables, trajectory_observables
-from quantum_trajectories.parser import Array, SectorKey, TrajectoryEnsemble, TrajectoryResult
+from parser.common import Array
+from parser.quantum_trajectories import SectorKey, TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.state_helpers import total_norm2
 from quantum_trajectories.utils import map_with_optional_pool
 

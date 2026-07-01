@@ -6,7 +6,8 @@ from typing import Dict, Mapping, Optional, Tuple
 import numpy as np
 
 from quantum_trajectories.operator_helpers import split_sector_key, total_active_atoms_in_sector
-from quantum_trajectories.parser import Array, SectorKey
+from parser.common import Array
+from parser.quantum_trajectories import SectorKey
 
 
 SUPPORTED_SECTOR_DISTRIBUTIONS = {"square", "binomial"}

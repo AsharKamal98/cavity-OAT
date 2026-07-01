@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from quantum_trajectories.parser import TrajectoryEnsemble, TrajectoryResult
+from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult
 from quantum_trajectories.plotting_utils import (
     curve_label,
     finish_time_plot,

@@ -131,6 +131,10 @@ Function flow: `solve_mfe(...)` is the main entry point. It calls
 `mfe_rhs(...)` calls `phase_values_at_time(...)` to evaluate the phase-local
 equations of motion.
 
+If a top-level `MomentSeries` container is already in use,
+`attach_mfe_observables(moments, result)` should store the solved observable
+series as `moments.mfe`.
+
 = Data Requirements
 
 The solver needs:
@@ -150,8 +154,8 @@ the MCWF code.
 
 = Output
 
-Important solver-facing data should be stored in Pydantic classes in `mfe/parser.py`. A suggested
-minimal output structure is:
+Important solver-facing data should be stored in Pydantic classes in
+`parser/mfe.py`. A suggested minimal output structure is:
 
 ```python
 MFESolverParameters(
@@ -192,7 +196,7 @@ objects.
 = Invariants
 
 - The standalone MFE solver should not import from `quantum_trajectories`.
-- Use `common.parser.Phase` for phase metadata unless a stronger reason exists
+- Use `parser.common.Phase` for phase metadata unless a stronger reason exists
   to define a solver-specific phase class.
 - The solver should support arbitrary group count $G$ when the equations are
   written as sums over groups. Two-group-only logic belongs in residual

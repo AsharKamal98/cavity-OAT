@@ -1,4 +1,4 @@
-from common.parser import Array, AveragedResult, ObservableSeries, Phase
+from parser.common import Array, AveragedResult, ObservableSeries, Phase
 from common.plotting import (
     plot_mse_vs_time,
     plot_paper_jump_rate_comparison,

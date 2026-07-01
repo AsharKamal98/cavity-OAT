@@ -146,7 +146,7 @@ The standard three-phase protocol should be built with:
 default_three_phase_protocol(T1, T2, T3, delta0, Omega0) -> phases
 ```
 
-It returns a list of `Phase` objects from `common/parser.py`. Each `Phase` has:
+It returns a list of `Phase` objects from `parser/common.py`. Each `Phase` has:
 
 ```
 Phase(duration: float, omega: float, delta: float, label: str = "")
