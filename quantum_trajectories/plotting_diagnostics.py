@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult
-from quantum_trajectories.plotting_utils import (
+from common.plotting_utils import (
     curve_label,
     finish_time_plot,
     format_time_axis,

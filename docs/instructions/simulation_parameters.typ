@@ -216,7 +216,7 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
 - `phase_values_at_time` in `common/utils.py` returns phase-local
   $(Omega(t),delta(t))$.
 - `omega2_from_weighted_average` in
-  `quantum_trajectories/operator_helpers.py` returns $omega_2$.
+  `common/utils.py` returns $omega_2$.
 
 = Invariants
 

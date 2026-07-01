@@ -71,6 +71,34 @@ The angle convention matches the J-vector convention used by
 `docs/instructions/j_moments.typ`: all atoms in $|d chevron.r$ correspond to
 $theta_(J,a)=0$.
 
+The corresponding group-resolved spin components should be
+
+$
+J_(x,a)(t_(k)) =
+frac(N_(J,a)(t_(k)), 2) sin(theta_(J,a)(t_(k))) cos(phi_(J,a)(t_(k))),
+$
+
+$
+J_(y,a)(t_(k)) =
+- frac(N_(J,a)(t_(k)), 2) sin(theta_(J,a)(t_(k))) sin(phi_(J,a)(t_(k))),
+$
+
+$
+J_(z,a)(t_(k)) =
+- frac(N_(J,a)(t_(k)), 2) cos(theta_(J,a)(t_(k))),
+$
+
+with
+
+$
+|J_(a)|(t_(k)) =
+sqrt(J_(x,a)(t_(k))^2 + J_(y,a)(t_(k))^2 + J_(z,a)(t_(k))^2).
+$
+
+The minus signs in $J_(y,a)$ and $J_(z,a)$ follow the same repository
+convention as the J-moment pipeline: $theta_(J,a)=0$ corresponds to the
+all-$|d chevron.r$ state.
+
 = Method in Pseudo-code
 
 The solver should be split into small functions with pure data flow. The core
@@ -110,6 +138,11 @@ def compute_mfe_observables(result: MFEResult, *, tol=1e-12) -> MFEObservableSer
         result.D_groups,
         result.E_groups,
     )
+    x_groups, y_groups, z_groups, length_groups = components_from_angles(
+        theta_groups,
+        phi_groups,
+        N_j_groups,
+    )
     return MFEObservableSeries(result.t, result.D_groups, result.E_groups, ...)
 ```
 
@@ -123,17 +156,21 @@ Undefined helper notes:
   `(D_groups, E_groups)` from `(theta_groups, phi_groups, N_j_groups)`.
 - `angles_from_amplitudes(...)` is a new local helper that applies the inverse
   relations in the MFE definitions section.
+- `components_from_angles(...)` is a new local helper that converts
+  `(theta_groups, phi_groups, N_j_groups)` into group-resolved
+  `(x_groups, y_groups, z_groups, length_groups)`.
 
 Function flow: `solve_mfe(...)` is the main entry point. It calls
 `amplitudes_from_initial_state(...)` to build the initial solver vector,
 `solve_ivp(...)` to integrate `mfe_rhs(...)`, and
-`compute_mfe_observables(...)` to attach angle and atom-number outputs.
+`compute_mfe_observables(...)` to attach angle, atom-number, and group-spin
+component outputs.
 `mfe_rhs(...)` calls `phase_values_at_time(...)` to evaluate the phase-local
 equations of motion.
 
 If a top-level `MomentSeries` container is already in use,
-`attach_mfe_observables(moments, result)` should store the solved observable
-series as `moments.mfe`.
+store the solved observable series explicitly as `moments.mfe`, for example via
+`moments.mfe = compute_mfe_observables(result)`.
 
 = Data Requirements
 
@@ -186,6 +223,10 @@ MFEObservableSeries(
     N_j_groups,
     theta_groups,
     phi_groups,
+    x_groups,
+    y_groups,
+    z_groups,
+    length_groups,
 )
 ```
 

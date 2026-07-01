@@ -52,6 +52,8 @@ as `docs/instructions/simulation_parameters.typ` or
 - `Omega0_from_N_Gamma(N, Gamma)` returns the default notebook drive scale.
 - `Omega_Gamma_from_cavity_parameters(...)` converts cavity parameters to the
   effective spin-model `(Omega, Gamma)` and checks the bad-cavity condition.
+- `omega2_from_weighted_average(omega1, N1, N2)` returns the fixed inhomogeneous
+  group-2 coupling $omega_2$ from the weighted-average convention.
 - `validated_mcwf_dt(dt, N, Gamma, safety_factor=...)` enforces the notebook
   MCWF timestep rule.
 - `check_initial_sector_omega_ratio(sector_coeffs, Omega, Gamma, ...)` checks

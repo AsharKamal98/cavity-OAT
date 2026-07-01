@@ -124,7 +124,7 @@ Tuple sector keys require `N1` and `N2`. The function should
 validate that $N_1 + N_2 = N$. Tuple sector keys also require `omega_1` and
 `omega_2`. The group-2 coupling should be computed once by the ensemble layer
 through `omega2_from_weighted_average(...)` in
-`quantum_trajectories/operator_helpers.py`; sector-operator construction should
+`common/utils.py`; sector-operator construction should
 receive this fixed value and should not recompute it per sector.
 
 = Data Out

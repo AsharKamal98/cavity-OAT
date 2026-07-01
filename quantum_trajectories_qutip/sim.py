@@ -7,7 +7,7 @@ import numpy as np
 import qutip as qt
 #from Old.nj_sector_mc import phase_change_times, phase1_ss_angles_for_nj
 from quantum_trajectories.state_helpers import centered_sector_initial_coeffs
-from quantum_trajectories.operator_helpers import omega2_from_weighted_average
+from common.utils import omega2_from_weighted_average
 from .utils import phase_change_times
 
 

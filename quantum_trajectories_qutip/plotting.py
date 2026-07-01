@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import MaxNLocator
 
-from common.plotting import plot_qutip_angles_and_excitation
+from common.plotting_legacy import plot_qutip_angles_and_excitation
 from common.utils import phase_change_times, phase1_ss_angles_for_nj
 from quantum_trajectories_qutip.aggregator import qutip_group_observables
 

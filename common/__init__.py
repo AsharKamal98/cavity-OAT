@@ -1,5 +1,6 @@
 from parser.common import Array, AveragedResult, ObservableSeries, Phase
-from common.plotting import (
+from common.plotting import plot_bloch_angles, plot_spin_components
+from common.plotting_legacy import (
     plot_mse_vs_time,
     plot_paper_jump_rate_comparison,
     plot_qutip_angles_and_excitation,
@@ -22,6 +23,8 @@ __all__ = [
     "AveragedResult",
     "ObservableSeries",
     "Phase",
+    "plot_bloch_angles",
+    "plot_spin_components",
     "plot_mse_vs_time",
     "plot_paper_jump_rate_comparison",
     "plot_qutip_angles_and_excitation",

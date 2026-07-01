@@ -11,7 +11,6 @@ from parser.mfe import (
     MFEResult,
     MFESolverParameters,
 )
-from parser.moments import MomentSeries
 
 
 def amplitudes_from_initial_state(
@@ -84,6 +83,39 @@ def angles_from_amplitudes(
     return tuple(N_j_groups), tuple(theta_groups), tuple(phi_groups)
 
 
+def components_from_angles(
+    theta_groups: tuple[Array, ...],
+    phi_groups: tuple[Array, ...],
+    N_j_groups: tuple[Array, ...],
+) -> tuple[tuple[Array, ...], tuple[Array, ...], tuple[Array, ...], tuple[Array, ...]]:
+    """
+    Convert group-resolved J-sphere angles into group-resolved spin components.
+    """
+    x_groups = []
+    y_groups = []
+    z_groups = []
+    length_groups = []
+
+    for theta, phi, N_j in zip(theta_groups, phi_groups, N_j_groups):
+        theta = np.asarray(theta, dtype=float)
+        phi = np.asarray(phi, dtype=float)
+        N_j = np.asarray(N_j, dtype=float)
+
+        half_N_j = 0.5 * N_j
+        sin_theta = np.sin(theta)
+        x = half_N_j * sin_theta * np.cos(phi)
+        y = -half_N_j * sin_theta * np.sin(phi)
+        z = -half_N_j * np.cos(theta)
+        length = np.sqrt(x**2 + y**2 + z**2)
+
+        x_groups.append(x)
+        y_groups.append(y)
+        z_groups.append(z)
+        length_groups.append(length)
+
+    return tuple(x_groups), tuple(y_groups), tuple(z_groups), tuple(length_groups)
+
+
 def compute_mfe_observables(
     result: MFEResult,
     *,
@@ -97,6 +129,11 @@ def compute_mfe_observables(
         result.E_groups,
         tol=tol,
     )
+    x_groups, y_groups, z_groups, length_groups = components_from_angles(
+        theta_groups,
+        phi_groups,
+        N_j_groups,
+    )
     return MFEObservableSeries(
         t=result.t,
         D_groups=result.D_groups,
@@ -104,6 +141,10 @@ def compute_mfe_observables(
         N_j_groups=N_j_groups,
         theta_groups=theta_groups,
         phi_groups=phi_groups,
+        x_groups=x_groups,
+        y_groups=y_groups,
+        z_groups=z_groups,
+        length_groups=length_groups,
     )
 
 def solve_mfe(

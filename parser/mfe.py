@@ -58,6 +58,10 @@ class MFEObservableSeries(BaseModel):
     N_j_groups: tuple[Array, ...]
     theta_groups: tuple[Array, ...]
     phi_groups: tuple[Array, ...]
+    x_groups: tuple[Array, ...]
+    y_groups: tuple[Array, ...]
+    z_groups: tuple[Array, ...]
+    length_groups: tuple[Array, ...]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

@@ -336,7 +336,7 @@ Sections 6-8 describe the established observable, diagnostic, and plotting
 pipeline. This section documents the newer moment-first pipeline that is being
 built to replace parts of the old observable flow. Use this section when the
 task explicitly mentions the new pipeline, `MomentSeries`, J moments, or
-`quantum_trajectories/plotting_j_moments.py`.
+`common/plotting.py`.
 
 ### 9.1 Moment Container
 
@@ -433,12 +433,16 @@ New-pipeline plotting functions should take moment series objects directly,
 usually `moments.J`, and should visualize already-computed fields rather than
 recomputing moments.
 
-Current moment plotting functions live in `quantum_trajectories/plotting_j_moments.py`:
+The shared spin-component plot now lives in `common/plotting.py`:
 
-- `plot_j_spin_components(moments.J, ...)`: plots `x`, `y`, and `z`, plus
-  group-resolved curves when present.
-- `plot_j_angles(moments.J, ...)`: plots stored `theta` and `phi`, plus stored
-  group-resolved angle curves when present.
+- `plot_spin_components(series, ...)`: plots stored `x`, `y`, `z`, `length`,
+  and the matching group-resolved fields when present.
+
+The shared angle plot now lives in `common/plotting.py`:
+
+- `plot_bloch_angles(series, ...)`: plots whatever stored `theta`, `phi`,
+  `theta_groups`, and `phi_groups` fields are available on the input series,
+  using the selected `colour_index` palette and `linestyle`.
 
 Current diagnostic plotting functions live in
 `quantum_trajectories/plotting_mfe_residuals.py`:

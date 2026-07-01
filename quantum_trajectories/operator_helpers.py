@@ -24,28 +24,6 @@ def total_active_atoms_in_sector(sector_key: SectorKey) -> int:
     return int(sum(split_sector_key(sector_key)))
 
 
-def omega2_from_weighted_average(omega1: float, N1: int, N2: int, *, tol: float = 1e-12) -> float:
-    """
-    Choose omega2 so the physical atom-number weighted mean coupling is one.
-
-    The convention is
-
-        N1 * omega1 + N2 * omega2 = N1 + N2.
-
-    This gives a single fixed omega2 for the whole inhomogeneous run, instead
-    of changing omega2 from one group-resolved sector to another.  If group 2
-    has no atoms, omega2 never multiplies an active operator; return 1.0 to
-    keep downstream metadata finite.
-    """
-    if N1 < 0 or N2 < 0:
-        raise ValueError("N1 and N2 must be non-negative.")
-    if N1 + N2 <= 0:
-        raise ValueError("At least one coupling group must contain atoms.")
-    if abs(N2) <= tol:
-        return 1.0
-    return float((N1 + N2 - float(omega1) * N1) / N2)
-
-
 def sector_multiplicity(N: int, Nj: int) -> int:
     """
     Degeneracy of the Nj sector coming from choosing which Nj atoms live in

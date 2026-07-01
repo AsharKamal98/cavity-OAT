@@ -9,7 +9,7 @@ import numpy as np
 from parser.common import ObservableSeries
 from common.utils import active_manifold_angles, phase_change_times
 from quantum_trajectories.aggregator import ensemble_observables, trajectory_observables
-from quantum_trajectories.operator_helpers import omega2_from_weighted_average
+from common.utils import omega2_from_weighted_average
 from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult
 
 

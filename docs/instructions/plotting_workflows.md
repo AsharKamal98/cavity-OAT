@@ -44,24 +44,21 @@ or diagnostics rather than recomputing expensive physics.
 
 9. Plotting functions should accept optional `phases` when the x-axis is time.
 
-## `fig, axes = plot_j_spin_components(...)`
+## `fig, axes = plot_spin_components(...)`
 
-1. `plot_j_spin_components` lives in `quantum_trajectories/plotting_j_moments.py`.
+1. `plot_spin_components` lives in `common/plotting.py`.
 
-2. The function should take the moment series directly, e.g. `moments.J`, not
-   the full `MomentSeries` container.
+2. The function should take a series object directly, for example `moments.J`
+   or another series with matching `x/y/z/length` field names.
 
-3. The default call plots J moments:
+3. The default call plots stored `x`, `y`, `z`, and `length` fields:
 
    ```python
-   fig, axes = plot_j_spin_components(moments.J)
+   fig, axes = plot_spin_components(moments.J)
    ```
 
-4. The function should support `spin_component="j"` and `spin_component="s"`.
-   For `spin_component="j"`, it reads `x`, `y`, `z`, `length`, and optional
-   `x_groups`, `y_groups`, `z_groups`, `length_groups`. For
-   `spin_component="s"`, it should read the analogous normalized-direction
-   fields `nx`, `ny`, `nz`, plus `length`.
+4. The function should read `x`, `y`, `z`, `length`, and optional
+   `x_groups`, `y_groups`, `z_groups`, `length_groups`.
 
 5. The output should be a `2x2` panel showing the x, y, z, and length
    components.
@@ -69,32 +66,31 @@ or diagnostics rather than recomputing expensive physics.
 6. Each panel should include the full-system curve. If group fields exist, each
    panel should also include all group-resolved curves.
 
-7. The function should support `axes`, `output_path`, `label`, and `phases` so
-   multiple results can be plotted into the same figure.
+7. The function should support `axes`, `output_path`, `label`, `phases`,
+   `colour_index`, and `linestyle` so multiple results can be plotted into the
+   same figure.
 
-## `fig, axes = plot_j_angles(...)`
+## `fig, axes = plot_bloch_angles(...)`
 
-1. `plot_j_angles` lives in `quantum_trajectories/plotting_j_moments.py`.
+1. `plot_bloch_angles` lives in `common/plotting.py`.
 
-2. The function should take `moments.J` as input.
+2. The function should take a series object as input. The input must contain
+   `t`, and may contain full-system `theta`/`phi`, group-resolved
+   `theta_groups`/`phi_groups`, or both.
 
 3. The output should be a `2x1` panel showing `theta` and `phi`.
 
-4. `plot_j_angles` should read stored `theta` and `phi` fields from
-   `moments.J`. Angle construction should happen upstream in the moment
-   pipeline; the plotting function should not recompute angles from
-   `x/y/z`, `length`, or `nx/ny/nz`.
+4. `plot_bloch_angles` should read whatever stored angle fields are available on
+   the input series. Angle construction should happen upstream; the plotting
+   function should not recompute angles from spin components.
 
 5. If group-resolved `theta_groups` and `phi_groups` exist, plot group angles
-   first using dashed group-colored curves. Plot the full-system angles last
-   using a solid gray curve.
+   first using the selected `colour_index` palette and selected `linestyle`.
+   Plot the full-system angles last using the next color from the same palette
+   when those fields exist.
 
-6. The function should support `axes`, `output_path`, `label`, and `phases`.
-
-7. The function may support `show_phase1_ss=True` with a required `Gamma`
-   argument. In that case, it should draw the phase-1 steady-state reference
-   on the theta panel using `phases[0].omega`, the stored full-system `N_j`,
-   and `phase1_ss_angles_for_nj(...)`.
+6. The function should support `axes`, `output_path`, `label`, `phases`,
+   `colour_index`, and `linestyle`.
 
 ## `fig, axes = plot_mfe_residuals(...)`
 
@@ -150,8 +146,8 @@ or diagnostics rather than recomputing expensive physics.
 5. `plot_sector_probabilities` should live in
    `quantum_trajectories/plotting_diagnostics.py`.
 
-6. The function should support `style_index`, where `style_index=0` gives solid
-   curves and `style_index=1` gives dashed curves for overlay comparisons.
+6. The function should support `linestyle`, for example `"-"` for solid or
+   `"--"` for dashed overlay comparisons.
 
 
 Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
@@ -159,7 +155,9 @@ Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
 
 ## Global Styling Rules
 
-Shared styling helpers should live in `quantum_trajectories/plotting_utils.py`.
+Shared styling helpers should live in `common/plotting_utils.py`.
+Indexed color and line-pattern helpers may live separately in
+`common/plotting_index_utils.py`.
 
 1. Use a colorblind-friendly manual palette, such as Okabe-Ito, rather than
    changing Matplotlib's global style.
