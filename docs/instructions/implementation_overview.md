@@ -363,9 +363,8 @@ Current top-level fields are:
   `ensemble.parameters`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles when produced by
-  `compute_ensemble_j_moments(...)`.
-- `moments.mfe`: an `MFEObservableSeries` containing the solved MFE observable
-  series when attached from the standalone MFE pipeline.
+  `compute_ensemble_j_moments(...)`, or group-resolved MFE observables when
+  produced by `compute_mfe_observables(...)`.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
 - `moments.S`: placeholder for future S-moment or spin-direction data.
@@ -382,7 +381,7 @@ moments.J = compute_ensemble_j_moments(ensemble, n_processes=n_processes)
 ```
 
 The returned `JMomentSeries` contains arrays on the saved `t_eval` grid,
-including `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, `J_drive`, and optional
+including `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, and optional
 group-resolved fields such as `x_groups`, `y_groups`, `z_groups`,
 `N_e_groups`, and `N_j_groups`. It also includes derived fields attached after
 ensemble averaging: `length`, `nx`, `ny`, `nz`, `theta`, and `phi`, plus

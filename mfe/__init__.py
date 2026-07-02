@@ -1,6 +1,5 @@
 from parser.mfe import (
     MFEInitialState,
-    MFEObservableSeries,
     MFEResult,
     MFESolverParameters,
 )
@@ -14,7 +13,6 @@ from mfe.solver import (
 
 __all__ = [
     "MFEInitialState",
-    "MFEObservableSeries",
     "MFEResult",
     "MFESolverParameters",
     "amplitudes_from_initial_state",

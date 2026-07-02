@@ -5,9 +5,9 @@ from scipy.integrate import solve_ivp
 
 from parser.common import Array
 from common.utils import phase_values_at_time
+from parser.j_moments import JMomentSeries
 from parser.mfe import (
     MFEInitialState,
-    MFEObservableSeries,
     MFEResult,
     MFESolverParameters,
 )
@@ -87,14 +87,13 @@ def components_from_angles(
     theta_groups: tuple[Array, ...],
     phi_groups: tuple[Array, ...],
     N_j_groups: tuple[Array, ...],
-) -> tuple[tuple[Array, ...], tuple[Array, ...], tuple[Array, ...], tuple[Array, ...]]:
+) -> tuple[tuple[Array, ...], tuple[Array, ...], tuple[Array, ...]]:
     """
     Convert group-resolved J-sphere angles into group-resolved spin components.
     """
     x_groups = []
     y_groups = []
     z_groups = []
-    length_groups = []
 
     for theta, phi, N_j in zip(theta_groups, phi_groups, N_j_groups):
         theta = np.asarray(theta, dtype=float)
@@ -104,23 +103,21 @@ def components_from_angles(
         half_N_j = 0.5 * N_j
         sin_theta = np.sin(theta)
         x = half_N_j * sin_theta * np.cos(phi)
-        y = -half_N_j * sin_theta * np.sin(phi)
+        y = half_N_j * sin_theta * np.sin(phi)
         z = -half_N_j * np.cos(theta)
-        length = np.sqrt(x**2 + y**2 + z**2)
 
         x_groups.append(x)
         y_groups.append(y)
         z_groups.append(z)
-        length_groups.append(length)
 
-    return tuple(x_groups), tuple(y_groups), tuple(z_groups), tuple(length_groups)
+    return tuple(x_groups), tuple(y_groups), tuple(z_groups)
 
 
 def compute_mfe_observables(
     result: MFEResult,
     *,
     tol: float = 1e-12,
-) -> MFEObservableSeries:
+) -> JMomentSeries:
     """
     Build observable time series from an MFE result.
     """
@@ -129,31 +126,30 @@ def compute_mfe_observables(
         result.E_groups,
         tol=tol,
     )
-    x_groups, y_groups, z_groups, length_groups = components_from_angles(
+    x_groups, y_groups, z_groups = components_from_angles(
         theta_groups,
         phi_groups,
         N_j_groups,
     )
-    return MFEObservableSeries(
+    j_moments = JMomentSeries(
         t=result.t,
-        D_groups=result.D_groups,
-        E_groups=result.E_groups,
         N_j_groups=N_j_groups,
         theta_groups=theta_groups,
         phi_groups=phi_groups,
         x_groups=x_groups,
         y_groups=y_groups,
         z_groups=z_groups,
-        length_groups=length_groups,
     )
+    JMomentSeries.attach_spin_direction_fields(j_moments, tol=tol)
+    return j_moments
 
 def solve_mfe(
     parameters: MFESolverParameters,
     initial_state: MFEInitialState,
     *,
     t_eval: Array,
-    rtol: float = 1e-9,
-    atol: float = 1e-11,
+    rtol: float = 1e-11,
+    atol: float = 1e-13,
     method: str = "RK45",
 ) -> MFEResult:
     """

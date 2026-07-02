@@ -20,8 +20,7 @@ _compute_snapshot_j_moments(snapshot, ...)
     # Compute J moments for one saved snapshot of one trajectory.
     return JMomentSnapshot(
         t, phase_index, x, y, z, N_e, N_j, jump_rate,
-        J_drive, x_groups, y_groups, z_groups, N_e_groups,
-        N_j_groups,
+        x_groups, y_groups, z_groups, N_e_groups, N_j_groups,
     )
 
 compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
@@ -46,7 +45,7 @@ compute_ensemble_j_moments(ensemble: TrajectoryEnsemble, ...)
         for traj in ensemble.trajectories
     )
     averaged = compute_average_j_moments(samples)
-    _attach_spin_direction_fields(averaged, tol=tol)
+    JMomentSeries.attach_spin_direction_fields(averaged, tol=tol)
     _attach_spin_angles(averaged, tol=tol)
     return averaged
   
@@ -65,8 +64,8 @@ the raw per-trajectory moment fields across the shared saved time grid.
 Ensemble and plotting code should call `compute_ensemble_j_moments(...)`,
 which collects trajectory samples, averages them, and attaches derived
 direction and angle fields to the averaged result.
-`_attach_spin_direction_fields(...)` attaches `length`, `nx`, `ny`, and `nz`,
-plus group-resolved versions when group fields exist.
+`JMomentSeries.attach_spin_direction_fields(...)` attaches `length`, `nx`,
+`ny`, and `nz`, plus group-resolved versions when group fields exist.
 `_attach_spin_angles(...)` attaches `theta` and `phi`, plus group-resolved
 versions when group direction fields exist.
 MFE residuals are computed separately; use
@@ -156,15 +155,6 @@ For homogeneous / single-group results, group fields should be `None`. The curre
 The full-system fields (`Ji`,`N_e`, `N_j` etc.) should still be
 computed by the full-system rules above. Group-resolved fields are additional diagnostic outputs and should not replace the full fields.
 
-== Drive Term
-
-The drive field `J_drive` should use the drive-coupled operator defined by
-`build_sector_ops_for_key(...)`; its construction is covered in
-`docs/instructions/simulation_precompute.typ`. This field was previously called
-`J_x_drive` or `Jx_drive`; future code should use `J_drive` instead. In this
-file it is just another normalized sector expectation value following the rule
-above.
-
 == Normalized Spin Components
 
 After the trajectory-averaged fields $J_i(t_(k))$ have been computed, define
@@ -184,7 +174,7 @@ $
 If $J_("len")(t_(k))$ is below the numerical tolerance, set the normalized
 components to zero. For group-resolved fields, apply the same rule separately
 to each group using $J_(i,g)$ and $J_("len",g)$.
-This is implemented by `_attach_spin_direction_fields(...)`.
+This is implemented by `JMomentSeries.attach_spin_direction_fields(...)`.
 
 == Angles
 
@@ -216,7 +206,6 @@ JMomentSnapshot(
     N_e,
     N_j,
     jump_rate,
-    J_drive,
     x_groups=None or tuple[float, ...],
     y_groups=None or tuple[float, ...],
     z_groups=None or tuple[float, ...],
@@ -230,8 +219,11 @@ return `JMomentSeries`:
 
 ```python
 JMomentSeries(
-    t, phase_index,
-    x, y, z,
+    t,
+    phase_index=None or array,
+    x=None or array,
+    y=None or array,
+    z=None or array,
     x_groups=None or tuple[array, ...],
     y_groups=None or tuple[array, ...],
     z_groups=None or tuple[array, ...],
@@ -243,16 +235,15 @@ JMomentSeries(
     nx_groups=None or tuple[array, ...],
     ny_groups=None or tuple[array, ...],
     nz_groups=None or tuple[array, ...],
-    N_e,
-    N_j,
+    N_e=None or array,
+    N_j=None or array,
     N_e_groups=None or tuple[array, ...],
     N_j_groups=None or tuple[array, ...],
     theta=None or array,
     phi=None or array,
     theta_groups=None or tuple[array, ...],
     phi_groups=None or tuple[array, ...],
-    jump_rate,
-    J_drive,
+    jump_rate=None or array,
 )
 ```
 

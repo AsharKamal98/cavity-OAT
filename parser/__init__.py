@@ -2,7 +2,6 @@ from parser.common import Array, AveragedResult, ObservableSeries, Phase
 from parser.j_moments import JMomentSeries, JMomentSnapshot
 from parser.mfe import (
     MFEInitialState,
-    MFEObservableSeries,
     MFEResult,
     MFESolverParameters,
 )
@@ -23,7 +22,6 @@ __all__ = [
     "JMomentSeries",
     "JMomentSnapshot",
     "MFEInitialState",
-    "MFEObservableSeries",
     "MFEResidualSeries",
     "MFEResult",
     "MFESolverParameters",

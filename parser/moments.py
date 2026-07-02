@@ -7,7 +7,6 @@ from pydantic import BaseModel, root_validator
 
 from parser.common import Array, Phase
 from parser.j_moments import JMomentSeries
-from parser.mfe import MFEObservableSeries
 from parser.mfe_residuals import MFEResidualSeries
 
 
@@ -29,7 +28,6 @@ class MomentSeries(BaseModel):
     t: Array
     parameters: MomentParameters | None = None
     J: JMomentSeries | None = None
-    mfe: MFEObservableSeries | None = None
     mfe_residuals: MFEResidualSeries | None = None
     S: Any | None = None
 

@@ -49,23 +49,6 @@ class MFEInitialState(BaseModel):
         return self
 
 
-class MFEObservableSeries(BaseModel):
-    """Observable time series derived from the solved MFE amplitudes."""
-
-    t: Array
-    D_groups: tuple[Array, ...]
-    E_groups: tuple[Array, ...]
-    N_j_groups: tuple[Array, ...]
-    theta_groups: tuple[Array, ...]
-    phi_groups: tuple[Array, ...]
-    x_groups: tuple[Array, ...]
-    y_groups: tuple[Array, ...]
-    z_groups: tuple[Array, ...]
-    length_groups: tuple[Array, ...]
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-
 class MFEResult(BaseModel):
     """Raw MFE solution and derived observables."""
 

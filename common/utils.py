@@ -82,6 +82,8 @@ def active_manifold_angles(
     tol: float = 1e-12,
 ) -> Tuple[Array, Array, Array, Array, Array, Array]:
     """
+    LEGACY FUNCTION
+    
     Compute Bloch-sphere angles inside the active {|down>, |e>} manifold.
 
     The active-manifold population is

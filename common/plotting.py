@@ -18,6 +18,7 @@ from common.plotting_utils import (
 
 def plot_spin_components(
     spin_series: Any,
+    normalized: bool = False,
     *,
     colour_index: int = 0,
     linestyle: str = "-",
@@ -38,8 +39,12 @@ def plot_spin_components(
     line_style = validated_linestyle(linestyle)
 
     t = np.asarray(spin_series.t, dtype=float)
-    component_fields = ("x", "y", "z", "length")
-    group_fields = ("x_groups", "y_groups", "z_groups", "length_groups")
+    if not normalized:
+        component_fields = ("x", "y", "z", "length")
+        group_fields = ("x_groups", "y_groups", "z_groups", "length_groups")
+    else:
+        component_fields = ("nx", "ny", "nz", "length")
+        group_fields = ("nx_groups", "ny_groups", "nz_groups", "length_groups")
     axis_names = ("x", "y", "z", "len")
     panel_titles = (r"$J_x$", r"$J_y$", r"$J_z$", r"$|J|$")
 
@@ -77,7 +82,8 @@ def plot_spin_components(
                     label=curve_label(group_label, label=label),
                 )
 
-        if values is not None:
+        #if values is not None:
+        if False:
             full_color = indexed_curve_color(
                 colour_index,
                 len(group_values) if group_values is not None else 0,
@@ -96,8 +102,8 @@ def plot_spin_components(
         style_axis(ax)
         ax.legend()
         format_time_axis(ax)
-
-    finish_time_plot(fig, axes, phases=phases, title="Spin components", output_path=output_path)
+    title = "Normalized spin components" if normalized else "Spin components"
+    finish_time_plot(fig, axes, phases=phases, title=title, output_path=output_path)
 
     return fig, axes
 
@@ -156,7 +162,7 @@ def plot_bloch_angles(
                 label=curve_label(rf"$\phi_{group_index}$", label=label),
             )
 
-    if has_full:
+    if False:
         full_color = indexed_curve_color(
             colour_index,
             len(theta_groups) if has_groups else 0,

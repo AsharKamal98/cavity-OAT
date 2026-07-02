@@ -6,7 +6,7 @@ import numpy as np
 
 from quantum_trajectories.utils import map_with_optional_pool
 from parser.common import Array, Phase
-from common.utils import angles_from_norm_spin_components, norm_spin_components
+from common.utils import angles_from_norm_spin_components
 from parser.j_moments import JMomentSnapshot, JMomentSeries
 from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult, TrajectorySnapshot
 from quantum_trajectories.sim import build_phase_jump_operator_for_sector
@@ -60,7 +60,6 @@ def _compute_snapshot_j_moments(
             N_e=0.0,
             N_j=0.0,
             jump_rate=0.0,
-            J_drive=0.0,
             x_groups=zero_groups,
             y_groups=zero_groups,
             z_groups=zero_groups,
@@ -72,7 +71,6 @@ def _compute_snapshot_j_moments(
     jy_total = 0.0
     jz_total = 0.0
     ne_total = 0.0
-    j_drive_total = 0.0
     jump_rate = 0.0
     nj_total = 0.0
     omega = phases[snapshot.phase_index].omega
@@ -107,10 +105,6 @@ def _compute_snapshot_j_moments(
         jz_total += float(np.vdot(psi, ops.J_z.dot(psi)).real)
         ne_total += float(np.vdot(psi, ops.N_e.dot(psi)).real)
         nj_total += total_active_atoms_in_sector(sector_key) * psi_norm2
-        if ops.J_drive is not None:
-            j_drive_total += float(np.vdot(psi, ops.J_drive.dot(psi)).real)
-        else:
-            j_drive_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
 
         jump_operator = build_phase_jump_operator_for_sector(
             ops,
@@ -165,7 +159,6 @@ def _compute_snapshot_j_moments(
         N_e=ne_total / norm2,
         N_j=nj_total / norm2,
         jump_rate=jump_rate / norm2,
-        J_drive=j_drive_total / norm2,
         x_groups=None if jx_groups is None else tuple(jx_groups / norm2),
         y_groups=None if jy_groups is None else tuple(jy_groups / norm2),
         z_groups=None if jz_groups is None else tuple(jz_groups / norm2),
@@ -237,7 +230,6 @@ def compute_trajectory_j_moments(
         N_e_groups=group_series("N_e_groups"),
         N_j_groups=group_series("N_j_groups"),
         jump_rate=series("jump_rate"),
-        J_drive=series("J_drive"),
     )
 
 
@@ -251,39 +243,6 @@ def _compute_trajectory_j_moments_worker(args: tuple[TrajectoryResult, float]) -
     """
     trajectory, tol = args
     return compute_trajectory_j_moments(trajectory, tol=tol)
-
-
-def _attach_spin_direction_fields(j_moments: JMomentSeries, *, tol: float) -> None:
-    """
-    Attach derived fields that should be computed from averaged J components.
-    """
-    # TODO: move to a utils file and re-use for S moments.
-    (
-        j_moments.length,
-        j_moments.nx,
-        j_moments.ny,
-        j_moments.nz,
-    ) = norm_spin_components(j_moments.x, j_moments.y, j_moments.z, tol=tol)
-
-    if (
-        j_moments.x_groups is None
-        or j_moments.y_groups is None
-        or j_moments.z_groups is None
-    ):
-        return
-
-    group_results = [
-        norm_spin_components(x_g, y_g, z_g, tol=tol)
-        for x_g, y_g, z_g in zip(
-            j_moments.x_groups,
-            j_moments.y_groups,
-            j_moments.z_groups,
-        )
-    ]
-    j_moments.length_groups = tuple(result[0] for result in group_results)
-    j_moments.nx_groups = tuple(result[1] for result in group_results)
-    j_moments.ny_groups = tuple(result[2] for result in group_results)
-    j_moments.nz_groups = tuple(result[3] for result in group_results)
 
 
 def _attach_spin_angles(j_moments: JMomentSeries, *, tol: float) -> None:
@@ -397,7 +356,6 @@ def compute_average_j_moments(
         N_e_groups=mean_group_series("N_e_groups"),
         N_j_groups=mean_group_series("N_j_groups"),
         jump_rate=mean_series("jump_rate"),
-        J_drive=mean_series("J_drive"),
     )
 
 
@@ -447,7 +405,7 @@ def compute_ensemble_j_moments(
 
     averaged = compute_average_j_moments(moments, tol=tol)
     # normalized spin components
-    _attach_spin_direction_fields(averaged, tol=tol)
+    JMomentSeries.attach_spin_direction_fields(averaged, tol=tol)
     # theta, phi
     _attach_spin_angles(averaged, tol=tol)
     return averaged
