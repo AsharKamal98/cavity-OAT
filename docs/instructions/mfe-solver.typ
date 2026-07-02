@@ -67,6 +67,9 @@ $
 phi_(J,a)(t_(k)) = arg(D_(a)(t_(k))) - arg(E_(a)(t_(k))).
 $
 
+After taking this phase difference, wrap it back to the principal interval
+$[-pi, pi]$ before storing or plotting it.
+
 The angle convention matches the J-vector convention used by
 `docs/instructions/j_moments.typ`: all atoms in $|d chevron.r$ correspond to
 $theta_(J,a)=0$.

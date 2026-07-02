@@ -1,4 +1,5 @@
 from parser.common import Array, AveragedResult, ObservableSeries, Phase
+from common.moment_utils import norm_spin_components
 from common.plotting import plot_bloch_angles, plot_spin_components
 from common.plotting_legacy import (
     plot_mse_vs_time,
@@ -23,6 +24,7 @@ __all__ = [
     "AveragedResult",
     "ObservableSeries",
     "Phase",
+    "norm_spin_components",
     "plot_bloch_angles",
     "plot_spin_components",
     "plot_mse_vs_time",

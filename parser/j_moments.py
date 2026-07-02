@@ -71,7 +71,7 @@ class JMomentSeries(BaseModel):
         """
         Attach Euclidean vector length and normalized spin-direction fields.
         """
-        from common.utils import norm_spin_components
+        from common.moment_utils import norm_spin_components
 
         has_full = (
             j_moments.x is not None

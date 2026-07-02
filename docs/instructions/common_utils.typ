@@ -9,9 +9,10 @@
 
 = Purpose
 
-This file lists the shared helper functions in `common/utils.py`. Use it when
-adding, moving, or reusing generic helpers that should be available outside a
-specific simulation backend such as `quantum_trajectories`.
+This file lists the shared helper functions in `common/utils.py` and
+`common/moment_utils.py`. Use it when adding, moving, or reusing generic
+helpers that should be available outside a specific simulation backend such as
+`quantum_trajectories`.
 
 Detailed physics conventions may live in more specific instruction files, such
 as `docs/instructions/simulation_parameters.typ` or
@@ -34,8 +35,8 @@ as `docs/instructions/simulation_parameters.typ` or
   angles `(theta_ss, phi_ss)` for one active sector.
 - `active_manifold_angles(Jx, Jy, Jz, N_e, tol=...)` converts active-manifold
   observables into angles, active population, and normalized components.
-- `norm_spin_components(x, y, z, tol=...)` returns Euclidean vector length and
-  normalized vector components.
+- `norm_spin_components(x, y, z, tol=...)` in `common/moment_utils.py` returns
+  Euclidean vector length and normalized vector components.
 - `angles_from_norm_spin_components(sx, sy, sz, valid, tol=...)` returns
   `(theta, phi)` from normalized spin components.
 
@@ -63,7 +64,9 @@ as `docs/instructions/simulation_parameters.typ` or
 
 - Helpers in `common/utils.py` should be backend-neutral and should not import
   from `quantum_trajectories` or `quantum_trajectories_qutip`.
+- Helpers in `common/moment_utils.py` should stay limited to shared
+  moment/vector post-processing.
 - If a helper becomes backend-specific, move it out of `common/utils.py` rather
   than hiding backend assumptions in the common layer.
-- When adding a new public helper to `common/utils.py`, add a short entry to
-  this file.
+- When adding a new public helper to `common/utils.py` or
+  `common/moment_utils.py`, add a short entry to this file.

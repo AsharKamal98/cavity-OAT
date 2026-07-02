@@ -5,6 +5,7 @@ from typing import Iterable, List, Mapping, Sequence, Tuple
 import numpy as np
 
 from parser.common import Array, Phase
+from common.moment_utils import norm_spin_components
 
 
 def phase_change_times(phases: Sequence[Phase]) -> Tuple[float, float]:
@@ -118,33 +119,6 @@ def active_manifold_angles(
 
     theta, phi = angles_from_norm_spin_components(sx, sy, sz, valid=valid, tol=tol)
     return theta, phi, N_active, sx, sy, sz
-
-
-def norm_spin_components(
-    x: Array,
-    y: Array,
-    z: Array,
-    *,
-    tol: float = 1e-12,
-) -> Tuple[Array, Array, Array, Array]:
-    """
-    Compute Euclidean length, normalized direction, and angles of a spin vector.
-    """
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    z = np.asarray(z, dtype=float)
-
-    len = np.sqrt(x**2 + y**2 + z**2)
-    valid = len > tol
-
-    sx = np.zeros_like(x, dtype=float)
-    sy = np.zeros_like(y, dtype=float)
-    sz = np.zeros_like(z, dtype=float)
-    sx[valid] = x[valid] / len[valid]
-    sy[valid] = y[valid] / len[valid]
-    sz[valid] = z[valid] / len[valid]
-
-    return len, sx, sy, sz
 
 
 def angles_from_norm_spin_components(

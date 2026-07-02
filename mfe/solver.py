@@ -74,6 +74,7 @@ def angles_from_amplitudes(
         theta[valid] = np.arccos(np.clip(ratio[valid], -1.0, 1.0))
 
         phi = np.angle(D) - np.angle(E)
+        phi = (phi + np.pi) % (2.0 * np.pi) - np.pi
         phi[~valid] = 0.0
 
         N_j_groups.append(N_j)
