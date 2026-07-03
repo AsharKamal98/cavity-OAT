@@ -6,7 +6,6 @@ import numpy as np
 
 from quantum_trajectories.utils import map_with_optional_pool
 from parser.common import Array, Phase
-from common.utils import angles_from_norm_spin_components
 from parser.j_moments import JMomentSnapshot, JMomentSeries
 from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult, TrajectorySnapshot
 from quantum_trajectories.sim import build_phase_jump_operator_for_sector
@@ -245,54 +244,6 @@ def _compute_trajectory_j_moments_worker(args: tuple[TrajectoryResult, float]) -
     return compute_trajectory_j_moments(trajectory, tol=tol)
 
 
-def _attach_spin_angles(j_moments: JMomentSeries, *, tol: float) -> None:
-    """
-    Attach angles computed from already-normalized spin direction fields.
-    """
-    if (
-        j_moments.length is None
-        or j_moments.nx is None
-        or j_moments.ny is None
-        or j_moments.nz is None
-    ):
-        raise ValueError("Spin direction fields must be attached before angles.")
-
-    valid = np.asarray(j_moments.length, dtype=float) > tol
-    j_moments.theta, j_moments.phi = angles_from_norm_spin_components(
-        j_moments.nx,
-        j_moments.ny,
-        j_moments.nz,
-        valid=valid,
-        tol=tol,
-    )
-
-    if (
-        j_moments.length_groups is None
-        or j_moments.nx_groups is None
-        or j_moments.ny_groups is None
-        or j_moments.nz_groups is None
-    ):
-        return
-
-    group_results = [
-        angles_from_norm_spin_components(
-            nx_g,
-            ny_g,
-            nz_g,
-            valid=np.asarray(length_g, dtype=float) > tol,
-            tol=tol,
-        )
-        for length_g, nx_g, ny_g, nz_g in zip(
-            j_moments.length_groups,
-            j_moments.nx_groups,
-            j_moments.ny_groups,
-            j_moments.nz_groups,
-        )
-    ]
-    j_moments.theta_groups = tuple(result[0] for result in group_results)
-    j_moments.phi_groups = tuple(result[1] for result in group_results)
-
-
 def compute_average_j_moments(
     samples: list[JMomentSeries],
     *,
@@ -359,7 +310,7 @@ def compute_average_j_moments(
     )
 
 
-def compute_ensemble_j_moments(
+def compute_mcwf_j_moments(
     ensemble: TrajectoryEnsemble,
     *,
     tol: float = 1e-12,
@@ -393,7 +344,7 @@ def compute_ensemble_j_moments(
         _compute_trajectory_j_moments_worker,
         [(traj, tol) for traj in ensemble.trajectories],
         n_processes=n_processes,
-        progress_desc="compute_ensemble_j_moments",
+        progress_desc="compute_mcwf_j_moments",
     )
 
     for m in moments:
@@ -405,9 +356,9 @@ def compute_ensemble_j_moments(
 
     averaged = compute_average_j_moments(moments, tol=tol)
     # normalized spin components
-    JMomentSeries.attach_spin_direction_fields(averaged, tol=tol)
+    JMomentSeries.attatch_norm_spin_components_from_spin_components(averaged, tol=tol)
     # theta, phi
-    _attach_spin_angles(averaged, tol=tol)
+    JMomentSeries.attatch_angles_from_norm_spin_components(averaged, tol=tol)
     return averaged
 
 
@@ -415,6 +366,6 @@ __all__ = [
     "JMomentSnapshot",
     "JMomentSeries",
     "compute_average_j_moments",
-    "compute_ensemble_j_moments",
+    "compute_mcwf_j_moments",
     "compute_trajectory_j_moments",
 ]

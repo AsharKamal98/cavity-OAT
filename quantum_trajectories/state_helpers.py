@@ -92,7 +92,7 @@ def centered_sector_initial_coeffs(
     dN: int,
     *,
     phase_fn=None,
-    sector_distribution: str = "square",
+    sector_distribution: str = "binomial",
 ) -> Dict[int, complex]:
     """
     Build a normalized superposition of N_J sectors centered around N/2.

@@ -9,14 +9,15 @@ FIGURE_FACE_COLOR = "white"
 AXES_FACE_COLOR = "white"
 GRID_COLOR = "#d7d7d7"
 SPINE_COLOR = "#b8b8b8"
-FULL_CURVE_COLOR = "#4d4d4d"
-FULL_CURVE_COLORS = (
-    FULL_CURVE_COLOR,
-    "#800000",
-    "#556b2f",
-    "#2f4f4f",
+COLOUR_PALETTES = (
+    ("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"),
+    ("#800000", "#556b2f", "#2f4f4f", "#7a3e9d"),
+    ("#56B4E9", "#E69F00", "#F0E442", "#8c564b"),
+    ("#4d4d4d", "#7f7f7f", "#a6a6a6", "#c0c0c0"),
+    ("#4d4d4d", "#4d4d4d", "#4d4d4d", "#4d4d4d"),
+    ("#800000", "#800000", "#800000", "#800000"),
 )
-GROUP_CURVE_COLORS = ("#0072B2", "#D55E00", "#009E73", "#CC79A7")
+LINESTYLES = ("-", "--", ":")
 SECTOR_CURVE_COLORS = (
     "#0072B2",
     "#D55E00",
@@ -50,8 +51,19 @@ def format_time_axis(ax) -> None:
     ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
 
+def indexed_curve_color(colour_index: int = 0, curve_index: int = 0) -> str:
+    palette = COLOUR_PALETTES[colour_index % len(COLOUR_PALETTES)]
+    return palette[curve_index % len(palette)]
+
+
+def validated_linestyle(linestyle: str = "-") -> str:
+    if linestyle not in LINESTYLES:
+        raise ValueError(f"linestyle must be one of {LINESTYLES}, got {linestyle!r}.")
+    return linestyle
+
+
 def full_curve_color(colour_index: int = 0) -> str:
-    return FULL_CURVE_COLORS[colour_index % len(FULL_CURVE_COLORS)]
+    return indexed_curve_color(colour_index, 0)
 
 
 def sector_curve_color(sector_index: int) -> str:

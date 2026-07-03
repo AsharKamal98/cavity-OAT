@@ -32,7 +32,7 @@ Most custom-code runs should follow this order:
 3. Construct the initial sector expansion.
 4. Validate parameter regimes.
 5. Run the custom MCWF ensemble.
-6. Compute trajectory or ensemble observables.
+6. Compute moment series.
 7. Build derived diagnostics.
 8. Plot or export results.
 
@@ -239,80 +239,130 @@ This file should cover `simulate_single_trajectory(...)`, `t_eval` saving,
 full-`dt` steps versus partial steps, jump detection, jump bisection, and
 snapshot/result construction.
 
-## 6. Observables
+## 6. Moment Series
 
-Observable code should convert saved trajectory snapshots into expectation-value
-time series. For ensembles, average the underlying observables or moments before
-constructing nonlinear derived quantities when the target object is the
-unconditioned state.
+The primary post-processing pipeline should be moment-first. Simulation outputs
+from MCWF, MFE, and QuTiP should be converted into shared series containers
+rather than into old observable-series containers.
 
 For parser output-container conventions, use:
 
 - `docs/instructions/generic/parser.md`
 
-High-level data flow should look like:
+### 6.1 Moment Container
+
+The notebook-level container is `MomentSeries`, defined in
+`parser/moments.py`. It should be initialized on the shared
+`t_eval` grid, from `phases` and `num_snapshots`, and then filled in as
+post-processing steps are run:
 
 ```python
-trajectory_observables(TrajectoryResult) -> ObservableSeries
-ensemble_observables(TrajectoryEnsemble) -> ObservableSeries
+ensemble = run_trajectory_ensemble(...)
+moments = MomentSeries(
+    phases=phases,
+    num_snapshots=num_snapshots,
+    parameters=ensemble.parameters,
+)
+moments.J = compute_mcwf_j_moments(ensemble)
 ```
 
-For reusable first-order J-moment extraction, use:
+Current top-level fields are:
 
-- `docs/instructions/j_moments.typ`
+- `moments.t`: the shared saved-time grid.
+- `moments.parameters`: simulation metadata needed by moment-level diagnostics,
+  such as `Gamma`, `phases`, `omega_groups`, and `N_groups`; this can mirror
+  `ensemble.parameters`.
+- `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
+  derived J-vector direction fields and angles when produced by
+  `compute_mcwf_j_moments(...)`, or group-resolved MFE observables when
+  produced by `compute_mfe_j_moments(...)`.
+- `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
+  residual diagnostics when computed from `moments.J`.
+- `moments.S`: placeholder for future S-moment or spin-direction data.
 
-This file should cover `compute_trajectory_j_moments(...)`,
-`compute_average_j_moments(...)`, `compute_ensemble_j_moments(...)`,
-`JMomentSnapshot`, `JMomentSeries`, and the meaning of each saved J-moment
-field.
+Parser container conventions live in `docs/instructions/generic/parser.md`.
 
-Use task-specific rules for nonlinear diagnostics:
+### 6.2 J-Sphere Moments
 
-- Numerical MFE solving:
-  `docs/instructions/mfe-solver.typ`
-- MFE residuals:
-  `docs/instructions/mfe_residuals.typ`
-- Bloch angles and active-manifold directions:
-  `docs/instructions/bloch_vector_averaging.typ`
-- Normalized active-manifold spin-component plots:
-  `docs/instructions/plot_spin_components.typ`
-- Generalized squeezing:
-  `docs/instructions/squeezing.typ`
-- Dephasing Bloch-vector lengths:
-  `docs/instructions/dephasing_diagnostics.typ` (needs cleaning!)
+Use the method-specific J-moment converters as the main post-processing entry
+points:
 
-Extensive observables such as total atom numbers, jump rates, and jump counts
-should not be normalized using Bloch-direction conventions unless a diagnostic
-explicitly asks for that.
+```python
+moments.J = compute_mcwf_j_moments(ensemble, n_processes=n_processes)
+moments.J = compute_mfe_j_moments(mfe_result)
+moments.J = compute_qutip_j_moments(qutip_result)
+```
+
+The returned `JMomentSeries` should be the shared spin-series representation
+used by analysis and plotting. Depending on the method, it may contain full and
+group-resolved `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, `length`, `nx`, `ny`,
+`nz`, `theta`, and `phi` fields when those quantities are available or
+attached.
+
+Detailed definitions and averaging rules live in
+`docs/instructions/j_moments.typ`.
+
+Numerical MFE solving and MFE-to-J-moment conversion are defined in:
+
+- `docs/instructions/mfe-solver.typ`
+
+### 6.3 J-Vector Direction Fields
+
+After the raw first-order moments are averaged across trajectories, derived
+direction fields include `length`, `nx`, `ny`, and `nz`, plus group-resolved
+counterparts when present. The current J-moment pipeline uses the Euclidean
+direction of the averaged J vector:
+
+```python
+moments.J.x
+moments.J.y
+moments.J.z
+```
+
+rather than the older active-manifold normalization by `N_active`. The derived
+direction fields are attached inside `compute_mcwf_j_moments(...)` after
+`compute_average_j_moments(...)` returns the raw ensemble average. Angle fields
+such as `theta`, `phi`, `theta_groups`, and `phi_groups` are then attached from
+those normalized directions before returning the final `JMomentSeries`.
+
+Legacy note: these fields were previously named `Jx`, `Jy`, `Jz`, `Jx_groups`,
+`Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
 
 ## 7. Diagnostics
 
-Diagnostics should usually be standalone post-processing functions. They should
-read `TrajectoryResult`, `TrajectoryEnsemble`, or already-computed observables
-without changing the MCWF propagation path unless new saved data are genuinely
-required.
-
-High-level data flow should look like:
-
-```python
-diagnostic(result_or_observables, ...) -> diagnostic_data
-plot_diagnostic(diagnostic_data or result, ...) -> matplotlib figure/axes
-```
+Diagnostics should consume already-computed moment series unless they genuinely
+need lower-level saved simulation data. Reusable post-simulation physics
+diagnostics should preferably live in the root-level `post_analysis/` package
+rather than in `common/`.
 
 Current task-specific diagnostic instructions include:
 
+- `docs/instructions/mfe_residuals.typ`
 - `docs/instructions/squeezing.typ`
 - `docs/instructions/dephasing_diagnostics.typ`
-- `docs/instructions/bloch_vector_averaging.typ`
-- `docs/instructions/plot_spin_components.typ`
+- `docs/instructions/post_analysis.md`
 
 Future diagnostics should get their own instruction files when they introduce
 new averaging rules, new physical conventions, or nontrivial plotting logic.
 
+### 7.1 MFE Residuals
+
+Use `compute_mfe_residuals(...)` from `post_analysis/mfe_residuals.py`
+after `moments.J` has been computed:
+
+```python
+moments.mfe_residuals = compute_mfe_residuals(
+    moments.J,
+    parameters=moments.parameters,
+)
+```
+
+Detailed residual definitions live in `docs/instructions/mfe_residuals.typ`.
+
 ## 8. Plotting and Notebook Workflows
 
-Plotting code should be thin: it should visualize already-computed observables
-or diagnostics rather than hiding heavy physics calculations inside plotting
+Plotting code should be thin: it should visualize already-computed moment
+series or diagnostics rather than hiding heavy calculations inside plotting
 calls.
 
 Notebook functions should:
@@ -330,107 +380,7 @@ Detailed plotting conventions live in:
 
 - `docs/instructions/plotting_workflows.md`
 
-## 9. New pipeline
-
-Sections 6-8 describe the established observable, diagnostic, and plotting
-pipeline. This section documents the newer moment-first pipeline that is being
-built to replace parts of the old observable flow. Use this section when the
-task explicitly mentions the new pipeline, `MomentSeries`, J moments, or
-`common/plotting.py`.
-
-### 9.1 Moment Container
-
-The notebook-level container is `MomentSeries`, defined in
-`parser/moments.py`. It should be initialized on the shared
-`t_eval` grid, from `phases` and `num_snapshots`, and then filled in as
-post-processing steps are run:
-
-```python
-ensemble = run_trajectory_ensemble(...)
-moments = MomentSeries(
-    phases=phases,
-    num_snapshots=num_snapshots,
-    parameters=ensemble.parameters,
-)
-moments.J = compute_ensemble_j_moments(ensemble)
-```
-
-Current top-level fields are:
-
-- `moments.t`: the shared saved-time grid.
-- `moments.parameters`: simulation metadata needed by moment-level diagnostics,
-  such as `Gamma`, `phases`, `omega_groups`, and `N_groups`; this can mirror
-  `ensemble.parameters`.
-- `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
-  derived J-vector direction fields and angles when produced by
-  `compute_ensemble_j_moments(...)`, or group-resolved MFE observables when
-  produced by `compute_mfe_observables(...)`.
-- `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
-  residual diagnostics when computed from `moments.J`.
-- `moments.S`: placeholder for future S-moment or spin-direction data.
-
-Parser container conventions live in `docs/instructions/generic/parser.md`.
-
-### 9.2 J-Sphere Moments
-
-Use `compute_ensemble_j_moments(...)` from `quantum_trajectories/j_moments.py`
-as the main new-pipeline entry point for trajectory-averaged J moments:
-
-```python
-moments.J = compute_ensemble_j_moments(ensemble, n_processes=n_processes)
-```
-
-The returned `JMomentSeries` contains arrays on the saved `t_eval` grid,
-including `x`, `y`, `z`, `N_e`, `N_j`, `jump_rate`, and optional
-group-resolved fields such as `x_groups`, `y_groups`, `z_groups`,
-`N_e_groups`, and `N_j_groups`. It also includes derived fields attached after
-ensemble averaging: `length`, `nx`, `ny`, `nz`, `theta`, and `phi`, plus
-group-resolved versions when group fields exist.
-
-Detailed definitions and averaging rules live in
-`docs/instructions/j_moments.typ`.
-
-### 9.3 J-Vector Direction Fields
-
-After the raw first-order moments are averaged across trajectories, derived
-direction fields include `length`, `nx`, `ny`, and `nz`, plus group-resolved
-counterparts when present. The current J-moment pipeline uses the Euclidean
-direction of the averaged J vector:
-
-```python
-moments.J.x
-moments.J.y
-moments.J.z
-```
-
-rather than the older active-manifold normalization by `N_active`. The derived
-direction fields are attached inside `compute_ensemble_j_moments(...)` after
-`compute_average_j_moments(...)` returns the raw ensemble average. Angle fields
-such as `theta`, `phi`, `theta_groups`, and `phi_groups` are then attached from
-those normalized directions before returning the final `JMomentSeries`.
-
-Legacy note: these fields were previously named `Jx`, `Jy`, `Jz`, `Jx_groups`,
-`Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
-
-### 9.4 MFE Residuals
-
-Use `compute_mfe_residuals(...)` from `quantum_trajectories/mfe_residuals.py`
-after `moments.J` has been computed:
-
-```python
-moments.mfe_residuals = compute_mfe_residuals(
-    moments.J,
-    parameters=moments.parameters,
-)
-```
-
-Detailed residual definitions live in `docs/instructions/mfe_residuals.typ`.
-
-### 9.5 New-Pipeline Plotting
-
-New-pipeline plotting functions should take moment series objects directly,
-usually `moments.J`, and should visualize already-computed fields rather than
-recomputing moments.
+### 8.1 Shared Plotting
 
 The shared spin-component plot now lives in `common/plotting.py`:
 
@@ -457,9 +407,9 @@ General diagnostic plotting functions live in
   blocks.
 
 Detailed plotting conventions live in `docs/instructions/plotting_workflows.md`.
-Future new-pipeline diagnostics should consume `MomentSeries` or
-`JMomentSeries` when the required data are already present, instead of rerunning
-old observable extraction.
+Future diagnostics and plots should consume `MomentSeries` or `JMomentSeries`
+when the required data are already present, instead of rerunning older
+observable extraction steps.
 
 ## General Rules
 

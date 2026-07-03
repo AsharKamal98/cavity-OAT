@@ -6,13 +6,14 @@ from typing import Any, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common.plotting_index_utils import indexed_curve_color, validated_linestyle
-from common.plotting_utils import (
+from common.utils_plotting import (
     curve_label,
     finish_time_plot,
     format_time_axis,
     get_axes,
+    indexed_curve_color,
     style_axis,
+    validated_linestyle,
 )
 
 

@@ -86,6 +86,7 @@ AGENTS.md
       -> docs/instructions/plot_spin_components.typ
       -> docs/instructions/squeezing.typ
       -> docs/instructions/dephasing_diagnostics.typ
+      -> docs/instructions/post_analysis.md
       -> docs/instructions/plotting_workflows.md
 ```
 

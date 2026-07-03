@@ -10,7 +10,7 @@
 = Purpose
 This file specifies the preferred structure for numerically solving the
 mean-field equations (MFEs). Use it when implementing the standalone MFE solver
-outside `quantum_trajectories`, for example in `mfe/solver.py`, or when writing
+outside `quantum_trajectories`, for example in `mfe/sim.py`, or when writing
 diagnostics that consume its outputs.
 
 This file is a structural implementation guide. For the theory derivation, use
@@ -134,18 +134,14 @@ def solve_mfe(parameters, initial_state, *, t_eval, rtol=1e-9, atol=1e-11) -> MF
 ```
 
 ```python
-def compute_mfe_observables(result: MFEResult, *, tol=1e-12) -> JMomentSeries:
+def compute_mfe_j_moments(result: MFEResult, *, tol=1e-12) -> JMomentSeries:
     N_j_groups, theta_groups, phi_groups = angles_from_amplitudes(
         result.D_groups,
         result.E_groups,
     )
-    x_groups, y_groups, z_groups = components_from_angles(
-        theta_groups,
-        phi_groups,
-        N_j_groups,
-    )
-    j_moments = JMomentSeries(result.t, x_groups=x_groups, y_groups=y_groups, ...)
-    JMomentSeries.attach_spin_direction_fields(j_moments, tol=tol)
+    j_moments = JMomentSeries(result.t, N_j_groups=N_j_groups, theta_groups=theta_groups, phi_groups=phi_groups, ...)
+    JMomentSeries.attatch_norm_spin_components_from_angles(j_moments)
+    JMomentSeries.attatch_spin_components_from_norm_spin_components(j_moments)
     return j_moments
 ```
 
@@ -159,21 +155,18 @@ Undefined helper notes:
   `(D_groups, E_groups)` from `(theta_groups, phi_groups, N_j_groups)`.
 - `angles_from_amplitudes(...)` is a new local helper that applies the inverse
   relations in the MFE definitions section.
-- `components_from_angles(...)` is a new local helper that converts
-  `(theta_groups, phi_groups, N_j_groups)` into group-resolved
-  `(x_groups, y_groups, z_groups)`.
 
 Function flow: `solve_mfe(...)` is the main entry point. It calls
 `amplitudes_from_initial_state(...)` to build the initial solver vector,
 `solve_ivp(...)` to integrate `mfe_rhs(...)`.
-`compute_mfe_observables(...)` is the post-processing step that converts an
+`compute_mfe_j_moments(...)` is the post-processing step that converts an
 `MFEResult` into a group-resolved `JMomentSeries`.
 `mfe_rhs(...)` calls `phase_values_at_time(...)` to evaluate the phase-local
 equations of motion.
 
 If a top-level `MomentSeries` container is already in use,
 store the solved observable series explicitly as `moments.J`, for example via
-`moments.J = compute_mfe_observables(result)`.
+`moments.J = compute_mfe_j_moments(result)`.
 
 = Data Requirements
 

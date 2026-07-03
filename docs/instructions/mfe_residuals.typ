@@ -9,12 +9,13 @@
 
 = Purpose
 This file specifies how to compute two-group mean-field-equation (MFE)
-residuals in `quantum_trajectories/mfe_residuals.py`. Use this file for tasks
+residuals in `post_analysis/mfe_residuals.py`. Use this file for tasks
 related to residual diagnostics or plots that consume `moments.mfe_residuals`.
 
 The MFE residual diagnostic consumes averaged J moments from
-`quantum_trajectories/j_moments.py`. It should not recompute J moments or old
-observable-series fields.
+`parser/j_moments.py`, for example series produced by the MCWF, MFE, or QuTiP
+J-moment pipelines. It should not recompute J moments or old observable-series
+fields.
 
 The main function structure should be:
 
@@ -22,19 +23,10 @@ The main function structure should be:
 compute_mfe_residuals(
     j_moments: JMomentSeries,
     *,
-    parameters: MomentParameters,
+    parameters: MomentParameters | None,
     tol=1e-12,
 ) -> MFEResidualSeries | None
     "compute two-group MFE residuals from stored J-vector group angles"
-
-attach_mfe_residuals(moments: MomentSeries, *, tol=1e-12)
-    -> MFEResidualSeries | None
-    moments.mfe_residuals = compute_mfe_residuals(
-        moments.J,
-        parameters=moments.parameters,
-        tol=tol,
-    )
-    return moments.mfe_residuals
 ```
 
 = MFE Residual Definitions
@@ -74,8 +66,10 @@ $
 = Output
 
 `compute_mfe_residuals(...)` should return `None` when the input does not
-contain exactly two group-resolved J-angle and atom-number fields. Otherwise it
-should return:
+contain exactly two group-resolved J-angle and atom-number fields. It should
+raise a `ValueError` when the required shared metadata, such as
+`parameters` or `phase_index`, is missing or inconsistent. Otherwise it should
+return:
 
 ```python
 MFEResidualSeries(

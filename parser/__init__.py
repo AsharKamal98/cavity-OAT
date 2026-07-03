@@ -5,6 +5,7 @@ from parser.mfe import (
     MFEResult,
     MFESolverParameters,
 )
+from parser.qutip import QutipFixedNjModel, QutipTwoGroupFixedNjModel
 from parser.mfe_residuals import MFEResidualSeries
 from parser.moments import MomentParameters, MomentSeries
 from parser.quantum_trajectories import (
@@ -29,6 +30,8 @@ __all__ = [
     "MomentSeries",
     "ObservableSeries",
     "Phase",
+    "QutipFixedNjModel",
+    "QutipTwoGroupFixedNjModel",
     "SectorKey",
     "SectorOperators",
     "SectorWavefunction",

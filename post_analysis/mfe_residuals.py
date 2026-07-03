@@ -4,7 +4,7 @@ import numpy as np
 
 from parser.j_moments import JMomentSeries
 from parser.mfe_residuals import MFEResidualSeries
-from parser.moments import MomentParameters, MomentSeries
+from parser.moments import MomentParameters
 
 
 def compute_mfe_residuals(
@@ -87,28 +87,6 @@ def compute_mfe_residuals(
     )
 
 
-def attach_mfe_residuals(
-    moments: MomentSeries,
-    *,
-    tol: float = 1e-12,
-) -> MFEResidualSeries | None:
-    """
-    Compute and attach MFE residuals to a top-level moment container.
-    """
-    if moments.J is None:
-        raise ValueError("attach_mfe_residuals requires moments.J.")
-    if moments.parameters is None:
-        raise ValueError("attach_mfe_residuals requires moments.parameters.")
-
-    moments.mfe_residuals = compute_mfe_residuals(
-        moments.J,
-        parameters=moments.parameters,
-        tol=tol,
-    )
-    return moments.mfe_residuals
-
-
 __all__ = [
-    "attach_mfe_residuals",
     "compute_mfe_residuals",
 ]

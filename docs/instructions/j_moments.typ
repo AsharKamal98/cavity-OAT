@@ -37,7 +37,7 @@ compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
     ]
     return stack into JMomentSeries
 
-compute_ensemble_j_moments(ensemble: TrajectoryEnsemble, ...)
+compute_mcwf_j_moments(ensemble: TrajectoryEnsemble, ...)
     -> JMomentSeries
 
     samples = map_with_optional_pool(
@@ -45,8 +45,8 @@ compute_ensemble_j_moments(ensemble: TrajectoryEnsemble, ...)
         for traj in ensemble.trajectories
     )
     averaged = compute_average_j_moments(samples)
-    JMomentSeries.attach_spin_direction_fields(averaged, tol=tol)
-    _attach_spin_angles(averaged, tol=tol)
+    JMomentSeries.attatch_norm_spin_components_from_spin_components(averaged, tol=tol)
+    JMomentSeries.attatch_angles_from_norm_spin_components(averaged, tol=tol)
     return averaged
   
 compute_average_j_moments(samples: list[JMomentSeries])
@@ -61,12 +61,12 @@ group-resolved moment fields. It is called once per saved snapshot in
 the raw per-trajectory moment fields across the shared saved time grid.
 
 
-Ensemble and plotting code should call `compute_ensemble_j_moments(...)`,
+Ensemble and plotting code should call `compute_mcwf_j_moments(...)`,
 which collects trajectory samples, averages them, and attaches derived
 direction and angle fields to the averaged result.
-`JMomentSeries.attach_spin_direction_fields(...)` attaches `length`, `nx`,
+`JMomentSeries.attatch_norm_spin_components_from_spin_components(...)` attaches `length`, `nx`,
 `ny`, and `nz`, plus group-resolved versions when group fields exist.
-`_attach_spin_angles(...)` attaches `theta` and `phi`, plus group-resolved
+`JMomentSeries.attatch_angles_from_norm_spin_components(...)` attaches `theta` and `phi`, plus group-resolved
 versions when group direction fields exist.
 MFE residuals are computed separately; use
 `docs/instructions/mfe_residuals.typ` for that diagnostic.
@@ -174,7 +174,7 @@ $
 If $J_("len")(t_(k))$ is below the numerical tolerance, set the normalized
 components to zero. For group-resolved fields, apply the same rule separately
 to each group using $J_(i,g)$ and $J_("len",g)$.
-This is implemented by `JMomentSeries.attach_spin_direction_fields(...)`.
+This is implemented by `JMomentSeries.attatch_norm_spin_components_from_spin_components(...)`.
 
 == Angles
 
@@ -193,7 +193,7 @@ $
 
 For group-resolved fields, apply the same rule separately to each group's
 normalized components $n_(i,g)$.
-This is implemented by `_attach_spin_angles(...)`.
+This is implemented by `JMomentSeries.attatch_angles_from_norm_spin_components(...)`.
 
 = Output
 
@@ -248,10 +248,10 @@ JMomentSeries(
 ```
 
 All trajectory arrays should be defined on the trajectory's saved `t_eval`
-grid. `JMomentSeries` returned by `compute_ensemble_j_moments(...)` has the
+grid. `JMomentSeries` returned by `compute_mcwf_j_moments(...)` has the
 same fields, but each numeric moment field is averaged across trajectories.
 For averaged outputs, the J-vector length and normalized direction fields
-should be attached inside `compute_ensemble_j_moments(...)` after
+should be attached inside `compute_mcwf_j_moments(...)` after
 `compute_average_j_moments(...)` returns the raw averaged series. Angle fields
 should then be attached there from those normalized directions. These helpers
 should not compute active-manifold angles, squeezing, or covariance matrices.
@@ -265,11 +265,11 @@ Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
 - `compute_trajectory_j_moments(...)` should return per-trajectory moments only.
 - `compute_average_j_moments(...)` should average moments, not nonlinear derived
   quantities.
-- `compute_ensemble_j_moments(...)` should return trajectory-averaged moments and
+- `compute_mcwf_j_moments(...)` should return trajectory-averaged moments and
   should be the preferred input for plots that do not need per-trajectory
   samples.
-- `compute_ensemble_j_moments(...)` should attach `length`, `nx`, `ny`, `nz`,
+- `compute_mcwf_j_moments(...)` should attach `length`, `nx`, `ny`, `nz`,
   `theta`, and `phi` from the averaged J components, plus group-resolved
   versions when group fields exist.
-- `compute_ensemble_j_moments(...)` should require all internally computed
+- `compute_mcwf_j_moments(...)` should require all internally computed
   samples to share the same `t` and `phase_index` grids.

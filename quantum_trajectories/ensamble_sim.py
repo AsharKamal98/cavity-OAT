@@ -6,7 +6,7 @@ from quantum_trajectories.sim import (
     build_precomputed_trajectory_data,
     simulate_single_trajectory,
 )
-from common.utils import omega2_from_weighted_average
+from common.utils_parameters import omega2_from_weighted_average
 from parser.common import Array, Phase
 from parser.quantum_trajectories import SectorKey, TrajectoryEnsemble, TrajectoryResult
 

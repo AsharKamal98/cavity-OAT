@@ -155,9 +155,9 @@ Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
 
 ## Global Styling Rules
 
-Shared styling helpers should live in `common/plotting_utils.py`.
+Shared styling helpers should live in `common/utils_plotting.py`.
 Indexed color and line-pattern helpers may live separately in
-`common/plotting_index_utils.py`.
+`common/utils_plotting.py`.
 
 1. Use a colorblind-friendly manual palette, such as Okabe-Ito, rather than
    changing Matplotlib's global style.
