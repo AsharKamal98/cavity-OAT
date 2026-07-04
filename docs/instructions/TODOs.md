@@ -7,19 +7,21 @@
 
 2. build_t_eval_from_phases(...) is in sim.py, while MomentSeries independently rebuilds the same grid logic. Not obviously wrong, but if we want one source of truth for t_eval, this could become a small shared helper.
 
-3. clean up _attach_mfe_residuals in `quantum_trajectoriesj_moments/.py`
+3. clean up any stale `_attach_mfe_residuals` references in the J-moment pipeline
 
-4. Go through legacy functions in helpers in `quantum_trajectories`
+4. Go through legacy functions in helpers in `solvers/mcwf`
 
 5. Rename 
-    `quantum_trajectories` -> `mcwf`
-    `quantum_trajectories/qutip` -> `qutip_fixed_nj`
+    `solvers/mcwf` internal naming cleanup where needed
+    `solvers/qutip_fixed_nj` internal naming cleanup where needed
 
 6. Move mfe_plotting to common
 
-7. refactor sim functions in `quantum_trajectories`
+7. refactor sim functions in `solvers/mcwf`
 
 8. MomentSeries Parameters make no sense. 
+
+9. Create common plotting directory, rename current common plotting.
 
 ## Homoheneous - Inhomogeneous split to group-split
 Want to stop treating simulations and post-soimulation analysis differently depending on if we have homogeneous or inhomogeneous setup. Split should be based on number of groups, independent of what effective couplings omega_i they have.
@@ -40,4 +42,4 @@ Want to stop treating simulations and post-soimulation analysis differently depe
 
 # MAYBIES
 
-1. _interp_series(...) is duplicated in aggregator.py, squeezing.py, and theory_validation.py. This looks like a generic utility and could move to quantum_trajectories/utils.py, but it is not as central to the physics API.
+1. _interp_series(...) is duplicated in aggregator.py, squeezing.py, and theory_validation.py. This looks like a generic utility and could move to `solvers/mcwf/utils.py`, but it is not as central to the physics API.

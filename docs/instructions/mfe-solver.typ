@@ -10,7 +10,7 @@
 = Purpose
 This file specifies the preferred structure for numerically solving the
 mean-field equations (MFEs). Use it when implementing the standalone MFE solver
-outside `quantum_trajectories`, for example in `mfe/sim.py`, or when writing
+outside the MCWF backend, for example in `solvers/mfe/sim.py`, or when writing
 diagnostics that consume its outputs.
 
 This file is a structural implementation guide. For the theory derivation, use
@@ -105,7 +105,7 @@ state.
 = Method in Pseudo-code
 
 The solver should be split into small functions with pure data flow. The core
-solver should not import `quantum_trajectories`. `Phase` and
+solver should not import `solvers.mcwf`. `Phase` and
 `phase_values_at_time(...)` are defined in `common` and follow the convention
 described in `docs/instructions/simulation_parameters.typ`.
 
@@ -235,7 +235,7 @@ objects.
 
 = Invariants
 
-- The standalone MFE solver should not import from `quantum_trajectories`.
+- The standalone MFE solver should not import from `solvers.mcwf`.
 - Use `parser.common.Phase` for phase metadata unless a stronger reason exists
   to define a solver-specific phase class.
 - The solver should support arbitrary group count $G$ when the equations are

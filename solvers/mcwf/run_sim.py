@@ -5,11 +5,11 @@ from common.utils_parameters import (
 
 import sys
 import time
-from quantum_trajectories.state_helpers import (
+from solvers.mcwf.state_helpers import (
     centered_sector_initial_coeffs,
     centered_group_resolved_sector_initial_coeffs,
 )
-from quantum_trajectories.ensamble_sim import run_trajectory_ensemble
+from solvers.mcwf.ensamble_sim import run_trajectory_ensemble
 
 def run_h_sim(
     N=20,

@@ -1,4 +1,4 @@
-from parser.common import Array, AveragedResult, ObservableSeries, Phase
+from parser.common import Array, Phase
 from common.utils_moments import (
     angles_from_norm_spin_components,
     norm_spin_components_from_spin_components,
@@ -19,8 +19,6 @@ from common.utils import active_manifold_angles, phase_change_times, phase_value
 
 __all__ = [
     "Array",
-    "AveragedResult",
-    "ObservableSeries",
     "Phase",
     "angles_from_norm_spin_components",
     "norm_spin_components_from_spin_components",

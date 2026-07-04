@@ -5,7 +5,7 @@ import numpy as np
 from parser.j_moments import JMomentSeries
 from parser.mfe import MFEResult
 
-from mfe.utils import angles_from_amplitudes
+from solvers.mfe.utils import angles_from_amplitudes
 
 
 def compute_mfe_j_moments(

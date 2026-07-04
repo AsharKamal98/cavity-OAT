@@ -2,7 +2,7 @@ from __future__ import annotations
 from multiprocessing import pool
 from time import time
 
-from quantum_trajectories.sim import (
+from solvers.mcwf.sim import (
     build_precomputed_trajectory_data,
     simulate_single_trajectory,
 )

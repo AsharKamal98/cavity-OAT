@@ -3,14 +3,14 @@ from parser.mfe import (
     MFEResult,
     MFESolverParameters,
 )
-from mfe.j_moments import (
+from solvers.mfe.j_moments import (
     compute_mfe_j_moments,
 )
-from mfe.sim import (
+from solvers.mfe.sim import (
     mfe_rhs,
     solve_mfe,
 )
-from mfe.utils import (
+from solvers.mfe.utils import (
     amplitudes_from_initial_state,
     angles_from_amplitudes,
 )

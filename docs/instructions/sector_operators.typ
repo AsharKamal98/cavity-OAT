@@ -9,7 +9,7 @@
 = Purpose
 
 This file specifies how reduced-basis sector operators should be constructed in
-`quantum_trajectories/operator_helpers.py`. Use it for changes involving
+`solvers/mcwf/operator_helpers.py`. Use it for changes involving
 `build_sector_ops_for_key(...)`, `build_sector_ops(...)`, or
 `build_two_group_sector_ops(...)`.
 

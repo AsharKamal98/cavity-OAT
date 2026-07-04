@@ -5,7 +5,7 @@ from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
 
-from quantum_trajectories.operator_helpers import split_sector_key, total_active_atoms_in_sector
+from solvers.mcwf.operator_helpers import split_sector_key, total_active_atoms_in_sector
 from parser.common import Array
 from parser.quantum_trajectories import SectorKey
 

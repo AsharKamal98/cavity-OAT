@@ -5,11 +5,11 @@ from typing import Optional, Sequence
 import numpy as np
 import qutip as qt
 
-from quantum_trajectories_qutip.models import (
+from solvers.qutip_fixed_nj.models import (
     build_qutip_fixed_nj_model_from_phases,
     build_qutip_two_group_fixed_nj_model_from_phases,
 )
-from quantum_trajectories_qutip.utils_sim import (
+from solvers.qutip_fixed_nj.utils_sim import (
     _observable_e_ops,
     _solver_args,
     build_tlist_from_phases,

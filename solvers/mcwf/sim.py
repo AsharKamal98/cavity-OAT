@@ -6,7 +6,7 @@ import numpy as np
 from scipy.sparse import csc_matrix, eye
 from scipy.sparse.linalg import expm, expm_multiply
 
-from quantum_trajectories.operator_helpers import (
+from solvers.mcwf.operator_helpers import (
     build_sector_ops_for_key,
     sector_multiplicity,
     split_sector_key,
@@ -20,7 +20,7 @@ from parser.quantum_trajectories import (
     TrajectoryResult,
     TrajectorySnapshot,
 )
-from quantum_trajectories.state_helpers import (
+from solvers.mcwf.state_helpers import (
     build_initial_sector_state,
     total_norm2,
 )

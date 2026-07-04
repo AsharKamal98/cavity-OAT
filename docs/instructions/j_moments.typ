@@ -9,7 +9,7 @@
 
 = Purpose
 This file specifies how to compute first-order $J$-moments in
-`quantum_trajectories/j_moments.py`. Use this file for tasks related to
+`solvers/mcwf/j_moments.py`. Use this file for tasks related to
 J-moment extraction or when writing diagnostics that consume its outputs.
 
 The main function structure should be:

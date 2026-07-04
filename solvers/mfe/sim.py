@@ -10,7 +10,7 @@ from parser.mfe import (
     MFEResult,
     MFESolverParameters,
 )
-from mfe.utils import amplitudes_from_initial_state
+from solvers.mfe.utils import amplitudes_from_initial_state
 
 
 def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:

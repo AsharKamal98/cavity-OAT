@@ -31,8 +31,8 @@ Most custom-code runs should follow this order:
 2. Define the phase protocol.
 3. Construct the initial sector expansion.
 4. Validate parameter regimes.
-5. Run the custom MCWF ensemble.
-6. Compute moment series.
+5. Run the chosen simulation backend.
+6. Convert simulation output into moment series.
 7. Build derived diagnostics.
 8. Plot or export results.
 
@@ -155,7 +155,23 @@ Detailed validation conventions should live in:
 
 - `docs/instructions/parameter_validation.md` (planned/missing)
 
-## 5. Ensemble Simulation
+## 5. Simulation Backends
+
+The repository currently supports multiple simulation backends that should feed
+into the same post-processing pipeline.
+
+High-level method flow should look like:
+
+```python
+mcwf_ensemble = run_trajectory_ensemble(...)
+mfe_result = solve_mfe(...)
+qutip_result = simulate_fixed_nj_mc_trajectory(...) or simulate_fixed_nj_me_trajectory(...)
+```
+
+The backend choice changes how the raw physical evolution is computed, but the
+analysis flow after that should be shared as much as possible.
+
+### 5.1 MCWF
 
 The main custom MCWF entry point is:
 
@@ -191,59 +207,46 @@ For precomputation rules, use:
 - `docs/instructions/simulation_precompute.typ`
 - `docs/instructions/sector_operators.typ`
 
-These files should cover reusable sector operators, phase generators,
-full-`dt` propagators, and when precomputed data can or cannot be used.
-
-They should be read before changing build precomputed trajectory data(...),
-phase-dependent jump operators, non-Hermitian generators, full-dt propagators, 
-or the logic that chooses between precomputed and variable-step propagation.
-
-
 For ensemble-level simulation flow, use:
 
 - `docs/instructions/ensemble_simulation.typ` (needs cleaning!)
-
-This file should cover seed construction, multiprocessing, worker state, shared
-precomputed data, and collecting `TrajectoryResult`s into a
-`TrajectoryEnsemble`.
-
-### Single Trajectories
-
-Each trajectory should evolve the same physical model as the ensemble run and
-save snapshots on the common `t_eval` grid implied by `num_snapshots`.
-
-Trajectory evolution may use adaptive internal logic such as jump refinement or
-partial steps, but saved snapshots should be aligned across trajectories so
-ensemble observables can be averaged without interpolation.
-
-High-level data flow should look like:
-
-```python
-simulate_single_trajectory(
-    N, Gamma, phases, sector_coeffs, dt, num_snapshots, seed, precomputed, ...
-) -> TrajectoryResult(
-    snapshots=[TrajectorySnapshot, ...],
-    final_sector_blocks={sector_key: psi_sector},
-    jump_times=[...],
-)
-```
-
-Each `TrajectorySnapshot` should contain the saved time, phase index, and sector
-blocks on the internal `n_e` or `(n_e1, n_e2)` basis.
 
 For single-trajectory simulation flow, use:
 
 - `docs/instructions/single_trajectory_simulation.typ` (needs cleaning!)
 
-This file should cover `simulate_single_trajectory(...)`, `t_eval` saving,
-full-`dt` steps versus partial steps, jump detection, jump bisection, and
-snapshot/result construction.
+Each `TrajectorySnapshot` should contain the saved time, phase index, and sector
+blocks on the internal `n_e` or `(n_e1, n_e2)` basis. Saved snapshots should be
+aligned across trajectories so trajectory-level moment samples can be averaged
+without interpolation.
+
+### 5.2 MFE
+
+The deterministic MFE backend should solve the group-resolved mean-field
+equations and return an `MFEResult` on the requested saved-time grid:
+
+```python
+mfe_result = solve_mfe(parameters, initial_state, t_eval=t_eval)
+```
+
+The MFE solver structure and the conversion from solved amplitudes to
+`JMomentSeries` are defined in:
+
+- `docs/instructions/mfe-solver.typ`
+
+### 5.3 QuTiP
+
+The QuTiP backends should run either `mcsolve` or `mesolve` and return the raw
+QuTiP result together with the metadata needed for later J-moment extraction.
+
+The preferred pattern is still that QuTiP outputs are converted into the same
+shared `JMomentSeries` representation as the other methods.
 
 ## 6. Moment Series
 
-The primary post-processing pipeline should be moment-first. Simulation outputs
-from MCWF, MFE, and QuTiP should be converted into shared series containers
-rather than into old observable-series containers.
+The primary post-processing pipeline should be moment-first. Outputs from MCWF,
+MFE, and QuTiP should all be converted into shared moment containers before
+diagnostics or plotting.
 
 For parser output-container conventions, use:
 
@@ -257,13 +260,13 @@ The notebook-level container is `MomentSeries`, defined in
 post-processing steps are run:
 
 ```python
-ensemble = run_trajectory_ensemble(...)
+raw_result = run_backend(...)
 moments = MomentSeries(
     phases=phases,
     num_snapshots=num_snapshots,
-    parameters=ensemble.parameters,
+    parameters=raw_result.parameters,
 )
-moments.J = compute_mcwf_j_moments(ensemble)
+moments.J = compute_method_j_moments(raw_result)
 ```
 
 Current top-level fields are:
@@ -274,7 +277,7 @@ Current top-level fields are:
   `ensemble.parameters`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles when produced by
-  `compute_mcwf_j_moments(...)`, or group-resolved MFE observables when
+  `compute_mcwf_j_moments(...)`, or group-resolved MFE moment fields when
   produced by `compute_mfe_j_moments(...)`.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
@@ -306,12 +309,15 @@ Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 
 - `docs/instructions/mfe-solver.typ`
 
+QuTiP-to-J-moment conversion should follow the same shared output contract,
+even if the internal extraction logic differs from the MCWF path.
+
 ### 6.3 J-Vector Direction Fields
 
-After the raw first-order moments are averaged across trajectories, derived
-direction fields include `length`, `nx`, `ny`, and `nz`, plus group-resolved
-counterparts when present. The current J-moment pipeline uses the Euclidean
-direction of the averaged J vector:
+After the raw first-order moments are available, derived direction fields
+include `length`, `nx`, `ny`, and `nz`, plus group-resolved counterparts when
+present. The current J-moment pipeline uses the Euclidean direction of the
+stored J vector:
 
 ```python
 moments.J.x
@@ -319,11 +325,11 @@ moments.J.y
 moments.J.z
 ```
 
-rather than the older active-manifold normalization by `N_active`. The derived
-direction fields are attached inside `compute_mcwf_j_moments(...)` after
-`compute_average_j_moments(...)` returns the raw ensemble average. Angle fields
-such as `theta`, `phi`, `theta_groups`, and `phi_groups` are then attached from
-those normalized directions before returning the final `JMomentSeries`.
+rather than the older active-manifold normalization by `N_active`. For MCWF,
+the derived direction fields are attached after `compute_average_j_moments(...)`
+returns the raw ensemble average. For other methods, the same fields should be
+attached from the method's stored or reconstructed J components before
+returning the final `JMomentSeries`.
 
 Legacy note: these fields were previously named `Jx`, `Jy`, `Jz`, `Jx_groups`,
 `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
@@ -362,8 +368,8 @@ Detailed residual definitions live in `docs/instructions/mfe_residuals.typ`.
 ## 8. Plotting and Notebook Workflows
 
 Plotting code should be thin: it should visualize already-computed moment
-series or diagnostics rather than hiding heavy calculations inside plotting
-calls.
+series or diagnostics rather than hiding moment extraction or other heavy
+calculations inside plotting calls.
 
 Notebook functions should:
 
@@ -382,25 +388,25 @@ Detailed plotting conventions live in:
 
 ### 8.1 Shared Plotting
 
-The shared spin-component plot now lives in `common/plotting.py`:
+The shared spin-component plot now lives in `common/plotting/j_spin.py`:
 
 - `plot_spin_components(series, ...)`: plots stored `x`, `y`, `z`, `length`,
   and the matching group-resolved fields when present.
 
-The shared angle plot now lives in `common/plotting.py`:
+The shared angle plot now lives in `common/plotting/j_spin.py`:
 
 - `plot_bloch_angles(series, ...)`: plots whatever stored `theta`, `phi`,
   `theta_groups`, and `phi_groups` fields are available on the input series,
   using the selected `colour_index` palette and `linestyle`.
 
 Current diagnostic plotting functions live in
-`quantum_trajectories/plotting_mfe_residuals.py`:
+`solvers/mcwf/plotting_mfe_residuals.py`:
 
 - `plot_mfe_residuals(moments.mfe_residuals, ...)`: plots stored two-group
   residuals in a single residual panel with the L2 norm.
 
-General diagnostic plotting functions live in
-`quantum_trajectories/plotting_diagnostics.py`:
+General diagnostic plotting functions currently live in
+`Legacy/plotting_diagnostics.py`:
 
 - `plot_sector_probabilities(result, ...)`: plots normalized represented-sector
   probabilities `p_alpha(t)` computed directly from saved snapshot sector

@@ -7,8 +7,8 @@ import qutip as qt
 
 from common.utils_parameters import omega2_from_weighted_average
 from parser.qutip import QutipFixedNjModel, QutipTwoGroupFixedNjModel
-from quantum_trajectories.state_helpers import centered_sector_initial_coeffs
-from quantum_trajectories_qutip.utils_sim import OmegaCoeffFromPhases, _delta_coeff, _omega_coeff
+from solvers.mcwf.state_helpers import centered_sector_initial_coeffs
+from solvers.qutip_fixed_nj.utils_sim import OmegaCoeffFromPhases, _delta_coeff, _omega_coeff
 
 
 def build_qutip_fixed_nj_model_from_phases(

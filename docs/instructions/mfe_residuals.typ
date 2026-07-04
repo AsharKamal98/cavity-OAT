@@ -96,5 +96,5 @@ moments.mfe_residuals = compute_mfe_residuals(
   `N_j_groups` from `moments.J`.
 - The residual calculation should use shared protocol metadata from
   `moments.parameters`.
-- The residual calculation should not live in `quantum_trajectories/j_moments.py`
+- The residual calculation should not live in `solvers/mcwf/j_moments.py`
   and should not attach residual fields to `JMomentSeries`.

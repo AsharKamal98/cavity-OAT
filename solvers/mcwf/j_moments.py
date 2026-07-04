@@ -4,13 +4,13 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from quantum_trajectories.utils import map_with_optional_pool
+from solvers.mcwf.utils import map_with_optional_pool
 from parser.common import Array, Phase
 from parser.j_moments import JMomentSnapshot, JMomentSeries
 from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult, TrajectorySnapshot
-from quantum_trajectories.sim import build_phase_jump_operator_for_sector
-from quantum_trajectories.state_helpers import total_norm2
-from quantum_trajectories.operator_helpers import (
+from solvers.mcwf.sim import build_phase_jump_operator_for_sector
+from solvers.mcwf.state_helpers import total_norm2
+from solvers.mcwf.operator_helpers import (
     build_sector_ops_for_key,
     total_active_atoms_in_sector,
 )

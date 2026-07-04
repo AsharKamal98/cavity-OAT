@@ -46,7 +46,7 @@ or diagnostics rather than recomputing expensive physics.
 
 ## `fig, axes = plot_spin_components(...)`
 
-1. `plot_spin_components` lives in `common/plotting.py`.
+1. `plot_spin_components` lives in `common/plotting/j_spin.py`.
 
 2. The function should take a series object directly, for example `moments.J`
    or another series with matching `x/y/z/length` field names.
@@ -72,7 +72,7 @@ or diagnostics rather than recomputing expensive physics.
 
 ## `fig, axes = plot_bloch_angles(...)`
 
-1. `plot_bloch_angles` lives in `common/plotting.py`.
+1. `plot_bloch_angles` lives in `common/plotting/j_spin.py`.
 
 2. The function should take a series object as input. The input must contain
    `t`, and may contain full-system `theta`/`phi`, group-resolved
@@ -95,7 +95,7 @@ or diagnostics rather than recomputing expensive physics.
 ## `fig, axes = plot_mfe_residuals(...)`
 
 1. `plot_mfe_residuals` lives in
-   `quantum_trajectories/plotting_mfe_residuals.py`.
+   `solvers/mcwf/plotting_mfe_residuals.py`.
 
 2. The function should take `moments.mfe_residuals` as input.
 
@@ -144,7 +144,7 @@ or diagnostics rather than recomputing expensive physics.
    simulation basis.
 
 5. `plot_sector_probabilities` should live in
-   `quantum_trajectories/plotting_diagnostics.py`.
+   `Legacy/plotting_diagnostics.py`.
 
 6. The function should support `linestyle`, for example `"-"` for solid or
    `"--"` for dashed overlay comparisons.

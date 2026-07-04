@@ -13,7 +13,7 @@ This file lists the shared helper functions in `common/utils.py`,
 `common/utils_parameters.py`, and `common/utils_moments.py`. Use it when
 adding, moving, or reusing generic
 helpers that should be available outside a specific simulation backend such as
-`quantum_trajectories`.
+`solvers/mcwf`.
 
 Detailed physics conventions may live in more specific instruction files, such
 as `docs/instructions/simulation_parameters.typ` or
@@ -78,7 +78,7 @@ pipeline.
 = Invariants
 
 - Helpers in `common/utils.py` should be backend-neutral and should not import
-  from `quantum_trajectories` or `quantum_trajectories_qutip`.
+  from `solvers.mcwf` or `solvers.qutip_fixed_nj`.
 - Helpers in `common/utils_parameters.py` should stay limited to shared
   parameter, protocol, and validation logic.
 - Helpers in `common/utils_moments.py` should stay limited to shared
