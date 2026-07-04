@@ -10,3 +10,8 @@ summaries attached to them.
   two-group complex MFE residual series from already-averaged J moments and
   shared moment parameters. It returns an `MFEResidualSeries` when the input
   contains compatible two-group fields, otherwise `None`.
+
+## `post_analysis/theory_benchmarks.py`
+
+- `phase1_ss_angles_for_nj(Nj, Omega, Gamma)` returns the phase-1
+  steady-state benchmark angles `(theta_ss, phi_ss)` for one active sector.

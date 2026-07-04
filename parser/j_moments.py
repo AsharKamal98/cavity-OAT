@@ -71,7 +71,7 @@ class JMomentSeries(BaseModel):
         """
         Attach Euclidean vector length and normalized spin-direction fields.
         """
-        from common.utils_moments import norm_spin_components_from_spin_components
+        from common.utils.moments import norm_spin_components_from_spin_components
 
         has_full = (
             j_moments.x is not None
@@ -126,7 +126,7 @@ class JMomentSeries(BaseModel):
         """
         Attach theta and phi from already-normalized spin-direction fields.
         """
-        from common.utils_moments import angles_from_norm_spin_components
+        from common.utils.moments import angles_from_norm_spin_components
 
         if (
             j_moments.length is None
@@ -179,7 +179,7 @@ class JMomentSeries(BaseModel):
         """
         Attach normalized spin-direction fields from theta and phi.
         """
-        from common.utils_moments import norm_spin_components_from_angles
+        from common.utils.moments import norm_spin_components_from_angles
 
         has_full = (
             j_moments.theta is not None
@@ -225,7 +225,7 @@ class JMomentSeries(BaseModel):
         """
         Attach spin-component fields from vector length and normalized direction.
         """
-        from common.utils_moments import spin_components_from_norm_spin_components
+        from common.utils.moments import spin_components_from_norm_spin_components
 
         has_full = (
             j_moments.length is not None

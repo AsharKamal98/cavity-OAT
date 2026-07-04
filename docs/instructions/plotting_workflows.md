@@ -95,7 +95,7 @@ or diagnostics rather than recomputing expensive physics.
 ## `fig, axes = plot_mfe_residuals(...)`
 
 1. `plot_mfe_residuals` lives in
-   `solvers/mcwf/plotting_mfe_residuals.py`.
+   `common/plotting/mfe_residuals.py`.
 
 2. The function should take `moments.mfe_residuals` as input.
 
@@ -106,11 +106,11 @@ or diagnostics rather than recomputing expensive physics.
 4. The output should be a single panel showing `Re R_1`, `Im R_1`,
    `Re R_2`, `Im R_2`, and the L2 norm `sqrt(|R_1|^2 + |R_2|^2)`.
 
-5. The signed residual components should be dashed. The two `R_1` components
-   should use different blue shades, and the two `R_2` components should use
-   different orange shades. The L2 norm should use a solid gray curve.
+5. The signed residual components should use the selected `colour_index`
+   palette and `linestyle`. The L2 norm should use a solid gray curve.
 
-6. The function should support `axes`, `output_path`, `label`, and `phases`.
+6. The function should support `axes`, `output_path`, `label`, `phases`,
+   `colour_index`, and `linestyle`.
    If `phases` are provided, optionally print the same phase-end residual
    summary as the old pipeline.
 
@@ -144,7 +144,7 @@ or diagnostics rather than recomputing expensive physics.
    simulation basis.
 
 5. `plot_sector_probabilities` should live in
-   `Legacy/plotting_diagnostics.py`.
+   `legacy/plotting_diagnostics.py`.
 
 6. The function should support `linestyle`, for example `"-"` for solid or
    `"--"` for dashed overlay comparisons.
@@ -155,9 +155,9 @@ Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
 
 ## Global Styling Rules
 
-Shared styling helpers should live in `common/utils_plotting.py`.
-Indexed color and line-pattern helpers may live separately in
-`common/utils_plotting.py`.
+Shared styling helpers should live in `common/plotting/utils.py`.
+Indexed color and line-pattern helpers may live in
+`common/plotting/utils.py`.
 
 1. Use a colorblind-friendly manual palette, such as Okabe-Ito, rather than
    changing Matplotlib's global style.

@@ -29,7 +29,8 @@ If the effective model parameters are chosen directly, the run function should p
 
 = Effective Spin Parameters
 
-The current notebook benchmark helpers in `common/utils.py` are:
+The current notebook benchmark helpers in `common/utils/parameters.py` and
+`common/utils/phases.py` are:
 
 $
 delta_0 = 0.05 thin N Gamma, Omega_0 = 0.465 thin N Gamma.
@@ -163,7 +164,7 @@ phase3: duration=T3, omega=0,      delta=0
 Phase-boundary plotting or diagnostics should reuse:
 
 ```
-phase_change_times(phases) -> (t1, t2)
+phase_boundary_times(phases) -> [t1, t2, ...]
 ```
 
 instead of recomputing the cumulative times manually.
@@ -196,27 +197,27 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
 
 = Reusable Helper Summary
 
-- `delta0_from_N_Gamma` in `common/utils.py` returns
+- `delta0_from_N_Gamma` in `common/utils/parameters.py` returns
   $delta_0$.
-- `Omega0_from_N_Gamma` in `common/utils.py` returns
+- `Omega0_from_N_Gamma` in `common/utils/parameters.py` returns
   $Omega_0$.
 - `Omega_Gamma_from_cavity_parameters` in
-  `common/utils.py` returns $(Omega,Gamma)$.
-- `omega_c` in `common/utils.py` returns $Omega_c$.
-- `phase1_ss_angles_for_nj` in `common/utils.py` returns
+  `common/utils/parameters.py` returns $(Omega,Gamma)$.
+- `omega_c` in `common/utils/parameters.py` returns $Omega_c$.
+- `phase1_ss_angles_for_nj` in `post_analysis/theory_benchmarks.py` returns
   $(theta_("ss"),phi_("ss"))$.
-- `check_initial_sector_omega_ratio` in `common/utils.py`
+- `check_initial_sector_omega_ratio` in `common/utils/parameters.py`
   returns the drive-ratio validation dictionary.
-- `validated_mcwf_dt` in `common/utils.py` returns a valid
+- `validated_mcwf_dt` in `common/utils/parameters.py` returns a valid
   MCWF timestep.
-- `default_three_phase_protocol` in `common/utils.py`
+- `default_three_phase_protocol` in `common/utils/parameters.py`
   returns the standard phase list.
-- `phase_change_times` in `common/utils.py` returns phase
-  boundaries.
-- `phase_values_at_time` in `common/utils.py` returns phase-local
+- `phase_boundary_times` in `common/utils/phases.py` returns all
+  cumulative phase-end times.
+- `phase_values_at_time` in `common/utils/phases.py` returns phase-local
   $(Omega(t),delta(t))$.
 - `omega2_from_weighted_average` in
-  `common/utils.py` returns $omega_2$.
+  `common/utils/parameters.py` returns $omega_2$.
 
 = Invariants
 

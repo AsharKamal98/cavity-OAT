@@ -14,6 +14,7 @@ from solvers.mcwf.operator_helpers import (
     two_group_sector_multiplicity,
 )
 from parser.common import Array, Phase
+from common.utils.phases import phase_boundary_times
 from parser.quantum_trajectories import (
     SectorKey,
     SectorOperators,
@@ -40,7 +41,7 @@ def build_t_eval_from_phases(phases: Sequence[Phase], num_snapshots: int) -> np.
     """
     if num_snapshots < 2:
         raise ValueError("num_snapshots must be at least 2.")
-    total_time = float(sum(phase.duration for phase in phases))
+    total_time = float(phase_boundary_times(phases)[-1])
     return np.linspace(0.0, total_time, num_snapshots, dtype=float)
 
 

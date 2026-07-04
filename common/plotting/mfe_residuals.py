@@ -6,14 +6,17 @@ from typing import Any, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common.utils_plotting import (
+from common.plotting.utils import (
     curve_label,
     finish_time_plot,
     format_time_axis,
     full_curve_color,
     get_axes,
+    indexed_curve_color,
     style_axis,
+    validated_linestyle,
 )
+from common.utils.phases import phase_boundary_times
 
 
 def _set_symmetric_ylim_from_lines(ax) -> None:
@@ -44,7 +47,7 @@ def _print_phase_end_residuals(mfe_residuals: Any, phases) -> None:
         return
 
     t = np.asarray(mfe_residuals.t, dtype=float)
-    phase_end_times = np.cumsum([phase.duration for phase in phases], dtype=float)
+    phase_end_times = phase_boundary_times(phases)
     if t.size == 0:
         return
 
@@ -70,6 +73,7 @@ def plot_mfe_residuals(
     mfe_residuals: Any,
     *,
     colour_index: int = 0,
+    linestyle: str = "--",
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     label: Optional[str] = None,
@@ -84,7 +88,8 @@ def plot_mfe_residuals(
     residuals = mfe_residuals.residuals_groups
     if len(residuals) != 2:
         raise ValueError("plot_mfe_residuals currently requires exactly two residual groups.")
-    full_color = full_curve_color(colour_index)
+    line_style = validated_linestyle(linestyle)
+    norm_color = full_curve_color(3)
 
     fig, axes = get_axes(
         axes,
@@ -99,25 +104,25 @@ def plot_mfe_residuals(
     residual_l2 = np.sqrt(np.abs(r1) ** 2 + np.abs(r2) ** 2)
 
     residual_specs = [
-        (np.real(r1), r"$\mathrm{Re}\,R_1$", "#0072B2"),
-        (np.imag(r1), r"$\mathrm{Im}\,R_1$", "#56B4E9"),
-        (np.real(r2), r"$\mathrm{Re}\,R_2$", "#D55E00"),
-        (np.imag(r2), r"$\mathrm{Im}\,R_2$", "#E69F00"),
+        (np.real(r1), r"$\mathrm{Re}\,R_1$"),
+        (np.imag(r1), r"$\mathrm{Im}\,R_1$"),
+        (np.real(r2), r"$\mathrm{Re}\,R_2$"),
+        (np.imag(r2), r"$\mathrm{Im}\,R_2$"),
     ]
-    for values, residual_label, color in residual_specs:
+    for curve_index, (values, residual_label) in enumerate(residual_specs):
         axes[0].plot(
             t,
             values,
             linewidth=1.8,
-            color=color,
-            linestyle="--",
+            color=indexed_curve_color(colour_index, curve_index),
+            linestyle=line_style,
             label=curve_label(residual_label, label=label),
         )
     axes[0].plot(
         t,
         residual_l2,
         linewidth=1.8,
-        color=full_color,
+        color=norm_color,
         linestyle="-",
         label=curve_label("L2 norm", label=label),
     )

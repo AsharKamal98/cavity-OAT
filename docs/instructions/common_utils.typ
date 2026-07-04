@@ -9,8 +9,8 @@
 
 = Purpose
 
-This file lists the shared helper functions in `common/utils.py`,
-`common/utils_parameters.py`, and `common/utils_moments.py`. Use it when
+This file lists the shared helper functions in `common/utils/phases.py`,
+`common/utils/parameters.py`, and `common/utils/moments.py`. Use it when
 adding, moving, or reusing generic
 helpers that should be available outside a specific simulation backend such as
 `solvers/mcwf`.
@@ -21,26 +21,18 @@ as `docs/instructions/simulation_parameters.typ` or
 
 = Helper Summary
 
-== `common/utils.py`
+== `common/utils/phases.py`
 
-This file contains backend-neutral general helpers used across phase handling,
-legacy angle conventions, and observable comparisons.
+This file contains backend-neutral helpers used across phase handling.
 
 === Phase Helpers
 
-- `phase_change_times(phases)` returns the first two phase-boundary times for a
+- `phase_boundary_times(phases)` returns all cumulative phase-end times for a
   phase protocol.
 - `phase_values_at_time(t, phases)` returns the phase-local `(Omega, delta)`
   values for a piecewise-constant protocol.
 
-=== Legacy Angle Helpers
-
-- `phase1_ss_angles_for_nj(Nj, Omega, Gamma)` returns the phase-1 steady-state
-  angles `(theta_ss, phi_ss)` for one active sector.
-- `active_manifold_angles(Jx, Jy, Jz, N_e, tol=...)` converts active-manifold
-  observables into angles, active population, and normalized components.
-
-== `common/utils_parameters.py`
+== `common/utils/parameters.py`
 
 This file contains shared parameter-scale, phase-protocol, cavity-mapping, and
 parameter-validation helpers.
@@ -63,7 +55,7 @@ parameter-validation helpers.
 - `check_initial_sector_omega_ratio(sector_coeffs, Omega, Gamma, ...)` checks
   the initial support against the smallest-sector critical drive.
 
-== `common/utils_moments.py`
+== `common/utils/moments.py`
 
 This file contains shared moment/vector conversion helpers used by the new
 pipeline.
@@ -77,16 +69,16 @@ pipeline.
 
 = Invariants
 
-- Helpers in `common/utils.py` should be backend-neutral and should not import
+- Helpers in `common/utils/phases.py` should be backend-neutral and should not import
   from `solvers.mcwf` or `solvers.qutip_fixed_nj`.
-- Helpers in `common/utils_parameters.py` should stay limited to shared
+- Helpers in `common/utils/parameters.py` should stay limited to shared
   parameter, protocol, and validation logic.
-- Helpers in `common/utils_moments.py` should stay limited to shared
+- Helpers in `common/utils/moments.py` should stay limited to shared
   moment/vector post-processing.
 - This instruction file should stay organized by utility file, with one short
   subsection per file under `common/`.
-- If a helper becomes backend-specific, move it out of `common/utils.py` rather
+- If a helper becomes backend-specific, move it out of `common/utils/phases.py` rather
   than hiding backend assumptions in the common layer.
-- When adding a new public helper to `common/utils.py`,
-  `common/utils_parameters.py`, or `common/utils_moments.py`, add a short entry
+- When adding a new public helper to `common/utils/phases.py`,
+  `common/utils/parameters.py`, or `common/utils/moments.py`, add a short entry
   to this file.

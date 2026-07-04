@@ -1,4 +1,4 @@
-from common.utils_parameters import (
+from common.utils.parameters import (
     check_initial_sector_omega_ratio,
     validated_mcwf_dt,
 )

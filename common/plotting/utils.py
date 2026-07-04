@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+from common.utils.phases import phase_boundary_times
 
 FIGURE_FACE_COLOR = "white"
 AXES_FACE_COLOR = "white"
@@ -94,9 +95,8 @@ def add_phase_regions(axes, phases) -> None:
     if phases is None:
         return
 
-    durations = np.asarray([phase.duration for phase in phases], dtype=float)
-    starts = np.concatenate(([0.0], np.cumsum(durations)[:-1]))
-    ends = np.cumsum(durations)
+    ends = phase_boundary_times(phases)
+    starts = np.concatenate(([0.0], ends[:-1]))
     for ax in np.asarray(axes).ravel():
         has_shading = any(patch.get_gid() == "phase_shading" for patch in ax.patches)
         has_boundaries = any(line.get_gid() == "phase_boundary" for line in ax.lines)

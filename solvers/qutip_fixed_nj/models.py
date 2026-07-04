@@ -5,7 +5,7 @@ from typing import Optional, Sequence
 import numpy as np
 import qutip as qt
 
-from common.utils_parameters import omega2_from_weighted_average
+from common.utils.parameters import omega2_from_weighted_average
 from parser.qutip import QutipFixedNjModel, QutipTwoGroupFixedNjModel
 from solvers.mcwf.state_helpers import centered_sector_initial_coeffs
 from solvers.qutip_fixed_nj.utils_sim import OmegaCoeffFromPhases, _delta_coeff, _omega_coeff
@@ -55,7 +55,7 @@ def build_qutip_fixed_nj_model_from_phases(
     Jz = qt.jmat(j, "z")
     identity = qt.qeye(int(2 * j + 1))
     N_e = Jz + j * identity
-    omega_coeff_local = OmegaCoeffFromPhases(Omega0, t_step1_end, t_step2_end)
+    omega_coeff_local = OmegaCoeffFromPhases(phases)
 
     if shifted_jump_operator:
         H = [
@@ -87,6 +87,7 @@ def build_qutip_fixed_nj_model_from_phases(
         unraveling_picture=unraveling_picture,
         omega0=Omega0,
         delta0=delta0,
+        phases=phases,
         Jp=Jp,
         Jm=Jm,
         Jx=Jx,
@@ -196,7 +197,7 @@ def build_qutip_two_group_fixed_nj_model_from_phases(
     J_drive = omega_1 * Jx1 + omega_2 * Jx2
     A_weighted = omega_1 * Jm1 + omega_2 * Jm2
 
-    omega_coeff_local = OmegaCoeffFromPhases(Omega0, t_step1_end, t_step2_end)
+    omega_coeff_local = OmegaCoeffFromPhases(phases)
     if shifted_jump_operator:
         H = [
             [-N_e, _delta_coeff],
@@ -234,6 +235,7 @@ def build_qutip_two_group_fixed_nj_model_from_phases(
         unraveling_picture=unraveling_picture,
         omega0=Omega0,
         delta0=delta0,
+        phases=phases,
         omega_1=float(omega_1),
         omega_2=omega_2,
         Jp=Jp,

@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common.utils_plotting import (
+from common.plotting.utils import (
     curve_label,
     finish_time_plot,
     format_time_axis,

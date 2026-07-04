@@ -400,13 +400,13 @@ The shared angle plot now lives in `common/plotting/j_spin.py`:
   using the selected `colour_index` palette and `linestyle`.
 
 Current diagnostic plotting functions live in
-`solvers/mcwf/plotting_mfe_residuals.py`:
+`common/plotting/mfe_residuals.py`:
 
 - `plot_mfe_residuals(moments.mfe_residuals, ...)`: plots stored two-group
   residuals in a single residual panel with the L2 norm.
 
 General diagnostic plotting functions currently live in
-`Legacy/plotting_diagnostics.py`:
+`legacy/plotting_diagnostics.py`:
 
 - `plot_sector_probabilities(result, ...)`: plots normalized represented-sector
   probabilities `p_alpha(t)` computed directly from saved snapshot sector

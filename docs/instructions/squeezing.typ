@@ -41,8 +41,6 @@ Here $theta_J,phi_J$ should be found by comparing this ansatz to the simulation 
 docs/instructions/bloch_vector_averaging.typ
 ```
 
-Reuse `active_manifold_angles` where appropriate.
-
 === Define the instantaneous mean direction $|c⟩$
 Step 2: Using the $J$ angles from step 1, identify the $theta_S, phi_S$ effective $S$-Bloch angles.
 

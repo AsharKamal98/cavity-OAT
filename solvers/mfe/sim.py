@@ -4,7 +4,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from parser.common import Array
-from common.utils import phase_values_at_time
+from common.utils.phases import phase_values_at_time
 from parser.mfe import (
     MFEInitialState,
     MFEResult,

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 import qutip as qt
+
+from parser.common import Phase
 
 
 @dataclass(frozen=True)
@@ -15,6 +18,7 @@ class QutipFixedNjModel:
     unraveling_picture: str
     omega0: float
     delta0: float
+    phases: Sequence[Phase]
     Jp: qt.Qobj
     Jm: qt.Qobj
     Jx: qt.Qobj
@@ -44,6 +48,7 @@ class QutipTwoGroupFixedNjModel:
     unraveling_picture: str
     omega0: float
     delta0: float
+    phases: Sequence[Phase]
     omega_1: float
     omega_2: float
     Jp: qt.Qobj
