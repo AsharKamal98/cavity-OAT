@@ -18,7 +18,7 @@ COLOUR_PALETTES = (
     ("#4d4d4d", "#4d4d4d", "#4d4d4d", "#4d4d4d"),
     ("#800000", "#800000", "#800000", "#800000"),
 )
-LINESTYLES = ("-", "--", ":")
+LINESTYLES = ("-", "--", ":", "-.")
 SECTOR_CURVE_COLORS = (
     "#0072B2",
     "#D55E00",

@@ -146,8 +146,8 @@ or diagnostics rather than recomputing expensive physics.
 5. `plot_sector_probabilities` should live in
    `legacy/plotting_diagnostics.py`.
 
-6. The function should support `linestyle`, for example `"-"` for solid or
-   `"--"` for dashed overlay comparisons.
+6. The function should support `linestyle`, for example `"-"` for solid,
+   `"--"` for dashed, or `"-."` for dash-dot overlay comparisons.
 
 
 Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,

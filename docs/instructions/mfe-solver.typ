@@ -113,7 +113,7 @@ described in `docs/instructions/simulation_parameters.typ`.
 def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
     G = parameters.group_count
     D, E = y[:G], y[G:]
-    omega = np.asarray(parameters.omega_groups)
+    omega = np.asarray(parameters.omega_i)
     Omega_t, delta_t = phase_values_at_time(t, parameters.phases)
 
     ED = sum(omega_b * np.conj(E_b) * D_b for omega_b, E_b, D_b in zip(omega, E, D))
@@ -125,8 +125,16 @@ def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
 ```
 
 ```python
-def solve_mfe(parameters, initial_state, *, t_eval, rtol=1e-9, atol=1e-11) -> MFEResult:
-    y0 = amplitudes_from_initial_state(initial_state, parameters)
+def solve_mfe(parameters, *, t_eval, rtol=1e-9, atol=1e-11) -> MFEResult:
+    if len(parameters.omega_i) == parameters.group_count - 1:
+        parameters = parameters.model_copy(
+            update={
+                "omega_i": tuple(parameters.omega_i)
+                + (omega_G_from_weighted_average(parameters.omega_i, parameters.Ni),)
+            }
+        )
+    zero_angles = (0.0,) * parameters.group_count
+    y0 = amplitudes_from_initial_state(zero_angles, zero_angles, parameters)
     solution = solve_ivp(lambda t, y: mfe_rhs(t, y, parameters), ...)
     G = parameters.group_count
     D_groups, E_groups = solution.y[:G], solution.y[G:]
@@ -152,7 +160,8 @@ forcing one adaptive solve across discontinuous coefficients.
 Undefined helper notes:
 
 - `amplitudes_from_initial_state(...)` is a new local helper that constructs
-  `(D_groups, E_groups)` from `(theta_groups, phi_groups, N_j_groups)`.
+  `(D_groups, E_groups)` from `(theta_groups, phi_groups, N_(J))`, with
+  `N_(J,a) = N_(a) / 2`.
 - `angles_from_amplitudes(...)` is a new local helper that applies the inverse
   relations in the MFE definitions section.
 
@@ -175,16 +184,14 @@ The solver needs:
 - `phases`: piecewise-constant `Phase` objects with `duration`, `omega`, and
   `delta`;
 - `Gamma`: collective decay scale;
-- `omega_groups`: one coupling weight per group, or one coupling per group
+- `omega_i`: one coupling weight per group, or one coupling per group
   except the final group, in which case `solve_mfe(...)` should complete the
   last coupling from the weighted-average condition;
-- `N_j_groups`: active atom number per group for the mean-field state being
-  solved;
-- `initial_state`: initial J angles `(theta_groups, phi_groups)`;
+- `Ni`: atom number per group. Inside `solve_mfe(...)`, use `N_(J,a)=N_(a)/2`;
 - `t_eval`: saved output times.
 
 Parameter validation may live outside the solver. In particular, if only the
-first `G-1` entries of `omega_groups` are supplied, `solve_mfe(...)` should
+first `G-1` entries of `omega_i` are supplied, `solve_mfe(...)` should
 complete the final group coupling using the same weighted-coupling convention
 as the MCWF code.
 
@@ -199,13 +206,8 @@ minimal output structure is:
 MFESolverParameters(
     Gamma,
     phases,
-    omega_groups,
-    N_j_groups,
-)
-
-MFEInitialState(
-    theta_groups,
-    phi_groups,
+    omega_i,
+    Ni,
 )
 
 MFEResult(

@@ -228,7 +228,7 @@ The deterministic MFE backend should solve the group-resolved mean-field
 equations and return an `MFEResult` on the requested saved-time grid:
 
 ```python
-mfe_result = solve_mfe(parameters, initial_state, t_eval=t_eval)
+mfe_result = solve_mfe(parameters, t_eval=t_eval)
 ```
 
 The MFE solver structure and the conversion from solved amplitudes to

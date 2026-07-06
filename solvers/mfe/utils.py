@@ -3,25 +3,23 @@ from __future__ import annotations
 import numpy as np
 
 from parser.common import Array
-from parser.mfe import (
-    MFEInitialState,
-    MFESolverParameters,
-)
+from parser.mfe import MFESolverParameters
 
 
 def amplitudes_from_initial_state(
-    initial_state: MFEInitialState,
+    theta_groups: tuple[float, ...],
+    phi_groups: tuple[float, ...],
     parameters: MFESolverParameters,
 ) -> Array:
     """
     Build the flat complex solver vector from initial J-sphere angles.
     """
-    if len(initial_state.theta_groups) != parameters.group_count:
+    if len(theta_groups) != parameters.group_count or len(phi_groups) != parameters.group_count:
         raise ValueError("Initial-state group count must match parameters.")
 
-    theta = np.asarray(initial_state.theta_groups, dtype=float)
-    phi = np.asarray(initial_state.phi_groups, dtype=float)
-    N_j = np.asarray(parameters.N_j_groups, dtype=float)
+    theta = np.asarray(theta_groups, dtype=float)
+    phi = np.asarray(phi_groups, dtype=float)
+    N_j = 0.5 * np.asarray(parameters.Ni, dtype=float)
 
     D = np.sqrt(N_j) * np.cos(0.5 * theta)
     E = np.sqrt(N_j) * np.exp(-1j * phi) * np.sin(0.5 * theta)

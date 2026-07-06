@@ -1,8 +1,4 @@
-from parser.mfe import (
-    MFEInitialState,
-    MFEResult,
-    MFESolverParameters,
-)
+from parser.mfe import MFEResult, MFESolverParameters
 from solvers.mfe.j_moments import (
     compute_mfe_j_moments,
 )
@@ -16,7 +12,6 @@ from solvers.mfe.utils import (
 )
 
 __all__ = [
-    "MFEInitialState",
     "MFEResult",
     "MFESolverParameters",
     "amplitudes_from_initial_state",

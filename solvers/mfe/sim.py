@@ -7,7 +7,6 @@ from common.utils.phases import phase_values_at_time
 from common.utils.parameters import omega_G_from_weighted_average
 from parser.common import Array
 from parser.mfe import (
-    MFEInitialState,
     MFEResult,
     MFESolverParameters,
 )
@@ -20,7 +19,7 @@ def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
     """
     G = parameters.group_count
     D, E = y[:G], y[G:]
-    omega = np.asarray(parameters.omega_groups, dtype=float)
+    omega = np.asarray(parameters.omega_i, dtype=float)
     Omega_t, delta_t = phase_values_at_time(t, parameters.phases)
 
     ED = sum(omega_b * np.conj(E_b) * D_b for omega_b, E_b, D_b in zip(omega, E, D))
@@ -33,7 +32,6 @@ def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
 
 def solve_mfe(
     parameters: MFESolverParameters,
-    initial_state: MFEInitialState,
     *,
     t_eval: Array,
     rtol: float = 1e-11,
@@ -48,13 +46,18 @@ def solve_mfe(
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
 
     completed_parameters = parameters
-    if len(parameters.omega_groups) == parameters.group_count - 1:
-        omega_groups = tuple(parameters.omega_groups) + (
-            omega_G_from_weighted_average(parameters.omega_groups, parameters.N_j_groups),
+    if len(parameters.omega_i) == parameters.group_count - 1:
+        omega_i = tuple(parameters.omega_i) + (
+            omega_G_from_weighted_average(parameters.omega_i, parameters.Ni),
         )
-        completed_parameters = parameters.model_copy(update={"omega_groups": omega_groups})
+        completed_parameters = parameters.model_copy(update={"omega_i": omega_i})
 
-    y0 = amplitudes_from_initial_state(initial_state, completed_parameters)
+    zero_angles = (0.0,) * completed_parameters.group_count
+    y0 = amplitudes_from_initial_state(
+        zero_angles,
+        zero_angles,
+        completed_parameters,
+    )
     solution = solve_ivp(
         lambda t, y: mfe_rhs(t, y, completed_parameters),
         (float(t_eval[0]), float(t_eval[-1])),

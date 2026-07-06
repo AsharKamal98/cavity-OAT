@@ -1,10 +1,6 @@
 from parser.common import Array, Phase
 from parser.j_moments import JMomentSeries, JMomentSnapshot
-from parser.mfe import (
-    MFEInitialState,
-    MFEResult,
-    MFESolverParameters,
-)
+from parser.mfe import MFEResult, MFESolverParameters
 from parser.qutip import (
     QutipFixedNjModel,
     QutipGroupedFixedNjModel,
@@ -28,7 +24,6 @@ __all__ = [
     "Array",
     "JMomentSeries",
     "JMomentSnapshot",
-    "MFEInitialState",
     "MFEResidualSeries",
     "MFEResult",
     "MFESolverParameters",

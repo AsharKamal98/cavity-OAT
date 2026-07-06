@@ -10,14 +10,14 @@ class MFESolverParameters(BaseModel):
 
     Gamma: float
     phases: list[Phase]
-    omega_groups: tuple[float, ...]
-    N_j_groups: tuple[float, ...]
+    omega_i: tuple[float, ...]
+    Ni: tuple[float, ...]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def group_count(self) -> int:
-        return len(self.N_j_groups)
+        return len(self.Ni)
 
     @model_validator(mode="after")
     def validate_groups(self) -> "MFESolverParameters":
@@ -25,29 +25,14 @@ class MFESolverParameters(BaseModel):
             raise ValueError("phases must contain at least one phase.")
         if self.Gamma <= 0.0:
             raise ValueError("Gamma must be positive.")
-        if not self.omega_groups:
-            raise ValueError("omega_groups must contain at least one group.")
-        if len(self.omega_groups) not in (len(self.N_j_groups) - 1, len(self.N_j_groups)):
+        if len(self.Ni) == 0:
+            raise ValueError("Ni must contain at least one group.")
+        if len(self.omega_i) not in (len(self.Ni) - 1, len(self.Ni)):
             raise ValueError(
-                "omega_groups must contain either one coupling per group or all but the final group coupling."
+                "omega_i must contain either one coupling per group or all but the final group coupling."
             )
-        if any(N_j < 0.0 for N_j in self.N_j_groups):
-            raise ValueError("N_j_groups must be non-negative.")
-        return self
-
-
-class MFEInitialState(BaseModel):
-    """Initial group-resolved J-sphere angles."""
-
-    theta_groups: tuple[float, ...]
-    phi_groups: tuple[float, ...]
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    @model_validator(mode="after")
-    def validate_groups(self) -> "MFEInitialState":
-        if len(self.theta_groups) != len(self.phi_groups):
-            raise ValueError("theta_groups and phi_groups must have matching lengths.")
+        if any(N_g < 0.0 for N_g in self.Ni):
+            raise ValueError("Ni must be non-negative.")
         return self
 
 
