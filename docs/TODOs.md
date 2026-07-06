@@ -3,31 +3,18 @@
 
 ## Refactors
 
-1. MCWF Homoheneous - Inhomogeneous split to group-split
+1. MCWF generalized to G groups
     Want to stop treating simulations and post-soimulation analysis differently depending on if we have homogeneous or inhomogeneous setup. Split should be based on number of groups G, independent of what effective couplings omega_i they have.
     1. DONE. Input to simulation should N_i = [N1,N2,...NG], omega_i = [omega1,omega2,...,omega_G-1]. Remove N input.
     2. precompute constructs operators over Hilbert space split into G smaller Hilbert spaces. This can be done later, for now hard-coded two-group split works fine.
     3. simulator itself should be easily extendable, since it already works with generic tuple sectors for inhomogeneous case. Can be fixed later.
-    4. Compute J moment series should be changed so group fields are default, and filled even for G=1. The non-group fields become extra fields contining averaged moments.
-    5. Plotting accepts lists of series (groups), or single series (averages). No need to distinguish between homogeneous or inhomogeneous runs.
 
-
-2. Qutip mcsolve to group-split
-    1. DONE. Ni and omega_i lists as input.
-    2. Change build_qutip_two_group_fixed_nj_model_from_phases output to lists.
-    3. Should print as now, but change where and how parameters accessed.
-    4. Make qutip j moment computation use Ni and omega_i lists. 
-
-3. Qutip mesolve to group-split
-    1. Add Ni and omega_i dependencies.
-    2. Add print statement like mcsolve.
-
-4. j-moment computations. 
+2. j-moment computations. 
     Dependent on above.
     1. x_groups, nx_groups, N_groups etc. -> x, nx, N should become primary fields and are filled even for G=1, while x, nx etc. -> x_avg, nx_avg become secondary average files.
     2. j-moment computations in mcwf,mfe and qutip should output above.
 
-5. `common/plotting/j_spin.py` 
+3. `common/plotting/j_spin.py` 
     1. option 1: mid-level function. Extracts groups-resolved moments and plots in a lopp. option 2: low-level function. moment series given and plots.
     2. has option for plotting averages, only required if function mid-level 
 

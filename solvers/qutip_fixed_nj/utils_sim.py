@@ -7,7 +7,6 @@ import numpy as np
 import qutip as qt
 
 from common.utils.phases import phase_boundary_times, phase_values_at_time
-from parser.qutip import QutipFixedNjModel
 
 
 def _omega_coeff(t, args):
@@ -42,7 +41,7 @@ def build_tlist_from_phases(phases: list, num_points: int) -> np.ndarray:
     return np.linspace(0.0, t_final, num_points)
 
 
-def _solver_args(model: QutipFixedNjModel) -> Dict[str, float]:
+def _solver_args(model) -> Dict[str, float]:
     return {
         "phases": model.phases,
     }

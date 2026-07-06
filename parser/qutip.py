@@ -60,29 +60,6 @@ class QutipMCSolverParameters(BaseModel):
             raise ValueError("Ni must contain non-negative group sizes.")
         return self
 
-
-@dataclass(frozen=True)
-class QutipFixedNjModel:
-    NJi: tuple[int, ...]
-    Gamma: float
-    shifted_jump_operator: bool
-    omega0: float
-    delta0: float
-    phases: Sequence[Phase]
-    Jp: qt.Qobj
-    Jm: qt.Qobj
-    Jx: qt.Qobj
-    Jy: qt.Qobj
-    Jz: qt.Qobj
-    N_e: qt.Qobj
-    H: list
-    c_ops: list
-    psi0: qt.Qobj
-    t_step1_end: float
-    t_step2_end: float
-    t_final: float
-
-
 @dataclass(frozen=True)
 class QutipGroupedFixedNjModel:
     NJi: tuple[int, ...]
