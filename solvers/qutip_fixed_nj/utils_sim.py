@@ -54,16 +54,8 @@ def _observable_e_ops(model) -> List[qt.Qobj]:
     """
     e_ops = [model.Jx, model.Jy, model.Jz, model.N_e]
     if hasattr(model, "Jx_groups") and hasattr(model, "N_e_groups"):
-        e_ops.extend(
-            [
-                model.Jx_groups[0],
-                model.Jx_groups[1],
-                model.Jy_groups[0],
-                model.Jy_groups[1],
-                model.Jz_groups[0],
-                model.Jz_groups[1],
-                model.N_e_groups[0],
-                model.N_e_groups[1],
-            ]
-        )
+        e_ops.extend(model.Jx_groups)
+        e_ops.extend(model.Jy_groups)
+        e_ops.extend(model.Jz_groups)
+        e_ops.extend(model.N_e_groups)
     return e_ops

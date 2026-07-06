@@ -36,35 +36,38 @@ def compute_qutip_j_moments(
     result = sim_data["result"]
     model = sim_data["model"]
     t = np.asarray(sim_data["tlist"], dtype=float)
+    NJi = tuple(int(NJ) for NJ in model.NJi)
+    group_count = len(NJi)
 
     x = _mean_series(result.expect[0])
     y = _mean_series(result.expect[1])
     z = _mean_series(result.expect[2])
     N_e = _mean_series(result.expect[3])
-    N_j = np.full_like(t, float(getattr(model, "NJ")), dtype=float)
+    N_j = np.full_like(t, float(sum(NJi)), dtype=float)
 
-    x_groups = y_groups = z_groups = N_e_groups = N_j_groups = None
-    if hasattr(model, "Jx_groups") and len(result.expect) >= 12:
-        x_groups = (
-            _mean_series(result.expect[4]),
-            _mean_series(result.expect[5]),
-        )
-        y_groups = (
-            _mean_series(result.expect[6]),
-            _mean_series(result.expect[7]),
-        )
-        z_groups = (
-            _mean_series(result.expect[8]),
-            _mean_series(result.expect[9]),
-        )
-        N_e_groups = (
-            _mean_series(result.expect[10]),
-            _mean_series(result.expect[11]),
-        )
-        N_j_groups = (
-            np.full_like(t, float(getattr(model, "NJ1")), dtype=float),
-            np.full_like(t, float(getattr(model, "NJ2")), dtype=float),
-        )
+    if group_count == 1:
+        x_groups = (x,)
+        y_groups = (y,)
+        z_groups = (z,)
+        N_e_groups = (N_e,)
+    else:
+        expected_group_fields = 4 * group_count
+        if len(result.expect) < 4 + expected_group_fields:
+            raise ValueError("QuTiP result does not contain the expected group-resolved observables.")
+
+        offset = 4
+        x_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
+        offset += group_count
+        y_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
+        offset += group_count
+        z_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
+        offset += group_count
+        N_e_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
+
+    N_j_groups = tuple(
+        np.full_like(t, float(NJ), dtype=float)
+        for NJ in NJi
+    )
 
     j_moments = JMomentSeries(
         t=t,

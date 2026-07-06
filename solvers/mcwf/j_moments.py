@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 
@@ -39,7 +39,7 @@ def _cached_ne_array(Nj: int) -> Array:
 def _compute_snapshot_j_moments(
     snapshot: TrajectorySnapshot,
     *,
-    has_groups: bool,
+    group_count: int,
     phases: list[Phase],
     Gamma: float,
     shifted_jump_operator: bool,
@@ -52,7 +52,7 @@ def _compute_snapshot_j_moments(
     blocks = snapshot.sector_blocks
     norm2 = total_norm2(blocks)
     if norm2 <= 1e-15:
-        zero_groups = (0.0, 0.0) if has_groups else None
+        zero_groups = tuple(0.0 for _ in range(group_count))
         return JMomentSnapshot(
             t=snapshot.time,
             phase_index=snapshot.phase_index,
@@ -76,14 +76,11 @@ def _compute_snapshot_j_moments(
     jump_rate = 0.0
     nj_total = 0.0
     omega = phases[snapshot.phase_index].omega
-    if has_groups:
-        jx_groups = np.zeros(2, dtype=float)
-        jy_groups = np.zeros(2, dtype=float)
-        jz_groups = np.zeros(2, dtype=float)
-        ne_groups = np.zeros(2, dtype=float)
-        nj_groups = np.zeros(2, dtype=float)
-    else:
-        jx_groups = jy_groups = jz_groups = ne_groups = nj_groups = None
+    jx_groups = np.zeros(group_count, dtype=float)
+    jy_groups = np.zeros(group_count, dtype=float)
+    jz_groups = np.zeros(group_count, dtype=float)
+    ne_groups = np.zeros(group_count, dtype=float)
+    nj_groups = np.zeros(group_count, dtype=float)
 
     for sector_key, psi in blocks.items():
         if psi.size == 0:
@@ -94,8 +91,8 @@ def _compute_snapshot_j_moments(
         # e.g. by attatching to TrajectoryEnsamble.
         ops = build_sector_ops_for_key(
             sector_key,
-            Ni=Ni if has_groups else None,
-            omega_i=omega_i if has_groups else None,
+            Ni=Ni if group_count > 1 else None,
+            omega_i=omega_i if group_count > 1 else None,
         )
         psi_prob = np.abs(psi) ** 2
         psi_norm2 = float(np.vdot(psi, psi).real)
@@ -139,12 +136,11 @@ def _compute_snapshot_j_moments(
         else:
             Nj = int(sector_key)
             ne = _cached_ne_array(Nj)
-            if has_groups:
-                jx_groups[0] += float(np.vdot(psi, ops.J_x.dot(psi)).real)
-                jy_groups[0] += float(np.vdot(psi, ops.J_y.dot(psi)).real)
-                jz_groups[0] += float(np.vdot(psi, ops.J_z.dot(psi)).real)
-                ne_groups[0] += float(np.dot(psi_prob, ne))
-                nj_groups[0] += Nj * psi_norm2
+            jx_groups[0] += float(np.vdot(psi, ops.J_x.dot(psi)).real)
+            jy_groups[0] += float(np.vdot(psi, ops.J_y.dot(psi)).real)
+            jz_groups[0] += float(np.vdot(psi, ops.J_z.dot(psi)).real)
+            ne_groups[0] += float(np.dot(psi_prob, ne))
+            nj_groups[0] += Nj * psi_norm2
 
     # Guard against tiny negative values from floating-point noise.
     if jump_rate < 0.0 and abs(jump_rate) < 1e-10:
@@ -159,11 +155,11 @@ def _compute_snapshot_j_moments(
         N_e=ne_total / norm2,
         N_j=nj_total / norm2,
         jump_rate=jump_rate / norm2,
-        x_groups=None if jx_groups is None else tuple(jx_groups / norm2),
-        y_groups=None if jy_groups is None else tuple(jy_groups / norm2),
-        z_groups=None if jz_groups is None else tuple(jz_groups / norm2),
-        N_e_groups=None if ne_groups is None else tuple(ne_groups / norm2),
-        N_j_groups=None if nj_groups is None else tuple(nj_groups / norm2),
+        x_groups=tuple(jx_groups / norm2),
+        y_groups=tuple(jy_groups / norm2),
+        z_groups=tuple(jz_groups / norm2),
+        N_e_groups=tuple(ne_groups / norm2),
+        N_j_groups=tuple(nj_groups / norm2),
     )
 
 
@@ -183,12 +179,11 @@ def compute_trajectory_j_moments(
     """
     _ = tol  # Kept for API symmetry with later averaging/diagnostic functions.
 
-    group_count = 2 if any(isinstance(key, tuple) for key in metadata.sectors) else 0
-    has_groups = group_count > 0
+    group_count = len(metadata.Ni)
     j_moment_snapshots = [
         _compute_snapshot_j_moments(
             snap,
-            has_groups=has_groups,
+            group_count=group_count,
             phases=metadata.phases,
             Gamma=metadata.Gamma,
             shifted_jump_operator=metadata.shifted_jump_operator,
@@ -205,8 +200,6 @@ def compute_trajectory_j_moments(
         )
 
     def group_series(field_name: str) -> Optional[tuple[Array, ...]]:
-        if not group_count:
-            return None
         return tuple(
             np.asarray(
                 [getattr(snapshot, field_name)[g] for snapshot in j_moment_snapshots],

@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 import qutip as qt
 
-from parser.qutip import QutipFixedNjModel, QutipTwoGroupFixedNjModel
+from parser.qutip import QutipFixedNjModel, QutipGroupedFixedNjModel
 from solvers.qutip_fixed_nj.utils_sim import OmegaCoeffFromPhases, _delta_coeff, _omega_coeff
 
 
@@ -70,8 +70,7 @@ def build_qutip_fixed_nj_model_from_phases(
         c_ops = [np.sqrt(Gamma) * Jm]
 
     return QutipFixedNjModel(
-        N=N,
-        NJ=NJ,
+        NJi=(NJ,),
         Gamma=Gamma,
         shifted_jump_operator=shifted_jump_operator,
         omega0=Omega0,
@@ -107,52 +106,33 @@ def _default_two_group_fixed_sector(N: int, N1: int, N2: int) -> tuple[int, int]
     return min(candidates, key=lambda pair: (abs(pair[0] - target_Nj1), pair[0]))
 
 
-def build_qutip_two_group_fixed_nj_model_from_phases(
-    N: int,
+def build_qutip_grouped_fixed_nj_model_from_phases(
     Gamma: float,
     phases: list,
     *,
     omega_i: list[float],
     NJi: list[int],
     shifted_jump_operator: bool = False,
-) -> QutipTwoGroupFixedNjModel:
+) -> QutipGroupedFixedNjModel:
     """
-    Build a fixed two-group inhomogeneous collective model in QuTiP.
+    Build a fixed grouped inhomogeneous collective model in QuTiP.
     """
-    if len(omega_i) != 2:
-        raise ValueError("omega_i must contain exactly two group couplings.")
-    if len(NJi) != 2:
-        raise ValueError("NJi must contain exactly two group active-atom numbers.")
+    if len(omega_i) != len(NJi):
+        raise ValueError("omega_i must contain exactly one coupling per group.")
+    if not NJi:
+        raise ValueError("NJi must contain at least one group active-atom number.")
     if len(phases) < 3:
         raise ValueError("Need at least 3 phases.")
-    if N <= 0:
-        raise ValueError("N must be positive.")
     if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
             "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
             "operator contains omega / Gamma."
         )
 
-    N1 = N // 2
-    N2 = N - N1
-    NJ1, NJ2 = int(NJi[0]), int(NJi[1])
-    omega_1, omega_2 = float(omega_i[0]), float(omega_i[1])
-
-    if NJ1 < 0 or NJ2 < 0 or NJ1 > N1 or NJ2 > N2:
-        raise ValueError(
-            f"Invalid fixed sector ({NJ1}, {NJ2}) for group sizes N1={N1}, N2={N2}."
-        )
-
-    NJ = int(NJ1 + NJ2)
-
-    dim1 = int(NJ1 + 1)
-    dim2 = int(NJ2 + 1)
+    dims = tuple(int(NJ_g + 1) for NJ_g in NJi)
 
     # Initial state
-    psi0 = qt.tensor(
-        qt.basis(dim1, dim1 - 1),
-        qt.basis(dim2, dim2 - 1),
-    )
+    psi0 = qt.tensor(*(qt.basis(dim, dim - 1) for dim in dims))
 
     Omega0 = float(phases[0].omega)
     delta0 = float(phases[1].delta)
@@ -160,37 +140,38 @@ def build_qutip_two_group_fixed_nj_model_from_phases(
     t_step2_end = float(phases[0].duration + phases[1].duration)
     t_final = float(sum(p.duration for p in phases))
 
+    I = tuple(qt.qeye(dim) for dim in dims)
+    identity = qt.tensor(*I)
+    ji = tuple(NJ_g / 2.0 for NJ_g in NJi)
 
-    I1 = qt.qeye(dim1)
-    I2 = qt.qeye(dim2)
-    identity = qt.tensor(I1, I2)
+    def _group_operator(j: float, op: str, group_index: int) -> qt.Qobj:
+        factors = list(I)
+        factors[group_index] = qt.jmat(j, op)
+        return qt.tensor(*factors)
 
-    j1 = NJ1 / 2.0
-    j2 = NJ2 / 2.0
-    
-    Jp1 = qt.tensor(qt.jmat(j1, "+"), I2)
-    Jm1 = qt.tensor(qt.jmat(j1, "-"), I2)
-    Jx1 = qt.tensor(qt.jmat(j1, "x"), I2)
-    Jy1 = qt.tensor(qt.jmat(j1, "y"), I2)
-    Jz1 = qt.tensor(qt.jmat(j1, "z"), I2)
+    Jp_groups = tuple(_group_operator(j, "+", group_index) for group_index, j in enumerate(ji))
+    Jm_groups = tuple(_group_operator(j, "-", group_index) for group_index, j in enumerate(ji))
+    Jx_groups = tuple(_group_operator(j, "x", group_index) for group_index, j in enumerate(ji))
+    Jy_groups = tuple(_group_operator(j, "y", group_index) for group_index, j in enumerate(ji))
+    Jz_groups = tuple(_group_operator(j, "z", group_index) for group_index, j in enumerate(ji))
 
-    Jp2 = qt.tensor(I1, qt.jmat(j2, "+"))
-    Jm2 = qt.tensor(I1, qt.jmat(j2, "-"))
-    Jx2 = qt.tensor(I1, qt.jmat(j2, "x"))
-    Jy2 = qt.tensor(I1, qt.jmat(j2, "y"))
-    Jz2 = qt.tensor(I1, qt.jmat(j2, "z"))
+    Jp = sum(Jp_groups[1:], Jp_groups[0])
+    Jm = sum(Jm_groups[1:], Jm_groups[0])
+    Jx = sum(Jx_groups[1:], Jx_groups[0])
+    Jy = sum(Jy_groups[1:], Jy_groups[0])
+    Jz = sum(Jz_groups[1:], Jz_groups[0])
 
-    Jp = Jp1 + Jp2
-    Jm = Jm1 + Jm2
-    Jx = Jx1 + Jx2
-    Jy = Jy1 + Jy2
-    Jz = Jz1 + Jz2
+    N_e_groups = tuple(Jz_g + j * identity for Jz_g, j in zip(Jz_groups, ji))
+    N_e = sum(N_e_groups[1:], N_e_groups[0])
 
-    N_e1 = Jz1 + j1 * identity
-    N_e2 = Jz2 + j2 * identity
-    N_e = N_e1 + N_e2
-    J_drive = omega_1 * Jx1 + omega_2 * Jx2
-    A_weighted = omega_1 * Jm1 + omega_2 * Jm2
+    J_drive = sum(
+        (float(omega) * Jx_g for omega, Jx_g in zip(omega_i, Jx_groups)),
+        0 * Jx_groups[0],
+    )
+    A_weighted = sum(
+        (float(omega) * Jm_g for omega, Jm_g in zip(omega_i, Jm_groups)),
+        0 * Jm_groups[0],
+    )
 
     omega_coeff_local = OmegaCoeffFromPhases(phases)
     if shifted_jump_operator:
@@ -209,32 +190,26 @@ def build_qutip_two_group_fixed_nj_model_from_phases(
         ]
         c_ops = [np.sqrt(Gamma) * A_weighted]
 
-    return QutipTwoGroupFixedNjModel(
-        N=N,
-        N1=N1,
-        N2=N2,
-        NJ1=int(NJ1),
-        NJ2=int(NJ2),
-        NJ=NJ,
+    return QutipGroupedFixedNjModel(
+        NJi=tuple(int(NJ) for NJ in NJi),
+        omega_i=tuple(float(omega) for omega in omega_i),
         Gamma=Gamma,
         shifted_jump_operator=shifted_jump_operator,
         omega0=Omega0,
         delta0=delta0,
         phases=phases,
-        omega_1=float(omega_1),
-        omega_2=omega_2,
         Jp=Jp,
         Jm=Jm,
         Jx=Jx,
         Jy=Jy,
         Jz=Jz,
         N_e=N_e,
-        Jp_groups=(Jp1, Jp2),
-        Jm_groups=(Jm1, Jm2),
-        Jx_groups=(Jx1, Jx2),
-        Jy_groups=(Jy1, Jy2),
-        Jz_groups=(Jz1, Jz2),
-        N_e_groups=(N_e1, N_e2),
+        Jp_groups=Jp_groups,
+        Jm_groups=Jm_groups,
+        Jx_groups=Jx_groups,
+        Jy_groups=Jy_groups,
+        Jz_groups=Jz_groups,
+        N_e_groups=N_e_groups,
         J_drive=J_drive,
         A_weighted=A_weighted,
         H=H,

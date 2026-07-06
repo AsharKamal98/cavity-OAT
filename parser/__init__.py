@@ -7,9 +7,9 @@ from parser.mfe import (
 )
 from parser.qutip import (
     QutipFixedNjModel,
+    QutipGroupedFixedNjModel,
     QutipMCSolverParameters,
     QutipMESolverParameters,
-    QutipTwoGroupFixedNjModel,
 )
 from parser.mfe_residuals import MFEResidualSeries
 from parser.moments import MomentParameters, MomentSeries
@@ -37,9 +37,9 @@ __all__ = [
     "MomentSeries",
     "Phase",
     "QutipFixedNjModel",
+    "QutipGroupedFixedNjModel",
     "QutipMCSolverParameters",
     "QutipMESolverParameters",
-    "QutipTwoGroupFixedNjModel",
     "SectorKey",
     "SectorOperators",
     "SectorWavefunction",

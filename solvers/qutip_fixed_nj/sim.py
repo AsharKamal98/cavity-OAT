@@ -6,8 +6,7 @@ import qutip as qt
 from common.utils.parameters import omega_G_from_weighted_average
 from parser.qutip import QutipMCSolverParameters, QutipMESolverParameters
 from solvers.qutip_fixed_nj.models import (
-    build_qutip_fixed_nj_model_from_phases,
-    build_qutip_two_group_fixed_nj_model_from_phases,
+    build_qutip_grouped_fixed_nj_model_from_phases,
 )
 from solvers.qutip_fixed_nj.utils_sim import (
     _observable_e_ops,
@@ -32,11 +31,21 @@ def simulate_fixed_nj_me_trajectory(
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
 
-    model = build_qutip_fixed_nj_model_from_phases(
-        N=parameters.N,
+    Ni = [int(group_size) for group_size in parameters.Ni]
+    omega_i = [float(coupling) for coupling in parameters.omega_i]
+    omega_i = omega_i + [omega_G_from_weighted_average(omega_i, Ni)]
+    NJi = [group_size // 2 for group_size in Ni]
+
+    model = build_qutip_grouped_fixed_nj_model_from_phases(
         Gamma=parameters.Gamma,
         phases=parameters.phases,
+        omega_i=omega_i,
+        NJi=NJi,
         shifted_jump_operator=parameters.shifted_jump_operator,
+    )
+    print(
+        f"Using QuTiP master equation solver fixed {len(Ni)}-group sector "
+        f"NJi={NJi} with Ni={Ni} and omega_i={model.omega_i}."
     )
     tlist = build_tlist_from_phases(parameters.phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
@@ -58,7 +67,7 @@ def simulate_fixed_nj_me_trajectory(
     return {
         "result": result,
         "model": model,
-        "N": parameters.N,
+        "N": sum(parameters.Ni),
         "Gamma": parameters.Gamma,
         "ntraj": None,
         "tlist": tlist,
@@ -100,8 +109,7 @@ def simulate_fixed_nj_mc_trajectory(
     omega_i = omega_i + [omega_G_from_weighted_average(omega_i, Ni)]
     NJi = [group_size // 2 for group_size in Ni]
 
-    model = build_qutip_two_group_fixed_nj_model_from_phases(
-        N=parameters.N,
+    model = build_qutip_grouped_fixed_nj_model_from_phases(
         Gamma=parameters.Gamma,
         phases=parameters.phases,
         omega_i=omega_i,
@@ -109,9 +117,8 @@ def simulate_fixed_nj_mc_trajectory(
         shifted_jump_operator=parameters.shifted_jump_operator,
     )
     print(
-        "Using QuTiP fixed two-group sector "
-        f"(NJ1, NJ2)=({model.NJ1}, {model.NJ2}) "
-        f"with N1={model.N1}, N2={model.N2}, omega_1={model.omega_1}."
+        f"Using QuTiP quantum trajectories fixed {len(Ni)}-group sector "
+        f"NJi={NJi} with Ni={Ni} and omega_i={model.omega_i}."
     )
     tlist = build_tlist_from_phases(parameters.phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
@@ -151,7 +158,7 @@ def simulate_fixed_nj_mc_trajectory(
     return {
         "result": result,
         "model": model,
-        "N": parameters.N,
+        "N": sum(parameters.Ni),
         "Gamma": parameters.Gamma,
         "ntraj": ntraj,
         "tlist": tlist,
