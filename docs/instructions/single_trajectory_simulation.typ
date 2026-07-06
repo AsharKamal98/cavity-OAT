@@ -9,7 +9,7 @@
 = Scope
 
 This file describes the intended implementation of
-`simulate_single_trajectory(...)` in the custom strong-symmetry MCWF solver.
+`_simulate_single_trajectory(...)` in the custom strong-symmetry MCWF solver.
 It should be read together with
 `docs/instructions/simulation_precompute.typ`.
 
@@ -61,43 +61,28 @@ propagators used here are defined in
 
 = Data In
 
-The single-trajectory entry point should be:
+The private single-trajectory entry point should be:
 
 ```python
-simulate_single_trajectory(
-    N,
+_simulate_single_trajectory(
+    Ni,
+    omega_i,
     Gamma,
     phases,
     sector_coeffs,
     *,
-    internal_sector_states=None,
     dt=1e-3,
-    num_snapshots=101,
-    seed=1234,
-    seed_sequence=None,
+    t_eval,
+    seed_sequence,
     shifted_jump_operator=False,
-    precomputed=None,
-    omega_1=None,
-    omega_2=None,
-    N1=None,
-    N2=None,
+    precomputed,
 ) -> TrajectoryResult
 ```
 
-The function should validate at least:
-
-- `N > 0`;
-- `Gamma >= 0`;
-- `dt > 0`;
-- `num_snapshots >= 2`;
-- `shifted_jump_operator=True` implies `Gamma > 0`.
-
-If any sector key is a tuple, the solver should require:
-
-- `omega_1 is not None`;
-- `omega_2 is not None`;
-- `N1 is not None` and `N2 is not None`;
-- `N1 + N2 = N`.
+The ensemble layer should validate the public simulation inputs before calling
+this private helper. `_simulate_single_trajectory(...)` may therefore rely on
+simple internal assertions for basic invariants such as
+`len(omega_i) = len(Ni)` and `precomputed is not None`.
 
 = Data Out
 
@@ -105,53 +90,37 @@ The returned `TrajectoryResult` should contain:
 
 ```python
 TrajectoryResult(
-    N=N,
-    Gamma=Gamma,
-    phases=list(phases),
-    shifted_jump_operator=shifted_jump_operator,
-    t_eval=t_eval,
-    sectors=sector_list,
-    sector_multiplicities=multiplicities,
     final_sector_blocks=...,
     snapshots=...,
     jump_times=...,
     jump_count=len(jump_times),
-    sector_dimensions=dims,
-    omega_1=omega_1,
-    omega_2=omega_2,
-    N1=N1,
-    N2=N2,
     total_step_count=...,
     non_precomputed_step_count=...,
 )
 ```
 
-For inhomogeneous runs, `omega_2` should be computed once by the ensemble
-runner and passed into `simulate_single_trajectory(...)`. The single-trajectory
-function should not recompute `omega_2`.
+Shared run metadata such as `Ni`, `omega_i`, `Gamma`, `phases`,
+`shifted_jump_operator`, `t_eval`, `sectors`, `sector_multiplicities`, and
+`sector_dimensions` should live on the enclosing `TrajectoryEnsemble.metadata`
+rather than being duplicated on every `TrajectoryResult`.
 
 = Initialization
 
 == RNG
 
-If `seed_sequence is None`, the current code should continue to build the
-trajectory-local RNG through:
+The trajectory-local RNG should be built directly from the supplied child seed:
 
 ```python
-seed_seq = np.random.SeedSequence(seed).spawn(1)[0]
-rng = np.random.default_rng(seed_seq)
+rng = np.random.default_rng(seed_sequence)
 ```
-
-If `seed_sequence` is provided, it should override `seed`.
 
 This should stay consistent with the ensemble seeding convention documented in
 `docs/instructions/ensemble_simulation.typ`.
 
 == Precompute and Sector Ordering
 
-If `precomputed is None`, the solver should call
-`build_precomputed_trajectory_data(...)` itself. Otherwise it should reuse the
-supplied dictionary without rebuilding it.
+The solver should reuse the supplied `precomputed` dictionary without
+rebuilding it.
 
 The hot loop should read the following aligned objects from `precomputed`:
 
@@ -177,23 +146,22 @@ while snapshots and result outputs should convert back to dictionaries through
 The initial state should be built through the existing helper:
 
 ```python
-initial_blocks = build_initial_sector_state(N, sector_coeffs, internal_sector_states)
+initial_blocks = build_initial_sector_state(N, sector_coeffs)
 psi_blocks = renormalize_psi_blocks([initial_blocks[key] for key in sector_list])
 ```
 
 `build_initial_sector_state(...)` should remain authoritative for:
 
 - normalized sector coefficients;
-- default `|n_e = 0>` or `|(n_(e,1), n_(e,2)) = (0,0)>` internal states;
-- validation of supplied internal block shapes.
+- default `|n_e = 0>` or `|(n_(e,1), n_(e,2)) = (0,0)>` internal states.
 
 The common saved-time grid should be constructed once through:
 
 ```python
-t_eval = build_t_eval_from_phases(phases, num_snapshots)
+t_eval = input t_eval
 ```
 
-which currently uses `np.linspace(0.0, total_time, num_snapshots)`.
+which should be passed in explicitly by the ensemble layer.
 
 = Snapshot Construction
 
@@ -406,10 +374,10 @@ trajectory state-update rules.
 = Method in Pseudo-Code
 
 ```python
-def simulate_single_trajectory(...):
-    validate inputs
+def _simulate_single_trajectory(...):
+    assume ensemble-level validation is already done
     build one trajectory-local RNG
-    load or build precomputed data
+    load precomputed data
     build t_eval and initial psi_blocks
     save snapshot at t = 0
 

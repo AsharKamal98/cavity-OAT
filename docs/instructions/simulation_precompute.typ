@@ -96,16 +96,13 @@ The precompute entry point is:
 
 ```python
 build_precomputed_trajectory_data(
-    N,
+    Ni,
+    omega_i,
     Gamma,
     phases,
     sector_coeffs,
     dt,
     shifted_jump_operator=False,
-    omega_1=None,
-    omega_2=None,
-    N1=None,
-    N2=None,
 ) -> dict
 ```
 
@@ -120,12 +117,11 @@ Inhomogeneous two-group sector keys should be tuples:
 ```python
 sector_coeffs = {(Nj1, Nj2): coeff}
 ```
-Tuple sector keys require `N1` and `N2`. The function should
-validate that $N_1 + N_2 = N$. Tuple sector keys also require `omega_1` and
-`omega_2`. The group-2 coupling should be computed once by the ensemble layer
-through `omega2_from_weighted_average(...)` in
-`common/utils/parameters.py`; sector-operator construction should
-receive this fixed value and should not recompute it per sector.
+`Ni` should contain the group sizes and `omega_i` should contain the completed
+group couplings. For homogeneous runs, use `Ni=[N]` and `omega_i=[1.0]`. For
+two-group tuple sectors, use `Ni=[N1, N2]` together with the completed
+two-entry `omega_i` list. The precompute layer should receive this completed
+list and should not reconstruct couplings per sector.
 
 = Data Out
 
@@ -193,15 +189,15 @@ Detailed construction rules for `build_sector_ops_for_key(...)`,
 Sector operators should be constructed through:
 
 ```python ops_list = [
-    build_sector_ops_for_key(key, omega_1, omega_2, N1, N2)
+    build_sector_ops_for_key(key, Ni=Ni, omega_i=omega_i)
     for key in sector_list
 ]
 ```
 
-For homogeneous integer keys, `omega_1`, `omega_2`, `N1`, and `N2` are nullable
-and the function should return the usual single-sector operators on the `|n_e>`
-basis. For inhomogeneous tuple keys, `omega_1`, `omega_2`, `N1`, and `N2` are
-required and the function should return product Dicke-basis operators on
+For homogeneous integer keys, `Ni` and `omega_i` should be one-entry lists and
+the function should return the usual single-sector operators on the `|n_e>`
+basis. For inhomogeneous tuple keys, the current implementation expects
+two-entry `Ni` and `omega_i` lists and returns product Dicke-basis operators on
 `|n_e1, n_e2>`.
 
 In both cases, the function returns a `SectorOperators` object for a given sector key. Each object is one element of `ops_list`. In pseudo-code, `ops` means the `SectorOperators` object for the current sector. This object should contain the following fields:

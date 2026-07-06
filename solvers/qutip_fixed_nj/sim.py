@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
-
 import numpy as np
 import qutip as qt
 
+from common.utils.parameters import omega_G_from_weighted_average
+from parser.qutip import QutipMCSolverParameters, QutipMESolverParameters
 from solvers.qutip_fixed_nj.models import (
     build_qutip_fixed_nj_model_from_phases,
     build_qutip_two_group_fixed_nj_model_from_phases,
@@ -16,14 +16,10 @@ from solvers.qutip_fixed_nj.utils_sim import (
 )
 
 def simulate_fixed_nj_me_trajectory(
-    N: int,
-    Gamma: float,
-    phases: Sequence,
+    parameters: QutipMESolverParameters,
     *,
     num_points: int = 600,
     store_states: bool = True,
-    shifted_jump_operator: bool = False,
-    sector_distribution: str = "square",
 ):
     """
     Run fixed-N_J mesolve benchmark and return raw solver output together with
@@ -37,13 +33,12 @@ def simulate_fixed_nj_me_trajectory(
         raise ValueError("num_points must be at least 2.")
 
     model = build_qutip_fixed_nj_model_from_phases(
-        N=N,
-        Gamma=Gamma,
-        phases=phases,
-        shifted_jump_operator=shifted_jump_operator,
-        sector_distribution=sector_distribution,
+        N=parameters.N,
+        Gamma=parameters.Gamma,
+        phases=parameters.phases,
+        shifted_jump_operator=parameters.shifted_jump_operator,
     )
-    tlist = build_tlist_from_phases(phases, num_points=num_points)
+    tlist = build_tlist_from_phases(parameters.phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
 
     options = {
@@ -63,8 +58,8 @@ def simulate_fixed_nj_me_trajectory(
     return {
         "result": result,
         "model": model,
-        "N": N,
-        "Gamma": Gamma,
+        "N": parameters.N,
+        "Gamma": parameters.Gamma,
         "ntraj": None,
         "tlist": tlist,
         "num_points": num_points,
@@ -73,26 +68,17 @@ def simulate_fixed_nj_me_trajectory(
 
 
 def simulate_fixed_nj_mc_trajectory(
-    N: int,
-    Gamma: float,
-    phases: Sequence,
+    parameters: QutipMCSolverParameters,
     *,
     num_points: int = 600,
     ntraj: int = 200,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     keep_runs_results: bool = True,
-    shifted_jump_operator: bool = False,
-    sector_distribution: str = "square",
-    N1: Optional[int] = None,
-    N2: Optional[int] = None,
-    omega_1: float = 1.0,
-    N_J1: Optional[int] = None,
-    N_J2: Optional[int] = None,
-    n_processes: Optional[int] = None,
-    norm_steps: Optional[int] = None,
-    norm_tol: Optional[float] = None,
-    norm_t_tol: Optional[float] = None,
-    norm_min_step: Optional[float] = None,
+    n_processes: int | None = None,
+    norm_steps: int | None = None,
+    norm_tol: float | None = None,
+    norm_t_tol: float | None = None,
+    norm_min_step: float | None = None,
 ):
     """
     Run fixed-N_J mcsolve benchmark and return raw solver output together with
@@ -101,46 +87,33 @@ def simulate_fixed_nj_mc_trajectory(
     The time grid is built internally as num_points equally spaced samples over
     the full protocol duration.
 
-    Parameters
-    ----------
-    sector_distribution
-        Initial N_J-sector distribution choice shared with the custom MCWF
-        helpers. In the fixed-N_J QuTiP benchmark this only validates and
-        documents the initialization choice, because the simulation keeps the
-        single sector N_J = N/2.
-    n_processes
-        QuTiP trajectory parallelism setting. ``None`` preserves the default
-        serial behavior. ``-1`` uses all available CPU cores. Positive values
-        request that many worker processes.
-    norm_steps, norm_tol, norm_t_tol, norm_min_step
-        Optional QuTiP collapse-time search controls forwarded to ``mcsolve``.
-        Leave them as ``None`` to use QuTiP's defaults.
     """
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
+    if ntraj <= 0:
+        raise ValueError("ntraj must be positive.")
+    if n_processes is not None and n_processes != -1 and n_processes <= 0:
+        raise ValueError("n_processes must be None, -1, or a positive integer.")
 
-    if N1 is None:
-        N1 = N // 2
-    if N2 is None:
-        N2 = N - N1
+    Ni = [int(group_size) for group_size in parameters.Ni]
+    omega_i = [float(coupling) for coupling in parameters.omega_i]
+    omega_i = omega_i + [omega_G_from_weighted_average(omega_i, Ni)]
+    NJi = [group_size // 2 for group_size in Ni]
 
     model = build_qutip_two_group_fixed_nj_model_from_phases(
-        N=N,
-        Gamma=Gamma,
-        phases=phases,
-        N1=N1,
-        N2=N2,
-        omega_1=omega_1,
-        N_J1=N_J1,
-        N_J2=N_J2,
-        shifted_jump_operator=shifted_jump_operator,
+        N=parameters.N,
+        Gamma=parameters.Gamma,
+        phases=parameters.phases,
+        omega_i=omega_i,
+        NJi=NJi,
+        shifted_jump_operator=parameters.shifted_jump_operator,
     )
     print(
         "Using QuTiP fixed two-group sector "
-        f"(N_J1, N_J2)=({model.N_J1}, {model.N_J2}) "
+        f"(NJ1, NJ2)=({model.NJ1}, {model.NJ2}) "
         f"with N1={model.N1}, N2={model.N2}, omega_1={model.omega_1}."
     )
-    tlist = build_tlist_from_phases(phases, num_points=num_points)
+    tlist = build_tlist_from_phases(parameters.phases, num_points=num_points)
     tlist = np.asarray(tlist, dtype=float)
 
     options = {
@@ -178,8 +151,8 @@ def simulate_fixed_nj_mc_trajectory(
     return {
         "result": result,
         "model": model,
-        "N": N,
-        "Gamma": Gamma,
+        "N": parameters.N,
+        "Gamma": parameters.Gamma,
         "ntraj": ntraj,
         "tlist": tlist,
         "num_points": num_points,

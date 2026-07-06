@@ -23,8 +23,7 @@ def phase_values_at_time(t: float, phases: Sequence[Phase]) -> Tuple[float, floa
     boundaries = phase_boundary_times(phases)
     t_value = float(t)
     total_time = float(boundaries[-1])
-    if t_value < 0.0 or t_value > total_time:
-        raise ValueError(f"t must lie in [0, {total_time}], got {t_value}.")
+    t_value = min(max(t_value, 0.0), total_time)
 
     for index, boundary in enumerate(boundaries):
         if t_value <= boundary or index == len(phases) - 1:

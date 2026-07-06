@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 
 from solvers.mcwf.utils import map_with_optional_pool
 from parser.common import Array, Phase
 from parser.j_moments import JMomentSnapshot, JMomentSeries
-from parser.quantum_trajectories import TrajectoryEnsemble, TrajectoryResult, TrajectorySnapshot
+from parser.mcwf import (
+    TrajectoryEnsemble,
+    TrajectoryEnsembleMetadata,
+    TrajectoryResult,
+    TrajectorySnapshot,
+)
 from solvers.mcwf.sim import build_phase_jump_operator_for_sector
 from solvers.mcwf.state_helpers import total_norm2
 from solvers.mcwf.operator_helpers import (
@@ -38,10 +43,8 @@ def _compute_snapshot_j_moments(
     phases: list[Phase],
     Gamma: float,
     shifted_jump_operator: bool,
-    omega_1: Optional[float],
-    omega_2: Optional[float],
-    N1: Optional[int],
-    N2: Optional[int],
+    Ni: tuple[int, ...],
+    omega_i: tuple[float, ...],
 ) -> JMomentSnapshot:
     """
     Compute first-order J moments and jump rate for one saved snapshot.
@@ -91,10 +94,8 @@ def _compute_snapshot_j_moments(
         # e.g. by attatching to TrajectoryEnsamble.
         ops = build_sector_ops_for_key(
             sector_key,
-            omega_1=omega_1,
-            omega_2=omega_2,
-            N1=N1,
-            N2=N2,
+            Ni=Ni if has_groups else None,
+            omega_i=omega_i if has_groups else None,
         )
         psi_prob = np.abs(psi) ** 2
         psi_norm2 = float(np.vdot(psi, psi).real)
@@ -168,6 +169,7 @@ def _compute_snapshot_j_moments(
 
 def compute_trajectory_j_moments(
     trajectory: TrajectoryResult,
+    metadata: TrajectoryEnsembleMetadata,
     *,
     tol: float = 1e-12,
 ) -> JMomentSeries:
@@ -181,19 +183,17 @@ def compute_trajectory_j_moments(
     """
     _ = tol  # Kept for API symmetry with later averaging/diagnostic functions.
 
-    group_count = 2 if any(isinstance(key, tuple) for key in trajectory.sectors) else 0
+    group_count = 2 if any(isinstance(key, tuple) for key in metadata.sectors) else 0
     has_groups = group_count > 0
     j_moment_snapshots = [
         _compute_snapshot_j_moments(
             snap,
             has_groups=has_groups,
-            phases=trajectory.phases,
-            Gamma=trajectory.Gamma,
-            shifted_jump_operator=trajectory.shifted_jump_operator,
-            omega_1=trajectory.omega_1,
-            omega_2=trajectory.omega_2,
-            N1=trajectory.N1,
-            N2=trajectory.N2,
+            phases=metadata.phases,
+            Gamma=metadata.Gamma,
+            shifted_jump_operator=metadata.shifted_jump_operator,
+            Ni=metadata.Ni,
+            omega_i=metadata.omega_i,
         )
         for snap in trajectory.snapshots
     ]
@@ -236,12 +236,14 @@ def compute_trajectory_j_moments(
 # Ensemble trajectory J moments
 # -----------------------------------------------------------------------------
 
-def _compute_trajectory_j_moments_worker(args: tuple[TrajectoryResult, float]) -> JMomentSeries:
+def _compute_trajectory_j_moments_worker(
+    args: tuple[TrajectoryResult, TrajectoryEnsembleMetadata, float]
+) -> JMomentSeries:
     """
     Top-level worker used to parallelize per-trajectory J-moment extraction.
     """
-    trajectory, tol = args
-    return compute_trajectory_j_moments(trajectory, tol=tol)
+    trajectory, metadata, tol = args
+    return compute_trajectory_j_moments(trajectory, metadata, tol=tol)
 
 
 def compute_average_j_moments(
@@ -334,15 +336,14 @@ def compute_mcwf_j_moments(
         raise ValueError("Ensemble is empty.")
     if reference != "first":
         raise ValueError("Currently only reference='first' is supported.")
+    if ensemble.metadata is None:
+        raise ValueError("TrajectoryEnsemble.metadata is required to compute MCWF J moments.")
 
-    t_ref = np.asarray(
-        [snap.time for snap in ensemble.trajectories[0].snapshots],
-        dtype=float,
-    )
+    t_ref = np.asarray(ensemble.metadata.t_eval, dtype=float)
 
     moments = map_with_optional_pool(
         _compute_trajectory_j_moments_worker,
-        [(traj, tol) for traj in ensemble.trajectories],
+        [(traj, ensemble.metadata, tol) for traj in ensemble.trajectories],
         n_processes=n_processes,
         progress_desc="compute_mcwf_j_moments",
     )
@@ -351,7 +352,7 @@ def compute_mcwf_j_moments(
         if len(m.t) != len(t_ref) or not np.allclose(m.t, t_ref, atol=1e-12, rtol=0.0):
             raise ValueError(
                 "All trajectories must share the same t_eval snapshot grid. "
-                "Run the ensemble through the common num_snapshots API."
+                "Run the ensemble through the common t_eval API."
             )
 
     averaged = compute_average_j_moments(moments, tol=tol)

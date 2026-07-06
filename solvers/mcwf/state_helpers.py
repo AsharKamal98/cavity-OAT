@@ -7,7 +7,7 @@ import numpy as np
 
 from solvers.mcwf.operator_helpers import split_sector_key, total_active_atoms_in_sector
 from parser.common import Array
-from parser.quantum_trajectories import SectorKey
+from parser.mcwf import SectorKey
 
 
 SUPPORTED_SECTOR_DISTRIBUTIONS = {"square", "binomial"}
@@ -87,7 +87,7 @@ def _sector_distribution_weight(N: int, Nj: int, sector_distribution: str) -> fl
     return float(sqrt(comb(N, Nj)))
 
 
-def centered_sector_initial_coeffs(
+def single_group_centered_sector_initial_coeffs(
     N: int,
     dN: int,
     *,
@@ -182,13 +182,13 @@ def _group_resolved_binomial_probability_weight(N1: int, N2: int, Nj1: int, Nj2:
     return float(comb(N1, Nj1) * comb(N2, Nj2))
 
 
-def centered_group_resolved_sector_initial_coeffs(
+def two_group_centered_sector_initial_coeffs(
     N: int,
     dN: int,
     N1: int,
     N2: int,
     *,
-    sector_distribution: str = "square",
+    sector_distribution: str = "binomial",
 ) -> Dict[tuple[int, int], complex]:
     """
     Build a normalized superposition of two-group sectors centered around N/2.
@@ -289,6 +289,41 @@ def centered_group_resolved_sector_initial_coeffs(
             coeffs[pair] = float(np.sqrt(probability))
 
     return normalize_sector_coefficients(coeffs)
+
+
+def centered_sector_initial_coeffs(
+    Ni: list[int],
+    dN: int,
+    *,
+    sector_distribution: str = "binomial",
+) -> Dict[SectorKey, complex]:
+    """
+    This is a temprary wrapper to dispatch to the correct initial-sector coefficient helper based on the number of groups.
+    This will later be replaced by a proper probability-based initial-sector coefficient generator that can handle arbitrary numbers of groups.
+    """
+    if not Ni:
+        raise ValueError("Ni must contain at least one group size.")
+    if any(Ng < 0 for Ng in Ni):
+        raise ValueError("All group sizes in Ni must be non-negative.")
+
+    if len(Ni) == 1:
+        return single_group_centered_sector_initial_coeffs(
+            Ni[0],
+            dN=dN,
+            sector_distribution=sector_distribution,
+        )
+    if len(Ni) == 2:
+        N1, N2 = Ni
+        return two_group_centered_sector_initial_coeffs(
+            N1 + N2,
+            dN=dN,
+            N1=N1,
+            N2=N2,
+            sector_distribution=sector_distribution,
+        )
+    raise ValueError(
+        f"centered_sector_initial_coeffs currently supports 1 or 2 groups, got {len(Ni)}."
+    )
 
 
 # -----------------------------------------------------------------------------

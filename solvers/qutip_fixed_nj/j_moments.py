@@ -41,7 +41,7 @@ def compute_qutip_j_moments(
     y = _mean_series(result.expect[1])
     z = _mean_series(result.expect[2])
     N_e = _mean_series(result.expect[3])
-    N_j = np.full_like(t, float(getattr(model, "N_J")), dtype=float)
+    N_j = np.full_like(t, float(getattr(model, "NJ")), dtype=float)
 
     x_groups = y_groups = z_groups = N_e_groups = N_j_groups = None
     if hasattr(model, "Jx_groups") and len(result.expect) >= 12:
@@ -62,8 +62,8 @@ def compute_qutip_j_moments(
             _mean_series(result.expect[11]),
         )
         N_j_groups = (
-            np.full_like(t, float(getattr(model, "N_J1")), dtype=float),
-            np.full_like(t, float(getattr(model, "N_J2")), dtype=float),
+            np.full_like(t, float(getattr(model, "NJ1")), dtype=float),
+            np.full_like(t, float(getattr(model, "NJ2")), dtype=float),
         )
 
     j_moments = JMomentSeries(

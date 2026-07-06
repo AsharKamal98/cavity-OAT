@@ -17,20 +17,20 @@ The ensemble layer should not change the physical model. It should:
 
 - construct reproducible trajectory seeds;
 - build reusable phase/sector data once;
-- run many independent `simulate_single_trajectory(...)` calls;
+- run many independent `_simulate_single_trajectory(...)` calls;
 - return a `TrajectoryEnsemble` on one common saved-time grid.
 
 = Method
 
 For fixed
 $
-N, Gamma, {"phases"}, {"sector_coeffs"}, d t,
+N_i, omega_i, Gamma, {"phases"}, d t,
 $
 the ensemble should consist of `ntraj` independent unravelings of the same
 piecewise-constant non-Hermitian evolution and jump process:
 
 $
-T_k = "simulate_single_trajectory"(..., {"seed_sequence"}_k, {"precomputed"}),
+T_k = "_simulate_single_trajectory"(..., {"seed_sequence"}_k, {"precomputed"}),
 quad k = 1, dots.c, n_"traj".
 $
 
@@ -50,20 +50,22 @@ independent calls to that solver.
 The ensemble entry point should be:
 
 ```python
-run_trajectory_ensemble(
-    N,
+MCWFSolverParameters(
+    Ni,
+    dN=0,
+    omega_i,
     Gamma,
     phases,
-    sector_coeffs,
-    *,
-    internal_sector_states=None,
+    sector_distribution="binomial",
     dt=1e-3,
-    num_snapshots=101,
-    seed=None,
     shifted_jump_operator=False,
-    omega_1=None,
-    N1=None,
-    N2=None,
+)
+
+run_trajectory_ensemble(
+    parameters,
+    *,
+    t_eval,
+    seed=None,
     ntraj,
     n_processes=None,
     chunksize=1,
@@ -74,18 +76,31 @@ run_trajectory_ensemble(
 The same homogeneous and inhomogeneous sector-key conventions from
 `docs/instructions/simulation_precompute.typ` should be supported here.
 
-The ensemble function should validate at least:
+`MCWFSolverParameters` should validate at least:
+
+- `Ni` is nonempty and all group sizes are non-negative;
+- `len(omega_i) = len(Ni) - 1`;
+- `shifted_jump_operator=True` implies `Gamma > 0`;
+- `dt > 0`.
+
+The ensemble entry point should validate at least:
 
 - `ntraj > 0`;
-- `num_snapshots >= 2`;
-- `shifted_jump_operator=True` implies `Gamma > 0`;
+- `t_eval` is one-dimensional, strictly increasing, starts at `0`, and ends at
+  the total protocol time;
 - `n_processes` is one of `None`, `1`, `-1`, or a positive integer.
 
-Tuple sector keys should continue to require `omega_1`, `N1`, and `N2`.
-The ensemble layer should compute `omega_2` once through
-`omega2_from_weighted_average(...)`, pass `omega_1`, `omega_2`, `N1`, and `N2`
-to single-trajectory helpers, and pass the same `omega_1`, `omega_2`, `N1`,
-and `N2` to precompute.
+The ensemble layer should take `Ni` and the first `G-1` couplings in
+`omega_i`, complete the final coupling once through
+`omega_G_from_weighted_average(...)`, and then pass the completed `omega_i`
+list together with `Ni` to precompute and single-trajectory helpers. For
+single-group runs, this means `Ni=[N]` and `omega_i=[]`.
+
+If `sector_coeffs is None`, the ensemble runner should construct centered
+initial coefficients itself through `centered_sector_initial_coeffs(...)` using
+`dN` and `sector_distribution`. It should then run the same
+`check_initial_sector_omega_ratio(...)` validation that previously lived in the
+deleted `run_h_sim(...)` / `run_inh_sim(...)` wrappers.
 
 = Seed Construction and Reproducibility
 
@@ -102,14 +117,14 @@ This convention should preserve the current reproducibility rule:
 
 - trajectory `0` in `run_trajectory_ensemble(..., seed=seed, ntraj>=1)` should
   use the same child seed as a direct
-  `simulate_single_trajectory(..., seed=seed)` call;
+  `_simulate_single_trajectory(..., seed_sequence=child)` call;
 - serial and multiprocessing ensemble runs should use the same child seed list;
 - the returned `TrajectoryEnsemble.seeds` should store
   `tuple(child.spawn_key)` for each trajectory in output order.
 
 The ensemble layer should not draw random numbers itself beyond seed
 construction. All physical randomness should remain inside
-`simulate_single_trajectory(...)`.
+`_simulate_single_trajectory(...)`.
 
 = Precompute Reuse
 
@@ -117,15 +132,13 @@ The ensemble code should build reusable phase/sector data once:
 
 ```python
 precomputed = build_precomputed_trajectory_data(
-    N=N,
+    Ni=Ni,
+    omega_i=omega_i,
     Gamma=Gamma,
     phases=phases,
     sector_coeffs=sector_coeffs,
     dt=dt,
     shifted_jump_operator=shifted_jump_operator,
-    omega_1=omega_1,
-    N1=N1,
-    N2=N2,
 )
 ```
 
@@ -145,7 +158,7 @@ serially:
 
 ```python
 trajectories = [
-    simulate_single_trajectory(..., seed_sequence=child, precomputed=precomputed)
+    _simulate_single_trajectory(..., seed_sequence=child, precomputed=precomputed)
     for child in seed_sequences
 ]
 ```
@@ -166,19 +179,15 @@ initialize worker-local read-only state once through:
 
 ```python
 _init_trajectory_worker(
-    N,
+    Ni,
     Gamma,
     phases,
     sector_coeffs,
-    internal_sector_states,
     dt,
-    num_snapshots,
+    t_eval,
     shifted_jump_operator,
     precomputed,
-    omega_1,
-    omega_2,
-    N1,
-    N2,
+    omega_i,
 )
 ```
 
@@ -211,7 +220,10 @@ important than minimizing task-dispatch overhead for the current workflow.
 
 ```python
 def run_trajectory_ensemble(...):
-    validate ensemble-level inputs
+    validate ensemble runtime inputs
+    complete omega_i by appending omega_G_from_weighted_average(...)
+    sector_coeffs = centered_sector_initial_coeffs(...)
+    run check_initial_sector_omega_ratio(...)
 
     parent_seed_sequence = np.random.SeedSequence(seed)
     seed_sequences = parent_seed_sequence.spawn(ntraj)
@@ -221,7 +233,7 @@ def run_trajectory_ensemble(...):
 
     if n_processes is None or n_processes == 1:
         trajectories = [
-            simulate_single_trajectory(..., seed_sequence=child, precomputed=precomputed)
+            _simulate_single_trajectory(..., seed_sequence=child, precomputed=precomputed)
             for child in seed_sequences
         ]
     else:
@@ -237,14 +249,14 @@ def run_trajectory_ensemble(...):
     return TrajectoryEnsemble(
         trajectories=trajectories,
         seeds=seed_keys,
-        parameters=parameters,
+        metadata=metadata,
     )
 ```
 
 The ensemble layer should reuse the existing helpers:
 
 - `build_precomputed_trajectory_data(...)` for shared phase/sector operators;
-- `simulate_single_trajectory(...)` for trajectory physics and snapshot saving;
+- `_simulate_single_trajectory(...)` for trajectory physics and snapshot saving;
 - `_init_trajectory_worker(...)` and `_simulate_single_trajectory_worker(...)`
   for multiprocessing state reuse.
 
@@ -259,24 +271,22 @@ The returned object should be:
 TrajectoryEnsemble(
     trajectories=trajectories,
     seeds=seed_keys,
-    parameters=parameters,
+    metadata=metadata,
 )
 ```
 
 `TrajectoryEnsemble.trajectories` should preserve submission order, not sorted
 post hoc by jump count, runtime, or seed.
-`TrajectoryEnsemble.parameters` should store shared simulation metadata such as
-`Gamma`, `phases`, `omega_groups`, and `N_groups`. The ensemble runner should
-pass `omega_groups=(omega_1, omega_2)` and `N_groups=(N1, N2)` once those
-values are available.
+`TrajectoryEnsemble.metadata` should store shared simulation metadata such as
+`Ni`, `omega_i`, `Gamma`, `phases`, `shifted_jump_operator`, `t_eval`,
+`sectors`, `sector_multiplicities`, and `sector_dimensions`.
 
 Each element should already be a complete `TrajectoryResult`, including:
 
-- `t_eval`;
 - saved `snapshots`;
 - `jump_times` and `jump_count`;
 - `final_sector_blocks`;
-- sector metadata and runtime step counters.
+- runtime step counters.
 
 = Invariants and Edge Cases
 
@@ -284,9 +294,8 @@ Each element should already be a complete `TrajectoryResult`, including:
   `run_trajectory_ensemble(...)`, not once per trajectory.
 - Serial and multiprocessing paths should differ only in execution strategy, not
   in seed semantics or returned data structure.
-- All trajectories in one ensemble should use the same `num_snapshots` and
-  therefore the same `t_eval` grid, because downstream ensemble averaging
-  assumes aligned saved times.
+- All trajectories in one ensemble should use the same explicit `t_eval` grid,
+  because downstream ensemble averaging assumes aligned saved times.
 - Worker-local global state should be treated as read-only during simulation.
   Do not mutate the shared `precomputed` dictionary inside worker tasks.
 - The current code prints a step-summary diagnostic at the end of both serial

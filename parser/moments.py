@@ -36,14 +36,13 @@ class MomentSeries(BaseModel):
         if values.get("t") is not None:
             return values
 
-        phases = values.get("phases")
+        total_time = values.get("total_time")
         num_snapshots = values.get("num_snapshots")
-        if phases is None or num_snapshots is None:
+        if total_time is None or num_snapshots is None:
             return values
 
         if num_snapshots < 2:
             raise ValueError("num_snapshots must be at least 2.")
-        total_time = float(sum(phase.duration for phase in phases))
         values["t"] = np.linspace(0.0, total_time, num_snapshots, dtype=float)
         return values
 

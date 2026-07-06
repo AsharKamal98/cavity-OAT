@@ -1,46 +1,42 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Optional
 
 import numpy as np
 import qutip as qt
 
-from common.utils.parameters import omega2_from_weighted_average
 from parser.qutip import QutipFixedNjModel, QutipTwoGroupFixedNjModel
-from solvers.mcwf.state_helpers import centered_sector_initial_coeffs
 from solvers.qutip_fixed_nj.utils_sim import OmegaCoeffFromPhases, _delta_coeff, _omega_coeff
 
 
 def build_qutip_fixed_nj_model_from_phases(
     N: int,
     Gamma: float,
-    phases: Sequence,
+    phases: list,
     *,
     shifted_jump_operator: bool = False,
-    sector_distribution: str = "square",
 ) -> QutipFixedNjModel:
     """
-    Build a fixed-N_J two-level collective model in QuTiP using the Dicke basis.
+    Build a fixed-NJ two-level collective model in QuTiP using the Dicke basis.
     """
     if len(phases) < 3:
         raise ValueError("Need at least 3 phases.")
     if N <= 0:
         raise ValueError("N must be positive.")
     if N % 2 != 0:
-        raise ValueError("Need even N so that N_J = N/2 is integer.")
+        raise ValueError("Need even N so that NJ = N/2 is integer.")
     if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
             "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
             "operator contains omega / Gamma."
         )
 
-    initial_sector_coeffs = centered_sector_initial_coeffs(
-        N,
-        dN=0,
-        sector_distribution=sector_distribution,
-    )
-    N_J = next(iter(initial_sector_coeffs))
-    j = N_J / 2.0
+    NJ = N // 2
+    j = NJ / 2.0
+
+    # Initial state
+    dim = int(2 * j + 1)
+    psi0 = qt.basis(dim, dim - 1)
 
     Omega0 = float(phases[0].omega)
     delta0 = float(phases[1].delta)
@@ -66,25 +62,18 @@ def build_qutip_fixed_nj_model_from_phases(
             [1j / np.sqrt(Gamma) * identity, omega_coeff_local],
         ])
         c_ops = [shifted_c_op]
-        unraveling_picture = "shifted"
     else:
         H = [
             [Jx, _omega_coeff],
             [-N_e, _delta_coeff],
         ]
         c_ops = [np.sqrt(Gamma) * Jm]
-        unraveling_picture = "regular"
-
-    dim = int(2 * j + 1)
-    psi0 = qt.basis(dim, dim - 1)
 
     return QutipFixedNjModel(
         N=N,
-        N_J=N_J,
-        j=j,
+        NJ=NJ,
         Gamma=Gamma,
         shifted_jump_operator=shifted_jump_operator,
-        unraveling_picture=unraveling_picture,
         omega0=Omega0,
         delta0=delta0,
         phases=phases,
@@ -106,60 +95,64 @@ def build_qutip_fixed_nj_model_from_phases(
 def _default_two_group_fixed_sector(N: int, N1: int, N2: int) -> tuple[int, int]:
     """Choose the central fixed active-sector split closest to group sizes."""
     if N % 2 != 0:
-        raise ValueError("Need even N so that central N_J = N/2 is integer.")
-    N_J = N // 2
+        raise ValueError("Need even N so that central NJ = N/2 is integer.")
+    NJ = N // 2
     candidates = [
-        (Nj1, N_J - Nj1)
-        for Nj1 in range(max(0, N_J - N2), min(N1, N_J) + 1)
+        (Nj1, NJ - Nj1)
+        for Nj1 in range(max(0, NJ - N2), min(N1, NJ) + 1)
     ]
     if not candidates:
         raise ValueError("No valid two-group fixed sector exists for the given group sizes.")
-    target_Nj1 = N_J * N1 / N
+    target_Nj1 = NJ * N1 / N
     return min(candidates, key=lambda pair: (abs(pair[0] - target_Nj1), pair[0]))
 
 
 def build_qutip_two_group_fixed_nj_model_from_phases(
     N: int,
     Gamma: float,
-    phases: Sequence,
+    phases: list,
     *,
-    N1: int,
-    N2: int,
-    omega_1: float = 1.0,
-    N_J1: Optional[int] = None,
-    N_J2: Optional[int] = None,
+    omega_i: list[float],
+    NJi: list[int],
     shifted_jump_operator: bool = False,
 ) -> QutipTwoGroupFixedNjModel:
     """
     Build a fixed two-group inhomogeneous collective model in QuTiP.
     """
+    if len(omega_i) != 2:
+        raise ValueError("omega_i must contain exactly two group couplings.")
+    if len(NJi) != 2:
+        raise ValueError("NJi must contain exactly two group active-atom numbers.")
     if len(phases) < 3:
         raise ValueError("Need at least 3 phases.")
     if N <= 0:
         raise ValueError("N must be positive.")
-    if N1 < 0 or N2 < 0:
-        raise ValueError("N1 and N2 must be non-negative.")
-    if N1 + N2 != N:
-        raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
     if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
             "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
             "operator contains omega / Gamma."
         )
 
-    if N_J1 is None or N_J2 is None:
-        if N_J1 is not None or N_J2 is not None:
-            raise ValueError("Provide both N_J1 and N_J2, or neither.")
-        N_J1, N_J2 = _default_two_group_fixed_sector(N, N1, N2)
-    if N_J1 < 0 or N_J2 < 0 or N_J1 > N1 or N_J2 > N2:
+    N1 = N // 2
+    N2 = N - N1
+    NJ1, NJ2 = int(NJi[0]), int(NJi[1])
+    omega_1, omega_2 = float(omega_i[0]), float(omega_i[1])
+
+    if NJ1 < 0 or NJ2 < 0 or NJ1 > N1 or NJ2 > N2:
         raise ValueError(
-            f"Invalid fixed sector ({N_J1}, {N_J2}) for group sizes N1={N1}, N2={N2}."
+            f"Invalid fixed sector ({NJ1}, {NJ2}) for group sizes N1={N1}, N2={N2}."
         )
 
-    N_J = int(N_J1 + N_J2)
-    j1 = N_J1 / 2.0
-    j2 = N_J2 / 2.0
-    omega_2 = omega2_from_weighted_average(float(omega_1), int(N1), int(N2))
+    NJ = int(NJ1 + NJ2)
+
+    dim1 = int(NJ1 + 1)
+    dim2 = int(NJ2 + 1)
+
+    # Initial state
+    psi0 = qt.tensor(
+        qt.basis(dim1, dim1 - 1),
+        qt.basis(dim2, dim2 - 1),
+    )
 
     Omega0 = float(phases[0].omega)
     delta0 = float(phases[1].delta)
@@ -167,12 +160,14 @@ def build_qutip_two_group_fixed_nj_model_from_phases(
     t_step2_end = float(phases[0].duration + phases[1].duration)
     t_final = float(sum(p.duration for p in phases))
 
-    dim1 = int(2 * j1 + 1)
-    dim2 = int(2 * j2 + 1)
+
     I1 = qt.qeye(dim1)
     I2 = qt.qeye(dim2)
     identity = qt.tensor(I1, I2)
 
+    j1 = NJ1 / 2.0
+    j2 = NJ2 / 2.0
+    
     Jp1 = qt.tensor(qt.jmat(j1, "+"), I2)
     Jm1 = qt.tensor(qt.jmat(j1, "-"), I2)
     Jx1 = qt.tensor(qt.jmat(j1, "x"), I2)
@@ -207,32 +202,22 @@ def build_qutip_two_group_fixed_nj_model_from_phases(
             [1j / np.sqrt(Gamma) * identity, omega_coeff_local],
         ])
         c_ops = [shifted_c_op]
-        unraveling_picture = "shifted"
     else:
         H = [
             [J_drive, _omega_coeff],
             [-N_e, _delta_coeff],
         ]
         c_ops = [np.sqrt(Gamma) * A_weighted]
-        unraveling_picture = "regular"
-
-    psi0 = qt.tensor(
-        qt.basis(dim1, dim1 - 1),
-        qt.basis(dim2, dim2 - 1),
-    )
 
     return QutipTwoGroupFixedNjModel(
         N=N,
         N1=N1,
         N2=N2,
-        N_J1=int(N_J1),
-        N_J2=int(N_J2),
-        N_J=N_J,
-        j1=j1,
-        j2=j2,
+        NJ1=int(NJ1),
+        NJ2=int(NJ2),
+        NJ=NJ,
         Gamma=Gamma,
         shifted_jump_operator=shifted_jump_operator,
-        unraveling_picture=unraveling_picture,
         omega0=Omega0,
         delta0=delta0,
         phases=phases,

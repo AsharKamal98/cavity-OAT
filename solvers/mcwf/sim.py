@@ -15,7 +15,7 @@ from solvers.mcwf.operator_helpers import (
 )
 from parser.common import Array, Phase
 from common.utils.phases import phase_boundary_times
-from parser.quantum_trajectories import (
+from parser.mcwf import (
     SectorKey,
     SectorOperators,
     TrajectoryResult,
@@ -189,56 +189,45 @@ def apply_jump(psi_blocks: Sequence[Array], jump_operators_list: Sequence[csc_ma
 
 
 def build_precomputed_trajectory_data(
-    N: int,
+    Ni: Sequence[int],
+    omega_i: Sequence[float],
     Gamma: float,
     phases: Sequence[Phase],
     sector_coeffs: Mapping[SectorKey, complex],
     dt: float,
     *,
     shifted_jump_operator: bool = False,
-    omega_1: Optional[float] = None,
-    omega_2: Optional[float] = None,
-    N1: Optional[int] = None,
-    N2: Optional[int] = None,
 ) -> Dict[str, Any]:
+    if not Ni:
+        raise ValueError("Ni must contain at least one group size.")
+    if len(omega_i) != len(Ni):
+        raise ValueError("omega_i must have the same length as Ni.")
+
+    Ni = [int(group_size) for group_size in Ni]
+    omega_i = [float(coupling) for coupling in omega_i]
+
     # Sorted list of populated strong-symmetry sectors, e.g. [N//2 - 1, N//2, N//2 + 1].
     sector_list = sorted(
         sector_coeffs.keys(),
         key=lambda key: split_sector_key(key),
     )
-    has_inhomogeneous_sectors = any(isinstance(sector_key, tuple) for sector_key in sector_list)
-    if has_inhomogeneous_sectors:
-        if omega_1 is None:
-            raise ValueError("omega_1 must be provided for inhomogeneous sector coefficients.")
-        if omega_2 is None:
-            raise ValueError("omega_2 must be provided for inhomogeneous sector coefficients.")
-        if N1 is None or N2 is None:
-            raise ValueError(
-                "N1 and N2 must be provided for inhomogeneous sector coefficients."
-            )
-        if int(N1) + int(N2) != N:
-            raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
-        N1 = int(N1)
-        N2 = int(N2)
 
     # One reduced-basis operator bundle per sector:
     # [SectorOperators(Nj_0), SectorOperators(Nj_1), ...].
     ops_list = [
         build_sector_ops_for_key(
             sector_key,
-            omega_1=omega_1,
-            omega_2=omega_2,
-            N1=N1,
-            N2=N2,
+            Ni=Ni,
+            omega_i=omega_i,
         )
         for sector_key in sector_list
     ]
     # Sector multiplicity lookup, e.g. {500: ...} or {(250, 250): ...}.
     multiplicities = {
         sector_key: (
-            sector_multiplicity(N, int(sector_key))
+            sector_multiplicity(Ni[0], int(sector_key))
             if not isinstance(sector_key, tuple)
-            else two_group_sector_multiplicity(N1, N2, int(sector_key[0]), int(sector_key[1]))
+            else two_group_sector_multiplicity(Ni[0], Ni[1], int(sector_key[0]), int(sector_key[1]))
         )
         for sector_key in sector_list
     }
@@ -297,31 +286,26 @@ def build_precomputed_trajectory_data(
 # -----------------------------------------------------------------------------
 
 
-def simulate_single_trajectory(
-    N: int,
+def _simulate_single_trajectory(
+    Ni: Sequence[int],
+    omega_i: Sequence[float],
     Gamma: float,
     phases: Sequence[Phase],
     sector_coeffs: Mapping[SectorKey, complex],
     *,
-    internal_sector_states: Optional[Mapping[SectorKey, Array]] = None,
     dt: float = 1e-3,
-    num_snapshots: int = 101,
-    seed: int = 1234,
-    seed_sequence: Optional[np.random.SeedSequence] = None,
+    t_eval: Array,
+    seed_sequence: np.random.SeedSequence,
     shifted_jump_operator: bool = False,
-    precomputed: Optional[Dict[str, Any]] = None,
-    omega_1: Optional[float] = None,
-    omega_2: Optional[float] = None,
-    N1: Optional[int] = None,
-    N2: Optional[int] = None,
+    precomputed: Dict[str, Any],
 ) -> TrajectoryResult:
     """
     Quantum-trajectory simulation in the direct-sum strong-symmetry basis.
 
     Parameters
     ----------
-    N
-        Total number of atoms.
+    Ni
+        Group sizes. Homogeneous runs should still pass one-entry lists.
     Gamma
         Collective decay rate Gamma in the paper.
     phases
@@ -333,77 +317,29 @@ def simulate_single_trajectory(
     sector_coeffs
         Initial amplitudes of the Nj sectors. Example:
             {N//2: 1.0, N//2 - 1: 1.0}
-    internal_sector_states
-        Optional internal |n_e>-basis vectors for individual sectors. If omitted,
-        every populated sector starts in |n_e=0> (all active atoms in |down>).
     dt
         Base time step used for jump detection and propagation.
-    num_snapshots
-        Number of saved wavefunction snapshots. The simulator constructs a
-        common output grid t_eval = linspace(0, total_time, num_snapshots) and
-        saves the state exactly at those times by splitting internal evolution
-        steps when needed.
-    omega_1, omega_2, N1, N2
-        Inhomogeneous-coupling metadata.  Tuple sector keys (Nj1, Nj2) require
-        these values so the solver can use one fixed group-2 coupling,
-        N1 * omega_1 + N2 * omega_2 = N1 + N2.
-    rng
-        Optional NumPy random number generator.
+    t_eval
+        Explicit saved-time grid shared by the ensemble. The simulator saves
+        the state exactly at these times by splitting internal evolution steps
+        when needed.
+    omega_i
+        Group couplings. Must have the same length as Ni.
+    seed_sequence
+        Child seed assigned by the ensemble runner for this one trajectory.
 
     Returns
     -------
     TrajectoryResult
         Final wavefunction by sector, sector multiplicities, snapshots, and jump log.
     """
-    if N <= 0:
-        raise ValueError("N must be positive.")
-    if Gamma < 0.0:
-        raise ValueError("Gamma must be non-negative.")
-    if dt <= 0.0:
-        raise ValueError("dt must be positive.")
-    if num_snapshots < 2:
-        raise ValueError("num_snapshots must be at least 2.")
-    if shifted_jump_operator and Gamma <= 0.0:
-        raise ValueError(
-            "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
-            "operator contains omega / Gamma."
-        )
+    assert len(omega_i) == len(Ni)
+    assert precomputed is not None
 
-    has_inhomogeneous_sectors = any(isinstance(sector_key, tuple) for sector_key in sector_coeffs)
-    if has_inhomogeneous_sectors:
-        if omega_1 is None:
-            raise ValueError("omega_1 must be provided for inhomogeneous sector coefficients.")
-        if omega_2 is None:
-            raise ValueError("omega_2 must be provided for inhomogeneous sector coefficients.")
-        if N1 is None or N2 is None:
-            raise ValueError(
-                "N1 and N2 must be provided for inhomogeneous sector coefficients."
-            )
-        if int(N1) + int(N2) != N:
-            raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
-        N1 = int(N1)
-        N2 = int(N2)
+    N = sum(Ni)
+    assert N > 0
 
-    if seed_sequence is None:
-        seed_seq = np.random.SeedSequence(seed).spawn(1)[0]
-    else:
-        seed_seq = seed_sequence
-    rng = np.random.default_rng(seed_seq)
-
-    # Keep dictionary inputs/outputs for compatibility, but use aligned lists in the hot loop.
-    if precomputed is None:
-        precomputed = build_precomputed_trajectory_data(
-            N,
-            Gamma,
-            phases,
-            sector_coeffs,
-            dt,
-            shifted_jump_operator=shifted_jump_operator,
-            omega_1=omega_1,
-            omega_2=omega_2,
-            N1=N1,
-            N2=N2,
-        )
+    rng = np.random.default_rng(seed_sequence)
 
     sector_list = precomputed["sector_list"]
     multiplicities = precomputed["multiplicities"]
@@ -412,10 +348,20 @@ def simulate_single_trajectory(
     phase_generators = precomputed["phase_generators"]
     phase_propagators = precomputed["phase_propagators"]
 
-    t_eval = build_t_eval_from_phases(phases, num_snapshots)
+    t_eval = np.asarray(t_eval, dtype=float)
+    if t_eval.ndim != 1 or t_eval.size < 2:
+        raise ValueError("t_eval must be a one-dimensional array with at least two points.")
+    if np.any(np.diff(t_eval) <= 0.0):
+        raise ValueError("t_eval must be strictly increasing.")
+    total_time = float(phase_boundary_times(phases)[-1])
+    if abs(float(t_eval[0])) > 1e-12:
+        raise ValueError("The first t_eval point must be 0.0.")
+    if abs(float(t_eval[-1]) - total_time) > 1e-9:
+        raise ValueError("The last t_eval point must match the total protocol time.")
+
     next_eval_idx = 1
 
-    initial_blocks = build_initial_sector_state(N, sector_coeffs, internal_sector_states)
+    initial_blocks = build_initial_sector_state(N, sector_coeffs)
     psi_blocks = renormalize_psi_blocks([initial_blocks[Nj] for Nj in sector_list])
 
     snapshots: List[TrajectorySnapshot] = [
@@ -553,22 +499,10 @@ def simulate_single_trajectory(
         )
 
     return TrajectoryResult(
-        N=N,
-        Gamma=Gamma,
-        phases=list(phases),
-        shifted_jump_operator=shifted_jump_operator,
-        t_eval=t_eval,
-        sectors=sector_list,
-        sector_multiplicities=multiplicities,
         final_sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
         snapshots=snapshots,
         jump_times=jump_times,
         jump_count=len(jump_times),
-        sector_dimensions=dims,
-        omega_1=omega_1,
-        omega_2=omega_2,
-        N1=N1,
-        N2=N2,
         total_step_count=total_step_count,
         non_precomputed_step_count=non_precomputed_step_count,
     )

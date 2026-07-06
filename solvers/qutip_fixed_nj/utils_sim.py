@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Sequence
+from typing import Dict, List
 
 import numpy as np
 import qutip as qt
@@ -26,7 +26,7 @@ class OmegaCoeffFromPhases:
     Pickle-safe omega(t) coefficient for time-dependent QuTiP operators.
     """
 
-    phases: Sequence
+    phases: list
 
     def __call__(self, t, args=None):
         if args is not None and "phases" in args:
@@ -35,7 +35,7 @@ class OmegaCoeffFromPhases:
         return omega_t
 
 
-def build_tlist_from_phases(phases: Sequence, num_points: int) -> np.ndarray:
+def build_tlist_from_phases(phases: list, num_points: int) -> np.ndarray:
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
     t_final = float(phase_boundary_times(phases)[-1])

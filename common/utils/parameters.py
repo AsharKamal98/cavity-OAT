@@ -1,23 +1,29 @@
 from __future__ import annotations
 
-from typing import List, Mapping, Tuple
+from typing import List, Mapping, Sequence, Tuple
 
 import numpy as np
 
 from parser.common import Phase
 
 
-def omega2_from_weighted_average(omega1: float, N1: int, N2: int, *, tol: float = 1e-12) -> float:
+def omega_G_from_weighted_average(
+    omega_i: Sequence[float],
+    N_i: Sequence[int],
+    *,
+    tol: float = 1e-12,
+) -> float:
     """
-    Choose omega2 so the physical atom-number weighted mean coupling is one.
+    Choose the final group coupling so the atom-number weighted mean coupling is one.
     """
-    if N1 < 0 or N2 < 0:
-        raise ValueError("N1 and N2 must be non-negative.")
-    if N1 + N2 <= 0:
-        raise ValueError("At least one coupling group must contain atoms.")
-    if abs(N2) <= tol:
+    N_G = float(N_i[-1])
+    if abs(N_G) <= tol:
         return 1.0
-    return float((N1 + N2 - float(omega1) * N1) / N2)
+    N_total = float(sum(N_i))
+    weighted_partial_sum = float(
+        sum(float(omega_g) * float(N_g) for omega_g, N_g in zip(omega_i, N_i[:-1]))
+    )
+    return float((N_total - weighted_partial_sum) / N_G)
 
 
 def omega_c(N_J: int, Gamma: float) -> float:

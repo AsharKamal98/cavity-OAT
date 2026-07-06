@@ -3,8 +3,9 @@ from __future__ import annotations
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from parser.common import Array
 from common.utils.phases import phase_values_at_time
+from common.utils.parameters import omega_G_from_weighted_average
+from parser.common import Array
 from parser.mfe import (
     MFEInitialState,
     MFEResult,
@@ -28,6 +29,8 @@ def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
     dD = -0.5j * Omega_t * omega * E + 0.5 * parameters.Gamma * omega * ED * E
     dE = -0.5j * Omega_t * omega * D + 1j * delta_t * E - 0.5 * parameters.Gamma * omega * D * DE
     return np.concatenate([dD, dE])
+
+
 def solve_mfe(
     parameters: MFESolverParameters,
     initial_state: MFEInitialState,
@@ -44,9 +47,16 @@ def solve_mfe(
     if t_eval.ndim != 1 or t_eval.size < 2:
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
 
-    y0 = amplitudes_from_initial_state(initial_state, parameters)
+    completed_parameters = parameters
+    if len(parameters.omega_groups) == parameters.group_count - 1:
+        omega_groups = tuple(parameters.omega_groups) + (
+            omega_G_from_weighted_average(parameters.omega_groups, parameters.N_j_groups),
+        )
+        completed_parameters = parameters.model_copy(update={"omega_groups": omega_groups})
+
+    y0 = amplitudes_from_initial_state(initial_state, completed_parameters)
     solution = solve_ivp(
-        lambda t, y: mfe_rhs(t, y, parameters),
+        lambda t, y: mfe_rhs(t, y, completed_parameters),
         (float(t_eval[0]), float(t_eval[-1])),
         y0,
         t_eval=t_eval,
@@ -55,7 +65,7 @@ def solve_mfe(
         method=method,
     )
 
-    G = parameters.group_count
+    G = completed_parameters.group_count
     D_groups = tuple(solution.y[:G])
     E_groups = tuple(solution.y[G:])
     result = MFEResult(
@@ -64,6 +74,6 @@ def solve_mfe(
         E_groups=E_groups,
         success=bool(solution.success),
         message=str(solution.message),
-        parameters=parameters,
+        parameters=completed_parameters,
     )
     return result

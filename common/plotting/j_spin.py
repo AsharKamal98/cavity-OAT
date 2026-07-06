@@ -83,7 +83,7 @@ def plot_spin_components(
                     label=curve_label(group_label, label=label),
                 )
 
-        #if values is not None:
+        # if values is not None:
         if False:
             full_color = indexed_curve_color(
                 colour_index,

@@ -144,7 +144,7 @@ omega2_from_weighted_average(...)         # validates inhomogeneous group sizes
 
 Initial-state helpers should validate sector ranges, even `N` assumptions,
 group sizes, and internal sector-state shapes. Simulation entry points should
-validate `dt`, `num_snapshots`, `ntraj`, `n_processes`, and homogeneous versus
+validate `dt`, `t_eval`, `ntraj`, `n_processes`, and homogeneous versus
 inhomogeneous sector metadata.
 
 Validation helpers should fail early with clear messages. Notebook workflows may
@@ -185,22 +185,24 @@ The ensemble function should:
 - build reusable precomputed data once;
 - run single trajectories serially or with multiprocessing;
 - return a `TrajectoryEnsemble` containing the individual trajectory results
-  and shared simulation parameters.
+  and shared simulation metadata.
 
 High-level data flow should look like:
 
 ```python
+parameters = MCWFSolverParameters(...)
+
 def run_trajectory_ensemble(
-    N, Gamma, phases, sector_coeffs, dt, num_snapshots, ntraj, ...
+    parameters, *, t_eval, ntraj, seed=None, n_processes=None, ...
 ) -> TrajectoryEnsemble:
     precomputed = build_precomputed_trajectory_data(...)
-    trajectories = [simulate_single_trajectory(..., precomputed) for _ in range(ntraj)]
-    return TrajectoryEnsemble(trajectories=trajectories, parameters=parameters)
+    trajectories = [_simulate_single_trajectory(..., precomputed) for _ in range(ntraj)]
+    return TrajectoryEnsemble(trajectories=trajectories, metadata=metadata)
 ```
 
-`parameters` should contain shared metadata from the ensemble inputs, including
-computed `omega_groups` and `N_groups`; `TrajectoryEnsemble` should validate it
-into `MomentParameters`.
+Shared simulation-level fields such as `Ni`, `omega_i`, `Gamma`, `phases`,
+`shifted_jump_operator`, `t_eval`, and sector metadata should live in
+`TrajectoryEnsemble.metadata` rather than on each `TrajectoryResult`.
 
 For precomputation rules, use:
 
@@ -256,15 +258,20 @@ For parser output-container conventions, use:
 
 The notebook-level container is `MomentSeries`, defined in
 `parser/moments.py`. It should be initialized on the shared
-`t_eval` grid, from `phases` and `num_snapshots`, and then filled in as
+`t_eval` grid, from `total_time` and `num_snapshots`, and then filled in as
 post-processing steps are run:
 
 ```python
 raw_result = run_backend(...)
 moments = MomentSeries(
-    phases=phases,
+    total_time=raw_result.metadata.t_eval[-1],
     num_snapshots=num_snapshots,
-    parameters=raw_result.parameters,
+    parameters=MomentParameters(
+        Gamma=raw_result.metadata.Gamma,
+        phases=raw_result.metadata.phases,
+        omega_groups=raw_result.metadata.omega_i,
+        N_groups=raw_result.metadata.Ni,
+    ),
 )
 moments.J = compute_method_j_moments(raw_result)
 ```
@@ -274,7 +281,7 @@ Current top-level fields are:
 - `moments.t`: the shared saved-time grid.
 - `moments.parameters`: simulation metadata needed by moment-level diagnostics,
   such as `Gamma`, `phases`, `omega_groups`, and `N_groups`; this can mirror
-  `ensemble.parameters`.
+  selected fields from `ensemble.metadata`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles when produced by
   `compute_mcwf_j_moments(...)`, or group-resolved MFE moment fields when

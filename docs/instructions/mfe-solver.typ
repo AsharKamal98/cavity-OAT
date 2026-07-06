@@ -175,15 +175,18 @@ The solver needs:
 - `phases`: piecewise-constant `Phase` objects with `duration`, `omega`, and
   `delta`;
 - `Gamma`: collective decay scale;
-- `omega_groups`: one coupling weight per group;
+- `omega_groups`: one coupling weight per group, or one coupling per group
+  except the final group, in which case `solve_mfe(...)` should complete the
+  last coupling from the weighted-average condition;
 - `N_j_groups`: active atom number per group for the mean-field state being
   solved;
 - `initial_state`: initial J angles `(theta_groups, phi_groups)`;
 - `t_eval`: saved output times.
 
-Parameter validation may live outside the solver. In particular,
-`omega_groups` should already follow the same weighted-coupling convention as
-the MCWF code.
+Parameter validation may live outside the solver. In particular, if only the
+first `G-1` entries of `omega_groups` are supplied, `solve_mfe(...)` should
+complete the final group coupling using the same weighted-coupling convention
+as the MCWF code.
 
 = Output
 

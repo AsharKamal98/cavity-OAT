@@ -23,14 +23,19 @@ _compute_snapshot_j_moments(snapshot, ...)
         x_groups, y_groups, z_groups, N_e_groups, N_j_groups,
     )
 
-compute_trajectory_j_moments(trajectory: TrajectoryResult, *, tol=1e-12)
+compute_trajectory_j_moments(
+    trajectory: TrajectoryResult,
+    metadata: TrajectoryEnsembleMetadata,
+    *,
+    tol=1e-12,
+)
     -> JMomentSeries:
     
     j_moment_snapshots = [
         _compute_snapshot_j_moments(
             snapshot,
-            trajectory.phases,
-            trajectory.Gamma,
+            metadata.phases,
+            metadata.Gamma,
             ...
             )
         for snapshot in trajectory.snapshots
@@ -41,7 +46,7 @@ compute_mcwf_j_moments(ensemble: TrajectoryEnsemble, ...)
     -> JMomentSeries
 
     samples = map_with_optional_pool(
-        compute_trajectory_j_moments(traj)
+        compute_trajectory_j_moments(traj, ensemble.metadata)
         for traj in ensemble.trajectories
     )
     averaged = compute_average_j_moments(samples)
@@ -68,6 +73,10 @@ direction and angle fields to the averaged result.
 `ny`, and `nz`, plus group-resolved versions when group fields exist.
 `JMomentSeries.attatch_angles_from_norm_spin_components(...)` attaches `theta` and `phi`, plus group-resolved
 versions when group direction fields exist.
+Shared simulation metadata needed during extraction should be read once from
+`TrajectoryEnsemble.metadata` and passed into
+`compute_trajectory_j_moments(...)`, rather than duplicated on every
+`TrajectoryResult`.
 MFE residuals are computed separately; use
 `docs/instructions/mfe_residuals.typ` for that diagnostic.
 

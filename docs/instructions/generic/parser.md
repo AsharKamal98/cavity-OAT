@@ -41,3 +41,7 @@ class MomentSeries(BaseModel):
     J: JMomentSeries | None = None
     S: Any | None = None
 ```
+
+If a parser container auto-builds a shared time grid, prefer an explicit
+`total_time` input together with `num_snapshots` rather than rebuilding that
+time span indirectly from `phases`.
