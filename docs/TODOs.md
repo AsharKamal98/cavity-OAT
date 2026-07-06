@@ -27,11 +27,7 @@
 
 3. Create a purity post-analysis as dephasing diagnostic. 
 
-4. Add single-group mean-field residuals to `post-analysis/mfe.py` for diagnostics and plotting.
-
-5. Add single-group mean-field solutions to `solvers/mfe.py`.
-
-6. Can `solvers/qutio_singel_sector.py`support arbritrary number of groups G for simulating G groups using Qutip?
+4. Add single-group mean-field residuals to `post-analysis/mfe_residuals.py` for diagnostics and plotting.
 
 
 ## Clean-up
