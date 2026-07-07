@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cavity-oat"
+version = "0.1.0"
+description = "Simulation and analysis tools for dissipative Berry-phase one-axis twisting."
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib>=3.7",
+  "numpy>=1.24",
+  "pydantic>=2.0",
+  "qutip>=5.0",
+  "scipy>=1.10",
+  "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+notebooks = [
+  "ipykernel>=6.0",
+  "jupyter>=1.0",
+]
+
+[tool.setuptools.packages.find]
+include = [
+  "common*",
+  "parser*",
+  "post_analysis*",
+  "slurm*",
+  "solvers*",
+]
