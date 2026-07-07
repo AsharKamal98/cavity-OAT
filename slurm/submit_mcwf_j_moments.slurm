@@ -13,7 +13,7 @@ source ~/.venvs/cavity-oat_env/bin/activate
 FILENAME="mcwf_run"
 NTRAJ="100"
 
-python -m slurm.mcwf_j_moments_run \
+python slurm/mcwf_j_moments_run.py \
   --n-processes "${SLURM_CPUS_PER_TASK}" \
   --ntraj "${NTRAJ}" \
   --filename "${FILENAME}" \
