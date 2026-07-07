@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=mcwf-j
-#SBATCH --array=0-3
-#SBATCH --cpus-per-task=8
-#SBATCH --time=02:00:00
+#SBATCH --array=0-2
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:10:00
 #SBATCH --output=slurm/logs/%x_%A_%a.out
 #SBATCH --error=slurm/logs/%x_%A_%a.err
 

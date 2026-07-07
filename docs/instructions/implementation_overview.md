@@ -319,6 +319,11 @@ Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 QuTiP-to-J-moment conversion should follow the same shared output contract,
 even if the internal extraction logic differs from the MCWF path.
 
+When saving Slurm or batch-run J moments, store a self-contained artifact with
+both the averaged `JMomentSeries` and the corresponding `phases`. Plotting
+notebooks should read the saved `phases` from that artifact instead of
+reconstructing the protocol manually.
+
 ### 6.3 J-Vector Direction Fields
 
 After the raw first-order moments are available, derived direction fields

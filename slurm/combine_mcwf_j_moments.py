@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from parser.j_moments import JMomentSeries
-from slurm.j_moments_io import load_j_moments_pickle, save_j_moments_pickle
+from slurm.j_moments_io import load_j_moments_artifact, save_j_moments_artifact
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,14 +20,18 @@ def main() -> None:
     args = parse_args()
 
     output_dir = Path(__file__).resolve().parent / "outputs"
-    samples = [
-        load_j_moments_pickle(output_dir / f"{args.filename}_{array_index}.pkl")
+    artifacts = [
+        load_j_moments_artifact(output_dir / f"{args.filename}_{array_index}.pkl")
         for array_index in range(args.num_files)
     ]
+    samples = [artifact["J"] for artifact in artifacts]
+    phases_ref = artifacts[0]["phases"]
 
     t_ref = np.asarray(samples[0].t, dtype=float)
     phase_ref = np.asarray(samples[0].phase_index, dtype=int)
-    for sample in samples:
+    for artifact, sample in zip(artifacts, samples):
+        if artifact["phases"] != phases_ref:
+            raise ValueError("All J-moment files must share the same phases.")
         if not np.allclose(sample.t, t_ref, atol=1e-12, rtol=0.0):
             raise ValueError("All J-moment files must share the same t grid.")
         if not np.array_equal(sample.phase_index, phase_ref):
@@ -66,8 +70,8 @@ def main() -> None:
     JMomentSeries.attatch_angles_from_norm_spin_components(combined)
 
     output_path = output_dir / f"{args.filename}.pkl"
-    save_j_moments_pickle(combined, output_path)
-    print(f"Saved combined J moments to {output_path}")
+    save_j_moments_artifact(combined, phases_ref, output_path)
+    print(f"Saved combined J moments artifact to {output_path}")
 
 
 if __name__ == "__main__":

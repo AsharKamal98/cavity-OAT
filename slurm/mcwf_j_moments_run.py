@@ -6,7 +6,7 @@ from pathlib import Path
 from common.utils.parameters import default_three_phase_protocol, omega_c
 from parser.mcwf import MCWFSolverParameters
 from parser.moments import MomentSeries
-from slurm.j_moments_io import save_j_moments_pickle
+from slurm.j_moments_io import save_j_moments_artifact
 from solvers.mcwf.ensamble_sim import run_trajectory_ensemble
 from solvers.mcwf.j_moments import compute_mcwf_j_moments
 
@@ -78,8 +78,8 @@ def main() -> None:
     )
 
     output_path = output_dir / f"{args.filename}_{args.array_index}.pkl"
-    save_j_moments_pickle(mcwf_moments.J, output_path)
-    print(f"Saved J moments to {output_path}")
+    save_j_moments_artifact(mcwf_moments.J, phases, output_path)
+    print(f"Saved J moments artifact to {output_path}")
 
 
 if __name__ == "__main__":
