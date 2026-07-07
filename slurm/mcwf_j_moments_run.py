@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
+import time
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -26,6 +27,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    main_t0 = time.perf_counter()
     args = parse_args()
 
     output_dir = Path(__file__).resolve().parent / "outputs"
@@ -68,6 +70,7 @@ def main() -> None:
         dt=dt,
         shifted_jump_operator=True,
     )
+    simulation_t0 = time.perf_counter()
     mcwf_ensemble = run_trajectory_ensemble(
         mcwf_parameters,
         t_eval=mcwf_moments.t,
@@ -76,15 +79,21 @@ def main() -> None:
         n_processes=args.n_processes,
         verbose=True,
     )
+    simulation_time = time.perf_counter() - simulation_t0
+    print(f"Simulation runtime: {simulation_time:.2f} seconds.")
 
+    j_moments_t0 = time.perf_counter()
     mcwf_moments.J = compute_mcwf_j_moments(
         mcwf_ensemble,
         n_processes=args.n_processes,
     )
+    j_moments_time = time.perf_counter() - j_moments_t0
+    print(f"J-moments runtime: {j_moments_time:.2f} seconds.")
 
     output_path = output_dir / f"{args.filename}_{args.array_index}.pkl"
     save_j_moments_artifact(mcwf_moments.J, phases, output_path)
     print(f"Saved J moments artifact to {output_path}")
+    print(f"Total main runtime: {time.perf_counter() - main_t0:.2f} seconds.")
 
 
 if __name__ == "__main__":
