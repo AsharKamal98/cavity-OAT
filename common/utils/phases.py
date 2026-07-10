@@ -1,10 +1,25 @@
 from __future__ import annotations
 
-from typing import Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 import numpy as np
 
 from parser.common import Phase
+
+
+def default_three_phase_protocol(
+    T1: float,
+    T2: float,
+    T3: float,
+    delta0: float,
+    Omega0: float,
+) -> List[Phase]:
+    """Return the standard three-phase piecewise-constant protocol."""
+    return [
+        Phase(duration=T1, omega=Omega0, delta=0.0, label="phase1"),
+        Phase(duration=T2, omega=Omega0, delta=delta0, label="phase2"),
+        Phase(duration=T3, omega=0.0, delta=0.0, label="phase3"),
+    ]
 
 
 def phase_boundary_times(phases: Sequence[Phase]) -> np.ndarray:

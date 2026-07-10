@@ -18,6 +18,14 @@ COLOUR_PALETTES = (
     ("#4d4d4d", "#4d4d4d", "#4d4d4d", "#4d4d4d"),
     ("#800000", "#800000", "#800000", "#800000"),
 )
+GRADIENT_COLOUR_PALETTE = (
+    ("#93c5fd", "#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e3a8a"),
+    ("#fed7aa", "#fdba74", "#fb923c", "#f97316", "#ea580c", "#9a3412"),
+    ("#bbf7d0", "#86efac", "#4ade80", "#22c55e", "#16a34a", "#166534"),
+    ("#fecaca", "#fca5a5", "#f87171", "#ef4444", "#dc2626", "#991b1b"),
+    ("#e5e7eb", "#d1d5db", "#9ca3af", "#6b7280", "#4b5563", "#1f2937"),
+    ("#fecdd3", "#fda4af", "#fb7185", "#e11d48", "#be123c", "#881337"),
+)
 LINESTYLES = ("-", "--", ":", "-.")
 SECTOR_CURVE_COLORS = (
     "#0072B2",
@@ -55,6 +63,28 @@ def format_time_axis(ax) -> None:
 def indexed_curve_color(colour_index: int = 0, curve_index: int = 0) -> str:
     palette = COLOUR_PALETTES[colour_index % len(COLOUR_PALETTES)]
     return palette[curve_index % len(palette)]
+
+
+def colour_palette(
+    *,
+    colour_family_index: Optional[int] = None,
+    shade_index: Optional[int] = None,
+) -> Union[tuple[str, ...], str]:
+    """Return colors from the shared family-by-shade gradient palette."""
+    if colour_family_index is None and shade_index is None:
+        default_shade = len(GRADIENT_COLOUR_PALETTE[0]) // 2
+        return tuple(family[default_shade] for family in GRADIENT_COLOUR_PALETTE)
+
+    if colour_family_index is None:
+        return tuple(
+            family[shade_index % len(family)] for family in GRADIENT_COLOUR_PALETTE
+        )
+
+    family = GRADIENT_COLOUR_PALETTE[colour_family_index % len(GRADIENT_COLOUR_PALETTE)]
+    if shade_index is None:
+        return family
+
+    return family[shade_index % len(family)]
 
 
 def validated_linestyle(linestyle: str = "-") -> str:

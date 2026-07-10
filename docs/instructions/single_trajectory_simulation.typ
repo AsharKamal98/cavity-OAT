@@ -276,7 +276,7 @@ The current implementation should keep the existing fixed-depth bisection:
 
 ```python
 lo, hi = 0.0, step
-for _ in range(5):
+for _ in range(10):
     mid = 0.5 * (lo + hi)
     mid_state = propagate_blocks(pre_blocks, generators_list, mid)
     if total_norm2_list(mid_state) > threshold:
@@ -286,9 +286,9 @@ for _ in range(5):
 tau = hi
 ```
 
-This refines the jump location to one of the size-`step / 2^5` subintervals.
+This refines the jump location to one of the size-`step / 2^10` subintervals.
 If a more accurate root finder is ever desired, that should be introduced as an
-explicit behavior change rather than silently replacing the current five-step
+explicit behavior change rather than silently replacing the current ten-step
 bisection rule.
 
 == Applying the Jump
@@ -393,7 +393,7 @@ def _simulate_single_trajectory(...):
                 maybe save snapshot
                 continue
 
-            refine one jump time by five-step bisection
+            refine one jump time by ten-step bisection
             propagate to refined jump time
             renormalize
             apply jump

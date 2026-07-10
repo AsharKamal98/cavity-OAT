@@ -69,9 +69,10 @@ The instruction-document hierarchy should be:
 ```text
 AGENTS.md
       -> docs/instructions/implementation_overview.md
-      -> docs/instructions/common_utils.typ
+      -> docs/instructions/common/utils.typ
+      -> docs/instructions/common/plotting.typ
       -> docs/instructions/simulation_parameters.typ
-      -> docs/instructions/initial_sector_state.md (planned/missing)
+      -> docs/instructions/initial_sector_state.typ
       -> docs/instructions/parameter_validation.md (planned/missing)
       -> docs/instructions/simulation_precompute.typ
       -> docs/instructions/sector_operators.typ

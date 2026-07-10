@@ -7,14 +7,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from common.plotting.utils import (
+    colour_palette,
     curve_label,
     finish_time_plot,
     format_time_axis,
     get_axes,
-    indexed_curve_color,
     style_axis,
     validated_linestyle,
 )
+
+
+def _palette_color(palette, curve_index: int) -> str:
+    if isinstance(palette, str):
+        return palette
+    return palette[curve_index % len(palette)]
 
 
 def plot_spin_components(
@@ -22,6 +28,8 @@ def plot_spin_components(
     normalized: bool = False,
     *,
     colour_index: int = 0,
+    colour_family_index: Optional[int] = None,
+    shade_index: Optional[int] = None,
     linestyle: str = "-",
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
@@ -38,6 +46,10 @@ def plot_spin_components(
         error_message="axes must contain exactly four axes for the 2x2 spin-component grid.",
     )
     line_style = validated_linestyle(linestyle)
+    palette = colour_palette(
+        colour_family_index=colour_family_index,
+        shade_index=shade_index,
+    )
 
     t = np.asarray(spin_series.t, dtype=float)
     if not normalized:
@@ -73,7 +85,7 @@ def plot_spin_components(
                     if axis_name == "len"
                     else rf"$J_{{{axis_name},{group_index}}}$"
                 )
-                group_color = indexed_curve_color(colour_index, group_index - 1)
+                group_color = _palette_color(palette, group_index - 1)
                 ax.plot(
                     t,
                     np.asarray(group_data, dtype=float),
@@ -83,11 +95,10 @@ def plot_spin_components(
                     label=curve_label(group_label, label=label),
                 )
 
-        # if values is not None:
+        #if values is not None:
         if False:
-            full_color = indexed_curve_color(
-                colour_index,
-                len(group_values) if group_values is not None else 0,
+            full_color = _palette_color(
+                palette, len(group_values) if group_values is not None else 0
             )
             ax.plot(
                 t,
@@ -113,6 +124,8 @@ def plot_bloch_angles(
     angle_series: Any,
     *,
     colour_index: int = 0,
+    colour_family_index: Optional[int] = None,
+    shade_index: Optional[int] = None,
     linestyle: str = "-",
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
@@ -129,6 +142,10 @@ def plot_bloch_angles(
         error_message="axes must contain exactly two axes for the 2x1 angle grid.",
     )
     line_style = validated_linestyle(linestyle)
+    palette = colour_palette(
+        colour_family_index=colour_family_index,
+        shade_index=shade_index,
+    )
 
     t = np.asarray(angle_series.t, dtype=float)
     theta = getattr(angle_series, "theta", None)
@@ -145,7 +162,7 @@ def plot_bloch_angles(
 
     if has_groups:
         for group_index, (theta_g, phi_g) in enumerate(zip(theta_groups, phi_groups), start=1):
-            group_color = indexed_curve_color(colour_index, group_index - 1)
+            group_color = _palette_color(palette, group_index - 1)
             axes[0].plot(
                 t,
                 np.asarray(theta_g, dtype=float),
@@ -163,11 +180,9 @@ def plot_bloch_angles(
                 label=curve_label(rf"$\phi_{group_index}$", label=label),
             )
 
+    #if has_full:
     if False:
-        full_color = indexed_curve_color(
-            colour_index,
-            len(theta_groups) if has_groups else 0,
-        )
+        full_color = _palette_color(palette, len(theta_groups) if has_groups else 0)
         axes[0].plot(
             t,
             np.asarray(theta, dtype=float),

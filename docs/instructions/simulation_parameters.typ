@@ -29,21 +29,39 @@ If the effective model parameters are chosen directly, the run function should p
 
 = Effective Spin Parameters
 
-The current notebook benchmark helpers in `common/utils/parameters.py` and
-`common/utils/phases.py` are:
+For direct effective-model scans that use the current $N$-scaling convention,
+the notebook should define dimensionless factors and convert them with shared
+helpers from `common/utils/parameters.py`:
 
 $
-delta_0 = 0.05 thin N Gamma, Omega_0 = 0.465 thin N Gamma.
+Omega_0 = c_(Omega) thin N Gamma, delta_0 = c_(delta) thin N Gamma.
 $
 
-These should be implemented as functions as:
+The shared scaling helper is:
+
+```
+scaled_N_Gamma(factor, N, Gamma) -> value
+```
+
+so notebook cells should use:
+
+```
+Omega_factor, delta_factor
+    -> Omega0 = scaled_N_Gamma(Omega_factor, N, Gamma)
+    -> delta0 = scaled_N_Gamma(delta_factor, N, Gamma)
+```
+
+The older benchmark helpers
 
 ```
 delta0_from_N_Gamma(N, Gamma) -> delta0
 Omega0_from_N_Gamma(N, Gamma) -> Omega0
 ```
 
-These helpers should be reused when the notebook scan is meant to use this benchmark convention. If a notebook cell intentionally chooses $Omega$ from $Omega_c$ or from another scan parameter instead, that choice should be explicit in the cell and should not be silently replaced by the benchmark helper.
+may still be reused when a notebook intentionally wants those fixed benchmark
+choices. If a notebook cell instead chooses $Omega_0$ and $delta_0$ from
+explicit scan factors, that choice should stay explicit and should not be
+silently replaced by the older benchmark helper.
 
 = Cavity-Derived Parameters
 
@@ -123,21 +141,41 @@ Notebook workflows may stop before entering a scan if `is_valid` is false.
 
 = MCWF Timestep Validation
 
-For custom MCWF runs using the notebook timestep rule, code should reuse:
+For custom MCWF runs using the current notebook timestep rule, code should
+reuse:
 
 ```
-validated_mcwf_dt(dt, N, Gamma, safety_factor=250.0) -> dt_valid
+mcwf_dt_from_scales(Omega0, delta0, N, Gamma,
+                    drive_factor=0.01, decay_factor=0.1) -> dt
 ```
 
-The implemented rule is
+The current implemented rule is
 
 $
-d t <= frac(1, 250 thin N Gamma),
+dt = min(
+  frac(0.01, |Omega_0|),
+  frac(0.01, |delta_0|),
+  frac(0.1, N Gamma),
+).
 $
 
-with the factor $250$ controlled by `safety_factor`. If the proposed `dt` is valid, the helper should return it unchanged. If it is too large, the helper should print a warning and return the largest allowed timestep.
+The first term resolves coherent drive evolution on the timescale
+$1 / |Omega_0|$. The second resolves coherent phase accumulation from the
+detuning term on the timescale $1 / |delta_0|$. The third resolves collective
+dissipative evolution on the timescale $1 / (N Gamma)$.
 
-This validation helper should not be duplicated in notebook cells. If a debugging workflow deliberately bypasses the rule, that bypass should be local and explicit.
+In the current MCWF implementation, a jump is first detected by checking
+whether the non-Hermitian norm crosses the random threshold during one
+attempted step, and the jump time is then refined by a fixed ten-step
+bisection in `solvers/mcwf/sim.py`. That reduces the jump-time uncertainty
+from order `dt` to order `dt / 2^10`. Because the code localizes the crossing
+after detection, the coarser collective-decay prefactor `0.1 / (N Gamma)` is
+currently sufficient for the outer attempted step, while the bisection refines
+the actual jump time.
+
+This timestep rule should not be duplicated manually in notebook cells. If a
+debugging workflow deliberately bypasses or changes the rule, that choice
+should be local and explicit.
 
 = Phase Protocol
 
@@ -201,6 +239,8 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
   $delta_0$.
 - `Omega0_from_N_Gamma` in `common/utils/parameters.py` returns
   $Omega_0$.
+- `scaled_N_Gamma` in `common/utils/parameters.py` returns a direct
+  $N Gamma$-scaled model parameter from a dimensionless factor.
 - `Omega_Gamma_from_cavity_parameters` in
   `common/utils/parameters.py` returns $(Omega,Gamma)$.
 - `omega_c` in `common/utils/parameters.py` returns $Omega_c$.
@@ -208,9 +248,10 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
   $(theta_("ss"),phi_("ss"))$.
 - `check_initial_sector_omega_ratio` in `common/utils/parameters.py`
   returns the drive-ratio validation dictionary.
-- `validated_mcwf_dt` in `common/utils/parameters.py` returns a valid
-  MCWF timestep.
-- `default_three_phase_protocol` in `common/utils/parameters.py`
+- `mcwf_dt_from_scales` in `common/utils/parameters.py` returns the
+  current notebook MCWF timestep from the drive, detuning, and collective
+  decay scales.
+- `default_three_phase_protocol` in `common/utils/phases.py`
   returns the standard phase list.
 - `phase_boundary_times` in `common/utils/phases.py` returns all
   cumulative phase-end times.

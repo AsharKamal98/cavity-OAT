@@ -434,7 +434,7 @@ def _simulate_single_trajectory(
 
             lo, hi = 0.0, step
             pre_blocks = [psi.copy() for psi in psi_blocks]
-            for _ in range(5):
+            for _ in range(10):
                 mid = 0.5 * (lo + hi)
                 total_step_count += 1
                 non_precomputed_step_count += 1

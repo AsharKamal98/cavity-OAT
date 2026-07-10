@@ -12,7 +12,7 @@ Generic reusable instruction files live in `docs/instructions/generic/` and can
 be copied between projects.
 
 Shared repository utility helpers are summarized in
-`docs/instructions/common_utils.typ`.
+`docs/instructions/common/utils.typ`.
 
 When implementing a feature:
 
@@ -27,34 +27,32 @@ When implementing a feature:
 
 Most custom-code runs should follow this order:
 
-1. Define physical parameters.
+1. Define physical and method parameters.
 2. Define the phase protocol.
-3. Construct the initial sector expansion.
-4. Validate parameter regimes.
-5. Run the chosen simulation backend.
-6. Convert simulation output into moment series.
-7. Build derived diagnostics.
-8. Plot or export results.
+3. Run the chosen simulation backend.
+4. Convert simulation output into moment series.
+5. Build derived diagnostics.
+6. Plot or export results.
 
 Notebook functions should follow this same order when possible, so the main
 analysis cells stay predictable.
 
-## 1. Physical Parameters
+## 1. Physical and Method Parameters
 
-Runs should define the effective parameters `Omega`, `Gamma`, and `delta`
-explicitly, or derive them from cavity parameters when using the cavity-model
-helpers.
+Runs should define the effective parameters `Omega`, `Gamma`, and `delta`, and the method
+parameters, such as `dt` and `num_snapshots`.
+
+These can be defined explicitly, or using different functions defined in
+- `common/utils/parameters.py`
 
 Detailed implementation conventions should live in:
 
-- `docs/instructions/common_utils.typ`
+- `docs/instructions/common/utils.typ`
 - `docs/instructions/simulation_parameters.typ` (needs cleaning!)
 
 ## 2. Phase Protocol
 
-Protocol phases should be built through the shared phase-construction helpers,
-such as `default_three_phase_protocol(...)`, rather than duplicated manually in
-many places:
+Protocol phases should be built through the shared phase-construction helper `default_three_phase_protocol(...)`:
 
 ```python
 phases = default_three_phase_protocol(
@@ -68,62 +66,19 @@ phases = default_three_phase_protocol(
 
 Each phase should carry duration, `Omega`, and `delta`. Phases are piecewise
 constant, which enables phase-level operator and propagator precomputation.
-Shared phase helpers are summarized in `docs/instructions/common_utils.typ`.
+Shared phase helpers in `common/utils/phases.py` are summarized in
+`docs/instructions/common/utils.typ`.
 
-## 3. Initial Sector State
+## 3. MCWF Initial Sector State
 
-The initial wavefunction should first be defined over strong-symmetry sectors.
-The simulation should then evolve one internal array per sector in the
-active-manifold excitation basis.
+Initial sector construction is part of the MCWF ensemble run, not a standalone
+notebook-level workflow stage. The MCWF backend should construct the initial
+strong-symmetry sector coefficients, validate the initial sector regime, and
+then build the precomputed data needed by all trajectories.
 
-Homogeneous runs use scalar sector keys:
+Detailed initialization conventions live in:
 
-```python
-{Nj: coeff}
-```
-
-with selected sectors
-
-```python
-Nj in range(N//2 - dN, N//2 + dN + 1)
-```
-
-Inhomogeneous runs use group-resolved sector keys:
-
-```python
-{(Nj1, Nj2): coeff}
-```
-
-where
-
-```python
-Nj1 + Nj2 = Nj
-0 <= Nj1 <= N1
-0 <= Nj2 <= N2
-```
-
-High-level initialization helpers should be preferred over manually writing
-low-level sector dictionaries. Supported sector coefficient choices should be:
-
-```python
-sector_distribution="square"    # equal total weight over selected Nj sectors
-sector_distribution="binomial"  # product-state binomial weights, truncated to the selected window
-```
-
-After the sector coefficients are chosen, the propagated state should be stored
-as sector blocks:
-
-```python
-{Nj: psi_Nj}              # psi_Nj has shape (Nj + 1,) over n_e = 0,...,Nj
-{(Nj1, Nj2): psi_Nj1_Nj2} # shape ((Nj1 + 1) * (Nj2 + 1),) over (n_e1, n_e2)
-```
-
-By default, each internal sector state should start in the all-active-atoms-down
-state, i.e. `n_e=0` or `(n_e1, n_e2)=(0, 0)`.
-
-Detailed initialization conventions should live in:
-
-- `docs/instructions/initial_sector_state.md` (planned/missing)
+- `docs/instructions/initial_sector_state.typ`
 
 For inhomogeneous coupling conventions, use:
 
@@ -136,7 +91,7 @@ checks include:
 
 ```python
 Omega_Gamma_from_cavity_parameters(...)   # validates bad-cavity limit
-validated_mcwf_dt(...)                    # enforces the MCWF dt rule
+mcwf_dt_from_scales(...)                  # constructs the current MCWF dt rule
 check_initial_sector_omega_ratio(...)     # checks Omega / Omega_c for initial sectors
 validate_sector_distribution(...)         # checks "square" / "binomial"
 omega2_from_weighted_average(...)         # validates inhomogeneous group sizes
@@ -324,6 +279,13 @@ both the averaged `JMomentSeries` and the corresponding `phases`. Plotting
 notebooks should read the saved `phases` from that artifact instead of
 reconstructing the protocol manually.
 
+Slurm comparison runs that produce both grouped and equivalent homogeneous
+outputs should distinguish artifacts with clear parameter-tagged filename
+prefixes such as `two_group_factor_0.4_omega_0.6` and
+`single_group_factor_0.4`.
+Separate Slurm runner scripts may produce those artifacts, and the combine
+script can then be called with the corresponding filename prefix.
+
 ### 6.3 J-Vector Direction Fields
 
 After the raw first-order moments are available, derived direction fields
@@ -396,6 +358,7 @@ comparing simulation, theory, and approximations.
 
 Detailed plotting conventions live in:
 
+- `docs/instructions/common/plotting.typ`
 - `docs/instructions/plotting_workflows.md`
 
 ### 8.1 Shared Plotting
@@ -424,7 +387,9 @@ General diagnostic plotting functions currently live in
   probabilities `p_alpha(t)` computed directly from saved snapshot sector
   blocks.
 
-Detailed plotting conventions live in `docs/instructions/plotting_workflows.md`.
+Shared plotting conventions live in `docs/instructions/common/plotting.typ`.
+Repo-specific plotting-function contracts live in
+`docs/instructions/plotting_workflows.md`.
 Future diagnostics and plots should consume `MomentSeries` or `JMomentSeries`
 when the required data are already present, instead of rerunning older
 observable extraction steps.

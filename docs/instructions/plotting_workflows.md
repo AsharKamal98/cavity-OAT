@@ -1,48 +1,9 @@
 # Plotting Workflows
 
-This file defines repository-level plotting conventions. Plotting functions
-should stay thin: they should visualize already-computed observables, moments,
-or diagnostics rather than recomputing expensive physics.
-
-## General Plotting Rules
-
-1. Time axes should use scientific notation when useful and should disable
-   additive offset notation:
-
-   ```python
-   ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
-   ```
-
-2. Plotting functions should support both single-group and group-resolved data
-   when the input container provides the relevant group fields.
-
-3. When both group-resolved and full-system quantities are available, plot the
-   group-resolved curves first and the full-system curve last.
-
-4. Group-resolved curves should use dashed lines. Each group should keep its
-   own color consistently across panels.
-
-5. Full-system curves should use a solid line and accept an optional
-   `colour_index`. The default `colour_index=0` should be gray, and later
-   indices should cycle through other dark colors for overlaid runs.
-
-6. Plotting functions should accept an optional `axes` argument. If `axes is
-   None`, create a new figure and axes. If `axes` is provided, plot into those
-   axes and return the same figure and axes. This allows overlaying multiple
-   results:
-
-   ```python
-   fig, axes = plot_some_quantity(result_a, label="run A")
-   fig, axes = plot_some_quantity(result_b, axes=axes, label="run B")
-   ```
-
-7. Plotting functions that save figures should accept `output_path`, create the
-   parent directory if needed, and save with `dpi=200` and `bbox_inches="tight"`.
-
-8. Labels should name the physical quantity being plotted, using math labels
-   when appropriate.
-
-9. Plotting functions should accept optional `phases` when the x-axis is time.
+This file defines repo-specific contracts for the current plotting functions.
+For shared plotting conventions under `common/plotting/`, use
+`docs/instructions/common/plotting.typ`. For shared overlay, `fig, axes`,
+palette, and line-style behavior, use the plotting-workflows skill.
 
 ## `fig, axes = plot_spin_components(...)`
 
@@ -67,8 +28,8 @@ or diagnostics rather than recomputing expensive physics.
    panel should also include all group-resolved curves.
 
 7. The function should support `axes`, `output_path`, `label`, `phases`,
-   `colour_index`, and `linestyle` so multiple results can be plotted into the
-   same figure.
+   `colour_family_index`, `shade_index`, and `linestyle` so multiple results
+   can be plotted into the same figure.
 
 ## `fig, axes = plot_bloch_angles(...)`
 
@@ -85,12 +46,12 @@ or diagnostics rather than recomputing expensive physics.
    function should not recompute angles from spin components.
 
 5. If group-resolved `theta_groups` and `phi_groups` exist, plot group angles
-   first using the selected `colour_index` palette and selected `linestyle`.
-   Plot the full-system angles last using the next color from the same palette
-   when those fields exist.
+   first using the selected `colour_family_index` / `shade_index` palette and
+   selected `linestyle`. Plot the full-system angles last using the next color
+   from the same palette when those fields exist.
 
 6. The function should support `axes`, `output_path`, `label`, `phases`,
-   `colour_index`, and `linestyle`.
+   `colour_family_index`, `shade_index`, and `linestyle`.
 
 ## `fig, axes = plot_mfe_residuals(...)`
 
@@ -152,24 +113,3 @@ or diagnostics rather than recomputing expensive physics.
 
 Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
 `Jx_groups`, `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
-
-## Global Styling Rules
-
-Shared styling helpers should live in `common/plotting/utils.py`.
-Indexed color and line-pattern helpers may live in
-`common/plotting/utils.py`.
-
-1. Use a colorblind-friendly manual palette, such as Okabe-Ito, rather than
-   changing Matplotlib's global style.
-
-2. If `phases` are provided, show protocol phases with subtle background bands:
-
-   ```python
-   ax.axvspan(phase_start, phase_end, alpha=0.35)
-   ```
-
-3. Use a white figure background, white axes, light gray grids, hidden
-   top/right spines, and small x-margins.
-
-4. New figures should use constrained layout when possible, and figure titles
-   should use slightly larger fonts with `fig.suptitle(..., y=1.02)`.

@@ -27,6 +27,8 @@ This file contains backend-neutral helpers used across phase handling.
 
 === Phase Helpers
 
+- `default_three_phase_protocol(T1, T2, T3, delta0, Omega0)` returns the
+  standard three-phase protocol as a list of `Phase` objects.
 - `phase_boundary_times(phases)` returns all cumulative phase-end times for a
   phase protocol.
 - `phase_values_at_time(t, phases)` returns the phase-local `(Omega, delta)`
@@ -34,15 +36,20 @@ This file contains backend-neutral helpers used across phase handling.
 
 == `common/utils/parameters.py`
 
-This file contains shared parameter-scale, phase-protocol, cavity-mapping, and
+This file contains shared parameter-scale, cavity-mapping, and
 parameter-validation helpers.
 
-=== Parameter and Protocol Helpers
+=== Parameter Helpers
 
-- `default_three_phase_protocol(T1, T2, T3, delta0, Omega0)` returns the
-  standard three-phase protocol as a list of `Phase` objects.
 - `omega_c(N_J, Gamma)` returns the critical drive $Omega_c$ for a fixed active
   atom number.
+- `scaled_N_Gamma(factor, N, Gamma)` returns `factor * N * Gamma` for
+  direct $N$-scaling model parameters such as $Omega_0$ and $delta_0$.
+- `inverse_scaled_N_Gamma(factor, N, Gamma)` returns `factor / (N * Gamma)`
+  for inverse rate scales such as MCWF timesteps.
+- `mcwf_dt_from_scales(Omega0, delta0, N, Gamma, ...)` returns the minimum of
+  the drive-based, detuning-based, and collective-decay-based MCWF timestep
+  scales.
 - `delta0_from_N_Gamma(N, Gamma)` returns the default notebook detuning scale.
 - `Omega0_from_N_Gamma(N, Gamma)` returns the default notebook drive scale.
 - `Omega_Gamma_from_cavity_parameters(...)` converts cavity parameters to the
@@ -50,8 +57,8 @@ parameter-validation helpers.
 - `omega2_from_weighted_average(omega1, N1, N2)` returns the fixed
   inhomogeneous group-2 coupling $omega_2$ from the weighted-average
   convention.
-- `validated_mcwf_dt(dt, N, Gamma, safety_factor=...)` enforces the notebook
-  MCWF timestep rule.
+- `validated_mcwf_dt(dt, N, Gamma, safety_factor=...)` enforces the older
+  simple `1 / (N Gamma)` notebook timestep bound.
 - `check_initial_sector_omega_ratio(sector_coeffs, Omega, Gamma, ...)` checks
   the initial support against the smallest-sector critical drive.
 

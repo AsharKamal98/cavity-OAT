@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from typing import List, Mapping, Sequence, Tuple
+from typing import Mapping, Sequence, Tuple
 
 import numpy as np
-
-from parser.common import Phase
-
 
 def omega_G_from_weighted_average(
     omega_i: Sequence[float],
@@ -29,6 +26,34 @@ def omega_G_from_weighted_average(
 def omega_c(N_J: int, Gamma: float) -> float:
     """Critical drive for the polarized-to-mixed transition at delta = 0."""
     return 0.5 * N_J * Gamma
+
+
+def scaled_N_Gamma(factor: float, N: int, Gamma: float) -> float:
+    """Scale a dimensionless factor by N * Gamma."""
+    return float(factor) * float(N) * float(Gamma)
+
+
+def inverse_scaled_N_Gamma(factor: float, N: int, Gamma: float) -> float:
+    """Scale a dimensionless factor by 1 / (N * Gamma)."""
+    return float(factor) / (float(N) * float(Gamma))
+
+
+def mcwf_dt_from_scales(
+    Omega0: float,
+    delta0: float,
+    N: int,
+    Gamma: float,
+    *,
+    drive_factor: float = 0.05,
+    decay_factor: float = 0.1,
+) -> float:
+    """Choose an MCWF timestep from drive, detuning, and collective decay scales."""
+    scales = [decay_factor / (float(N) * float(Gamma))]
+    if abs(Omega0) > 0.0:
+        scales.append(drive_factor / abs(float(Omega0)))
+    if abs(delta0) > 0.0:
+        scales.append(drive_factor / abs(float(delta0)))
+    return min(scales)
 
 
 def delta0_from_N_Gamma(N: int, Gamma: float) -> float:
@@ -166,18 +191,3 @@ def check_initial_sector_omega_ratio(
         "ratio": ratio,
         "ratio_limit": float(ratio_limit),
     }
-
-
-def default_three_phase_protocol(
-    T1: float,
-    T2: float,
-    T3: float,
-    delta0: float,
-    Omega0: float,
-) -> List[Phase]:
-    """Three-phase protocol."""
-    return [
-        Phase(duration=T1, omega=Omega0, delta=0.0, label="phase1"),
-        Phase(duration=T2, omega=Omega0, delta=delta0, label="phase2"),
-        Phase(duration=T3, omega=0.0, delta=0.0, label="phase3"),
-    ]
