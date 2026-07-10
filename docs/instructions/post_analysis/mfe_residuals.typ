@@ -63,6 +63,22 @@ $
 norm(R)_2(t_(k)) = sqrt(abs(R_(1)(t_(k)))^2 + abs(R_(2)(t_(k)))^2).
 $
 
+= Method in Pseudo-Code
+
+Use `compute_mfe_residuals(...)` from `post_analysis/mfe_residuals.py` after
+`moments.J` has been computed:
+
+```python
+moments.mfe_residuals = compute_mfe_residuals(
+    moments.J,
+    parameters=moments.parameters,
+)
+```
+
+`compute_mfe_residuals(...)` should consume already-averaged J moments and
+shared moment parameters, then return an `MFEResidualSeries` or `None` when the
+input is not a two-group residual case.
+
 = Output
 
 `compute_mfe_residuals(...)` should return `None` when the input does not
@@ -76,15 +92,6 @@ MFEResidualSeries(
     t,
     phase_index,
     residuals_groups=(R_1, R_2),
-)
-```
-
-The top-level notebook container should store this result as:
-
-```python
-moments.mfe_residuals = compute_mfe_residuals(
-    moments.J,
-    parameters=moments.parameters,
 )
 ```
 

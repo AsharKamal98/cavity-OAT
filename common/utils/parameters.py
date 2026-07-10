@@ -56,16 +56,6 @@ def mcwf_dt_from_scales(
     return min(scales)
 
 
-def delta0_from_N_Gamma(N: int, Gamma: float) -> float:
-    """Protocol detuning used in the notebook scans: delta = 0.05 * N * Gamma."""
-    return 0.05 * N * Gamma
-
-
-def Omega0_from_N_Gamma(N: int, Gamma: float) -> float:
-    """Protocol drive used in the notebook scans: Omega = 0.465 * N * Gamma."""
-    return 0.465 * N * Gamma
-
-
 def Omega_Gamma_from_cavity_parameters(
     epsilon: float,
     g_c: float,

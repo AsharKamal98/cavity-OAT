@@ -15,7 +15,7 @@ diagnostics that consume its outputs.
 
 This file is a structural implementation guide. For the theory derivation, use
 `docs/theory/notes_inhomogeneous_coupling.tex`. For residual diagnostics that
-consume solved or simulated angles, use `docs/instructions/mfe_residuals.typ`.
+consume solved or simulated angles, use `docs/instructions/post_analysis/mfe_residuals.typ`.
 
 = MFE Definitions
 
@@ -107,7 +107,7 @@ state.
 The solver should be split into small functions with pure data flow. The core
 solver should not import `solvers.mcwf`. `Phase` and
 `phase_values_at_time(...)` are defined in `common` and follow the convention
-described in `docs/instructions/simulation_parameters.typ`.
+described in `docs/instructions/model_parameters.typ`.
 
 ```python
 def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
@@ -251,4 +251,4 @@ objects.
 - The per-group norm $abs(D_(a))^2 + abs(E_(a))^2$ should remain constant up to
   solver tolerance. Large drift should be treated as a numerical warning.
 - Phase and angle conventions should match `docs/instructions/j_moments.typ`
-  and `docs/instructions/mfe_residuals.typ`.
+  and `docs/instructions/post_analysis/mfe_residuals.typ`.

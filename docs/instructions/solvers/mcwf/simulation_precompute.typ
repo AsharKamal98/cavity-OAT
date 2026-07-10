@@ -6,12 +6,14 @@
   #text(size: 17pt, weight: "bold")[Simulation Precompute: Implementation Instructions]
 ]
 
-= Scope
+= Purpose
 
 This file describes the intended implementation of the precompute layer used by
 the custom MCWF simulator. The precompute layer should not change the physical
 model. It should only cache objects that are identical across trajectories and
 repeated full-`dt` steps.
+The main relevant functions currently live in `solvers/mcwf/sim.py` and are
+called from `solvers/mcwf/ensamble_sim.py`.
 
 = Method
 
@@ -184,7 +186,7 @@ $
 
 Detailed construction rules for `build_sector_ops_for_key(...)`,
 `build_sector_ops(...)`, and `build_two_group_sector_ops(...)` are in
-`docs/instructions/sector_operators.typ`. Below is a summary focusing mostly on the operator forms.
+`docs/instructions/solvers/mcwf/sector_operators.typ`. Below is a summary focusing mostly on the operator forms.
 
 Sector operators should be constructed through:
 

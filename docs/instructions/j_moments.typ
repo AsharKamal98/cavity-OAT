@@ -59,26 +59,20 @@ compute_average_j_moments(samples: list[JMomentSeries])
     "average raw J-moment samples across trajectories"
 ```
 
-`_compute_snapshot_j_moments(...)` computes the J-moments for one snapshot of
+`_compute_snapshot_j_moments(...)` computes the J moments for one snapshot of
 one trajectory. If the trajectory uses tuple sector keys, it should also return
-group-resolved moment fields. It is called once per saved snapshot in
-`compute_trajectory_j_moments(...)`. `compute_average_j_moments(...)` averages
-the raw per-trajectory moment fields across the shared saved time grid.
+group-resolved moment fields. 
 
 
-Ensemble and plotting code should call `compute_mcwf_j_moments(...)`,
-which collects trajectory samples, averages them, and attaches derived
-direction and angle fields to the averaged result.
-`JMomentSeries.attatch_norm_spin_components_from_spin_components(...)` attaches `length`, `nx`,
-`ny`, and `nz`, plus group-resolved versions when group fields exist.
-`JMomentSeries.attatch_angles_from_norm_spin_components(...)` attaches `theta` and `phi`, plus group-resolved
-versions when group direction fields exist.
-Shared simulation metadata needed during extraction should be read once from
-`TrajectoryEnsemble.metadata` and passed into
-`compute_trajectory_j_moments(...)`, rather than duplicated on every
-`TrajectoryResult`.
-MFE residuals are computed separately; use
-`docs/instructions/mfe_residuals.typ` for that diagnostic.
+`compute_trajectory_j_moments(...)` calls `_compute_snapshot_j_moments(...)` once per saved snapshot.
+
+`compute_mcwf_j_moments(...)` calls `compute_trajectory_j_moments(...)` once
+per trajectory, then uses `compute_average_j_moments(...)` to average the raw
+moment fields across the shared saved-time grid.
+
+`compute_mcwf_j_moments(...)` uses the `JMomentSeries` class methods to attach
+spin directions and angles from the averaged spin components. The
+`JMomentSeries` class methods are covered in `docs/instructions/parser.typ`.
 
 = J-Moment Definitions
 
@@ -110,7 +104,7 @@ $
 
 Use this rule for $J_x$, $J_y$, $J_z$ and $N_(e)$ with the sector-local
 operators from the precomputed `ops_list` described in
-`docs/instructions/simulation_precompute.typ`. For the full wavefunction
+`docs/instructions/solvers/mcwf/simulation_precompute.typ`. For the full wavefunction
 average active-sector atom number field $N_(J)$, do not construct an operator.
 Use the scalar active-sector atom number for each sector and replace each
 numerator term by
@@ -122,7 +116,7 @@ to remain constant in time.
 The jump-rate field should use the same phase-local jump operator used by the
 MCWF solver. Let $l_(alpha)(t_(k))$ be this unscaled sector jump operator, built
 from the precomputed sector operators in
-`docs/instructions/simulation_precompute.typ` by
+`docs/instructions/solvers/mcwf/simulation_precompute.typ` by
 `build_phase_jump_operator_for_sector(...)`. The physical rate is
 
 $
@@ -183,7 +177,8 @@ $
 If $J_("len")(t_(k))$ is below the numerical tolerance, set the normalized
 components to zero. For group-resolved fields, apply the same rule separately
 to each group using $J_(i,g)$ and $J_("len",g)$.
-This is implemented by `JMomentSeries.attatch_norm_spin_components_from_spin_components(...)`.
+The corresponding `JMomentSeries` class method is documented in
+`docs/instructions/parser.typ`.
 
 == Angles
 
@@ -202,7 +197,8 @@ $
 
 For group-resolved fields, apply the same rule separately to each group's
 normalized components $n_(i,g)$.
-This is implemented by `JMomentSeries.attatch_angles_from_norm_spin_components(...)`.
+The corresponding `JMomentSeries` class method is documented in
+`docs/instructions/parser.typ`.
 
 = Output
 

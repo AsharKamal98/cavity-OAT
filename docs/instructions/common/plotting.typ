@@ -17,48 +17,6 @@ backends.
 For shared overlay, axes, palette, and line-style behavior, use the
 plotting-workflows skill.
 
-= Shared Plotting Rules
-
-== Plotting Scope
-
-- Plotting functions should stay thin: they should visualize already-computed
-  observables, moments, or diagnostics rather than recomputing expensive
-  physics.
-- Shared plotting helpers should live in `common/plotting/utils.py`.
-- Common plotting functions should support both single-group and
-  group-resolved data when the input container provides the relevant group
-  fields.
-
-== Time and Phase Handling
-
-- Time axes should use scientific notation when useful and should disable
-  additive offset notation.
-- Plotting functions for time-series data should accept optional `phases`.
-- If `phases` are provided, show protocol phases with subtle background bands
-  and phase boundaries.
-- Phase-boundary logic should be reused from shared plotting helpers rather
-  than recomputed inside each plotting function.
-
-== Styling
-
-- Use a white figure background, white axes, light gray grids, hidden top/right
-  spines, and small x-margins.
-- New figures should use constrained layout when possible.
-- Figure titles should use slightly larger fonts, for example with
-  `fig.suptitle(..., y=1.02)`.
-- Labels should name the physical quantity being plotted, using math labels
-  when appropriate.
-
-== Skill-Routed Behavior
-
-For the following shared plotting behaviors, use the plotting-workflows skill
-instead of restating local rules in each file:
-
-- optional `fig, axes` overlay behavior;
-- shared color-palette selection, including `colour_palette(...)`,
-  `colour_family_index`, and `shade_index`;
-- `linestyle` conventions.
-
 = Plot Functions
 
 == `fig, axes = plot_spin_components(...)`
@@ -124,6 +82,49 @@ This function lives in `common/plotting/mfe_residuals.py`.
   solid gray curve for the L2 norm.
 - For shared overlay and line-style behavior, use the plotting-workflows
   skill.
+
+= Shared Plotting Rules
+
+== Plotting Scope
+
+- Plotting functions should stay thin: they should visualize already-computed
+  observables, moments, or diagnostics rather than recomputing expensive
+  physics.
+- Shared plotting helpers should live in `common/plotting/utils.py`.
+- Common plotting functions should support both single-group and
+  group-resolved data when the input container provides the relevant group
+  fields.
+
+== Time and Phase Handling
+
+- Time axes should use scientific notation when useful and should disable
+  additive offset notation.
+- Plotting functions for time-series data should accept optional `phases`.
+- If `phases` are provided, show protocol phases with subtle background bands
+  and phase boundaries.
+- Phase-boundary logic should be reused from shared plotting helpers rather
+  than recomputed inside each plotting function.
+
+== Styling
+
+- Use a white figure background, white axes, light gray grids, hidden top/right
+  spines, and small x-margins.
+- New figures should use constrained layout when possible.
+- Figure titles should use slightly larger fonts, for example with
+  `fig.suptitle(..., y=1.02)`.
+- Labels should name the physical quantity being plotted, using math labels
+  when appropriate.
+
+== Skill-Routed Behavior
+
+For the following shared plotting behaviors, use the plotting-workflows skill
+instead of restating local rules in each file:
+
+- optional `fig, axes` overlay behavior;
+- shared color-palette selection, including `colour_palette(...)`,
+  `colour_family_index`, and `shade_index`;
+- `linestyle` conventions.
+
 
 = Invariants
 

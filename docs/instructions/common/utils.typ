@@ -16,7 +16,7 @@ helpers that should be available outside a specific simulation backend such as
 `solvers/mcwf`.
 
 Detailed physics conventions may live in more specific instruction files, such
-as `docs/instructions/simulation_parameters.typ` or
+as `docs/instructions/model_parameters.typ` or
 `docs/instructions/bloch_vector_averaging.typ`.
 
 = Helper Summary
@@ -50,8 +50,6 @@ parameter-validation helpers.
 - `mcwf_dt_from_scales(Omega0, delta0, N, Gamma, ...)` returns the minimum of
   the drive-based, detuning-based, and collective-decay-based MCWF timestep
   scales.
-- `delta0_from_N_Gamma(N, Gamma)` returns the default notebook detuning scale.
-- `Omega0_from_N_Gamma(N, Gamma)` returns the default notebook drive scale.
 - `Omega_Gamma_from_cavity_parameters(...)` converts cavity parameters to the
   effective spin-model `(Omega, Gamma)` and checks the bad-cavity condition.
 - `omega2_from_weighted_average(omega1, N1, N2)` returns the fixed

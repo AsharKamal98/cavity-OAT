@@ -145,7 +145,7 @@ $
 
 All group-sector operators should be built during precomputation when possible. Do not rebuild sparse Kronecker products, $l^dagger l$, effective generators, or full-`dt` propagators inside the trajectory time loop.
 
-For general precompute rules, use `docs/instructions/simulation_precompute.typ`.
+For general precompute rules, use `docs/instructions/solvers/mcwf/simulation_precompute.typ`.
 
 = Collective Jump Convention
 

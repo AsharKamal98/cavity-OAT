@@ -10,6 +10,8 @@
 This file describes the initial strong-symmetry sector expansion used by the
 MCWF ensemble run. Use it when editing `solvers/mcwf/sim.py` or helper
 functions that construct the initial sector coefficients and sector blocks.
+The main relevant functions currently live in `solvers/mcwf/sim.py` and
+`solvers/mcwf/initial_coeffs.py`.
 
 = Method
 

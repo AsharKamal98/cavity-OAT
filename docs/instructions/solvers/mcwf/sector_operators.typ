@@ -14,7 +14,7 @@ This file specifies how reduced-basis sector operators should be constructed in
 `build_two_group_sector_ops(...)`.
 
 The precompute layer should collect these objects into `ops_list`; see
-`docs/instructions/simulation_precompute.typ` for how `ops_list` is used by
+`docs/instructions/solvers/mcwf/simulation_precompute.typ` for how `ops_list` is used by
 phase generators, jump operators, and full-`dt` propagators.
 
 = Function Structure

@@ -43,8 +43,8 @@ AGENTS.md
       -> docs/theory/Engineering One Axis Twisting via a Dissipative Berry Phase Using Strong.pdf
 ```
 
-For one-time setup of theory documentation from original paper TeX sources, use
-`docs/instructions/generic/theory_documentation_setup.md`.
+For one-time setup or later editing of standalone theory TeX files, use the
+`theory-writer` skill.
 
 ### `docs/instructions`
 
@@ -71,23 +71,25 @@ AGENTS.md
       -> docs/instructions/implementation_overview.md
       -> docs/instructions/common/utils.typ
       -> docs/instructions/common/plotting.typ
-      -> docs/instructions/simulation_parameters.typ
-      -> docs/instructions/initial_sector_state.typ
+      -> docs/instructions/model_parameters.typ
+      -> docs/instructions/parser.typ
+      -> docs/instructions/solvers/mcwf/method_parameters.typ
+      -> docs/instructions/solvers/mcwf/initial_sector_state.typ
       -> docs/instructions/parameter_validation.md (planned/missing)
-      -> docs/instructions/simulation_precompute.typ
-      -> docs/instructions/sector_operators.typ
+      -> docs/instructions/solvers/mcwf/simulation_precompute.typ
+      -> docs/instructions/solvers/mcwf/sector_operators.typ
       -> docs/instructions/paper_inhomogeneous_couplings.typ
-      -> docs/instructions/mfe-solver.typ
-      -> docs/instructions/ensemble_simulation.typ
-      -> docs/instructions/single_trajectory_simulation.typ
+      -> docs/instructions/solvers/mfe/mfe-solver.typ
+      -> docs/instructions/solvers/mcwf/ensemble_simulation.typ
+      -> docs/instructions/solvers/mcwf/single_trajectory_simulation.typ
       -> docs/instructions/observable_moment_pipeline.typ
       -> docs/instructions/j_moments.typ
-      -> docs/instructions/mfe_residuals.typ
+      -> docs/instructions/post_analysis/mfe_residuals.typ
       -> docs/instructions/bloch_vector_averaging.typ
       -> docs/instructions/plot_spin_components.typ
-      -> docs/instructions/squeezing.typ
+      -> docs/instructions/post_analysis/squeezing.typ
       -> docs/instructions/dephasing_diagnostics.typ
-      -> docs/instructions/post_analysis.md
+      -> docs/instructions/post_analysis/post_analysis.md
       -> docs/instructions/plotting_workflows.md
 ```
 
@@ -122,8 +124,9 @@ Read relevant theory and instruction files before writing text.
   `docs/theory/theory_overview.md` first.
 - Always read the relevant overview file before reading a task-specific
   instruction or theory-specific file. 
-- Before creating a new theory or instruction file, read
-  `docs/instructions/generic/documentation_file_guidelines.md`.
+- Before creating a new theory or instruction file, use the relevant writing
+  skill when available, such as `theory-writer` for standalone theory TeX
+  files or `agent-instruction-writer` for instruction files.
 - If both a theory file and an instruction file apply, use the theory file for
   equations and the instruction file for repository-specific implementation
   behavior.
