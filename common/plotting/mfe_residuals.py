@@ -79,6 +79,7 @@ def plot_mfe_residuals(
     label: Optional[str] = None,
     phases=None,
     print_phase_end_summary: bool = True,
+    symlog: bool = True,
 ):
     """
     Plot stored two-group MFE residuals and their L2 norm.
@@ -128,6 +129,8 @@ def plot_mfe_residuals(
     )
     axes[0].axhline(0.0, linestyle=":", color="black", alpha=0.7)
     axes[0].set_ylabel("Residual")
+    if symlog:
+        axes[0].set_yscale("symlog", linthresh=1e-5)
     style_axis(axes[0])
     axes[0].legend()
     format_time_axis(axes[0])
@@ -139,7 +142,6 @@ def plot_mfe_residuals(
         phases=phases,
         title="MFE steady-state residuals",
         output_path=output_path,
-        title_y=1.08,
     )
 
     if print_phase_end_summary:

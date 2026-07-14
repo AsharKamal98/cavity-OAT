@@ -73,8 +73,11 @@ This function lives in `common/plotting/mfe_residuals.py`.
 - The current common implementation should assume exactly two residual groups.
 - The output should be a single panel showing `Re R_1`, `Im R_1`, `Re R_2`,
   `Im R_2`, and the L2 norm `sqrt(|R_1|^2 + |R_2|^2)`.
+- With `symlog=True` (the default), use a symmetric logarithmic y-axis with
+  `linthresh=1e-5` so phase-boundary spikes and small signed steady-state
+  residuals remain visible together.
 - The function should support `axes`, `output_path`, `label`, `phases`,
-  `colour_index`, and `linestyle`.
+  `colour_index`, `linestyle`, and `symlog`.
 - If `phases` are provided, the function may also print a phase-end residual
   summary.
 - The current common implementation uses `colour_index` rather than

@@ -7,7 +7,7 @@ from parser.qutip import (
     QutipMESolverParameters,
 )
 from parser.mfe_residuals import MFEResidualSeries
-from parser.moments import MomentParameters, MomentSeries
+from parser.moments import MomentSeries, SimulationMetadata
 from parser.mcwf import (
     MCWFSolverParameters,
     SectorKey,
@@ -27,8 +27,8 @@ __all__ = [
     "MFEResult",
     "MFESolverParameters",
     "MCWFSolverParameters",
-    "MomentParameters",
     "MomentSeries",
+    "SimulationMetadata",
     "Phase",
     "QutipGroupedFixedNjModel",
     "QutipMCSolverParameters",

@@ -22,42 +22,30 @@ class QutipMESolverParameters(BaseModel):
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "QutipMESolverParameters":
+        if len(self.Ni) != len(self.omega_i):
+            raise ValueError("Ni and omega_i must contain the same number of groups.")
         if self.Gamma <= 0.0:
             raise ValueError("Gamma must be positive.")
-        if not self.phases:
-            raise ValueError("phases must contain at least one phase.")
-        if not self.Ni:
-            raise ValueError("Ni must contain at least one group size.")
-        if len(self.omega_i) != len(self.Ni) - 1:
-            raise ValueError("omega_i must contain the first G-1 group couplings.")
-        if any(group_size < 0 for group_size in self.Ni):
-            raise ValueError("Ni must contain non-negative group sizes.")
         return self
 
 
 class QutipMCSolverParameters(BaseModel):
     """Validated inputs for the fixed-NJ QuTiP mcsolve benchmark."""
 
-    Gamma: float
-    phases: list[Phase]
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
+    Gamma: float
+    phases: list[Phase]
     shifted_jump_operator: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "QutipMCSolverParameters":
+        if len(self.Ni) != len(self.omega_i):
+            raise ValueError("Ni and omega_i must contain the same number of groups.")
         if self.Gamma <= 0.0:
             raise ValueError("Gamma must be positive.")
-        if not self.phases:
-            raise ValueError("phases must contain at least one phase.")
-        if not self.Ni:
-            raise ValueError("Ni must contain at least one group size.")
-        if len(self.omega_i) != len(self.Ni) - 1:
-            raise ValueError("omega_i must contain the first G-1 group couplings.")
-        if any(group_size < 0 for group_size in self.Ni):
-            raise ValueError("Ni must contain non-negative group sizes.")
         return self
 
 @dataclass(frozen=True)

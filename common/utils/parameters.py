@@ -44,7 +44,7 @@ def mcwf_dt_from_scales(
     N: int,
     Gamma: float,
     *,
-    drive_factor: float = 0.05,
+    drive_factor: float = 0.01,
     decay_factor: float = 0.1,
 ) -> float:
     """Choose an MCWF timestep from drive, detuning, and collective decay scales."""

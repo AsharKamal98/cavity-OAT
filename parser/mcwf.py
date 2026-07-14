@@ -53,10 +53,10 @@ class MCWFSolverParameters(BaseModel):
     """Validated inputs for the MCWF ensemble solver."""
 
     Ni: tuple[int, ...]
-    dN: int = 0
-    omega_i: tuple[float, ...] = ()
-    Gamma: float = 1.0
+    omega_i: tuple[float, ...]
+    Gamma: float
     phases: list[Phase]
+    dN: int = 0
     sector_distribution: str = "binomial"
     dt: float = 1e-3
     shifted_jump_operator: bool = False
@@ -65,16 +65,10 @@ class MCWFSolverParameters(BaseModel):
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "MCWFSolverParameters":
-        if not self.Ni:
-            raise ValueError("Ni must contain at least one group size.")
-        if any(group_size < 0 for group_size in self.Ni):
-            raise ValueError("All group sizes in Ni must be non-negative.")
-        if len(self.omega_i) != len(self.Ni) - 1:
-            raise ValueError("omega_i must contain the first G-1 group couplings.")
+        if len(self.Ni) != len(self.omega_i):
+            raise ValueError("Ni and omega_i must contain the same number of groups.")
         if self.Gamma <= 0.0:
             raise ValueError("Gamma must be positive.")
-        if not self.phases:
-            raise ValueError("phases must contain at least one phase.")
         if self.dN < 0:
             raise ValueError("dN must be non-negative.")
         if self.dt <= 0.0:

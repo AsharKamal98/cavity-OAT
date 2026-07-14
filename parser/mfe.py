@@ -8,10 +8,10 @@ from parser.common import Array, Phase
 class MFESolverParameters(BaseModel):
     """Parameters needed by the standalone MFE solver."""
 
+    Ni: tuple[int, ...]
+    omega_i: tuple[float, ...]
     Gamma: float
     phases: list[Phase]
-    omega_i: tuple[float, ...]
-    Ni: tuple[float, ...]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -20,19 +20,11 @@ class MFESolverParameters(BaseModel):
         return len(self.Ni)
 
     @model_validator(mode="after")
-    def validate_groups(self) -> "MFESolverParameters":
-        if not self.phases:
-            raise ValueError("phases must contain at least one phase.")
+    def validate_inputs(self) -> "MFESolverParameters":
+        if len(self.Ni) != len(self.omega_i):
+            raise ValueError("Ni and omega_i must contain the same number of groups.")
         if self.Gamma <= 0.0:
             raise ValueError("Gamma must be positive.")
-        if len(self.Ni) == 0:
-            raise ValueError("Ni must contain at least one group.")
-        if len(self.omega_i) not in (len(self.Ni) - 1, len(self.Ni)):
-            raise ValueError(
-                "omega_i must contain either one coupling per group or all but the final group coupling."
-            )
-        if any(N_g < 0.0 for N_g in self.Ni):
-            raise ValueError("Ni must be non-negative.")
         return self
 
 

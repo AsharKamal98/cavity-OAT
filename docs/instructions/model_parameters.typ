@@ -152,8 +152,9 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
 - Parameter helpers should be reused instead of duplicating formulas in
   notebook cells or plotting utilities.
 - `Gamma` should remain the canonical code name for $Gamma$.
-- Functions that run simulations should receive `N`, `Gamma`,
-  and `dt` explicitly when those quantities affect the result.
+- Solver parameter classes should receive physical model inputs through shared
+  `SimulationMetadata`; method-specific controls such as MCWF `dt` remain
+  explicit solver inputs.
 - Inhomogeneous $omega_2$ should be fixed from physical group sizes, not
   from each instantaneous sector.
 - If an existing helper almost fits a new parameter convention but would

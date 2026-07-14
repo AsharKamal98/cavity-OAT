@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from parser.mcwf import MCWFSolverParameters
-from parser.moments import MomentSeries
+from parser.moments import MomentSeries, SimulationMetadata
 from slurm.j_moments_io import save_j_moments_artifact
 from solvers.mcwf.ensamble_sim import run_trajectory_ensemble
 from solvers.mcwf.j_moments import compute_mcwf_j_moments
@@ -19,10 +19,13 @@ def add_common_arguments(
     parser.add_argument("--n-processes", type=int, required=True)
     parser.add_argument("--ntraj", type=int, required=True)
     parser.add_argument("--filename", type=str, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--array-index", type=int, required=True)
     parser.add_argument("--Gamma", type=float, required=True)
     parser.add_argument("--Ni", type=str, required=True)
     parser.add_argument("--dN", type=int, required=True)
+    parser.add_argument("--dt", type=float, required=True)
+    parser.add_argument("--num-snapshots", type=int, required=True)
     if include_omega_i:
         parser.add_argument("--omega-i", type=str, required=True)
     parser.add_argument("--Omega-factor", dest="Omega_factor", type=float, required=True)
@@ -49,30 +52,26 @@ def run_mcwf_case(
     *,
     label: str,
     output_path: Path,
-    Ni: list[int],
-    omega_i: list[float],
+    metadata: SimulationMetadata,
     dN: int,
-    Gamma: float,
-    phases,
     dt: float,
     num_snapshots: int,
     seed: int,
     ntraj: int,
     n_processes: int,
 ) -> None:
-    print(f"Starting {label} MCWF run with Ni={Ni}, omega_i={omega_i}.")
-    total_time = float(sum(phase.duration for phase in phases))
+    print(f"Starting {label} MCWF run with Ni={metadata.Ni}, omega_i={metadata.omega_i}.")
     mcwf_moments = MomentSeries(
         num_snapshots=num_snapshots,
-        total_time=total_time,
+        metadata=metadata,
     )
 
     mcwf_parameters = MCWFSolverParameters(
-        Ni=Ni,
+        Ni=metadata.Ni,
+        omega_i=metadata.omega_groups,
+        Gamma=metadata.Gamma,
+        phases=metadata.phases,
         dN=dN,
-        omega_i=omega_i,
-        Gamma=Gamma,
-        phases=phases,
         sector_distribution="binomial",
         dt=dt,
         shifted_jump_operator=True,
@@ -98,5 +97,5 @@ def run_mcwf_case(
     j_moments_time = time.perf_counter() - j_moments_t0
     print(f"{label} J-moments runtime: {j_moments_time:.2f} seconds.")
 
-    save_j_moments_artifact(mcwf_moments.J, phases, output_path)
+    save_j_moments_artifact(mcwf_moments.J, metadata.phases, output_path)
     print(f"Saved {label} J moments artifact to {output_path}")

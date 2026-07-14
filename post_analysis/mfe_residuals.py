@@ -4,13 +4,13 @@ import numpy as np
 
 from parser.j_moments import JMomentSeries
 from parser.mfe_residuals import MFEResidualSeries
-from parser.moments import MomentParameters
+from parser.moments import SimulationMetadata
 
 
 def compute_mfe_residuals(
     j_moments: JMomentSeries,
     *,
-    parameters: MomentParameters | None,
+    metadata: SimulationMetadata | None,
     tol: float = 1e-12,
 ) -> MFEResidualSeries | None:
     """
@@ -31,15 +31,15 @@ def compute_mfe_residuals(
         or len(j_moments.N_j_groups) != group_count
     ):
         raise ValueError("MFE residuals require matching two-group moment fields.")
-    if parameters is None:
-        raise ValueError("MFE residuals require moments.parameters.")
-    omega_groups = parameters.omega_groups
-    if omega_groups is None or len(omega_groups) != group_count:
+    if metadata is None:
+        raise ValueError("MFE residuals require moments.metadata.")
+    omega_groups = metadata.omega_groups
+    if len(omega_groups) != group_count:
         raise ValueError("MFE residuals require two inhomogeneous coupling weights.")
 
     phase_indices = np.asarray(j_moments.phase_index, dtype=int)
-    omega_t = np.asarray([parameters.phases[idx].omega for idx in phase_indices], dtype=float)
-    delta_t = np.asarray([parameters.phases[idx].delta for idx in phase_indices], dtype=float)
+    omega_t = np.asarray([metadata.phases[idx].omega for idx in phase_indices], dtype=float)
+    delta_t = np.asarray([metadata.phases[idx].delta for idx in phase_indices], dtype=float)
 
     theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta_groups)
     phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi_groups)
@@ -72,7 +72,7 @@ def compute_mfe_residuals(
         detuning_term = -0.5 * delta_t * detuning_factor
         decay_term = (
             0.25j
-            * parameters.Gamma
+            * metadata.Gamma
             * omega_g
             * np.exp(-1j * phi_g)
             * sin_theta

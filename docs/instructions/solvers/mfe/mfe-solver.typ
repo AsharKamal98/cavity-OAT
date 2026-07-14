@@ -126,13 +126,6 @@ def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
 
 ```python
 def solve_mfe(parameters, *, t_eval, rtol=1e-9, atol=1e-11) -> MFEResult:
-    if len(parameters.omega_i) == parameters.group_count - 1:
-        parameters = parameters.model_copy(
-            update={
-                "omega_i": tuple(parameters.omega_i)
-                + (omega_G_from_weighted_average(parameters.omega_i, parameters.Ni),)
-            }
-        )
     zero_angles = (0.0,) * parameters.group_count
     y0 = amplitudes_from_initial_state(zero_angles, zero_angles, parameters)
     solution = solve_ivp(lambda t, y: mfe_rhs(t, y, parameters), ...)
@@ -181,19 +174,13 @@ store the solved observable series explicitly as `moments.J`, for example via
 
 The solver needs:
 
-- `phases`: piecewise-constant `Phase` objects with `duration`, `omega`, and
-  `delta`;
-- `Gamma`: collective decay scale;
-- `omega_i`: one coupling weight per group, or one coupling per group
-  except the final group, in which case `solve_mfe(...)` should complete the
-  last coupling from the weighted-average condition;
-- `Ni`: atom number per group. Inside `solve_mfe(...)`, use `N_(J,a)=N_(a)/2`;
+- `metadata`: `SimulationMetadata` with `Ni`, the first `G-1` `omega_i`
+  inputs, `Gamma`, and the standard phase protocol. Its validator supplies the
+  full `omega_groups` vector used by the MFE equations;
 - `t_eval`: saved output times.
 
-Parameter validation may live outside the solver. In particular, if only the
-first `G-1` entries of `omega_i` are supplied, `solve_mfe(...)` should
-complete the final group coupling using the same weighted-coupling convention
-as the MCWF code.
+The metadata validator completes the final coupling before `solve_mfe(...)`
+runs, using the same weighted-coupling convention as the MCWF code.
 
 = Output
 

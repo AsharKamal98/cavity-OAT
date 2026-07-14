@@ -23,7 +23,7 @@ The main function structure should be:
 compute_mfe_residuals(
     j_moments: JMomentSeries,
     *,
-    parameters: MomentParameters | None,
+    metadata: SimulationMetadata | None,
     tol=1e-12,
 ) -> MFEResidualSeries | None
     "compute two-group MFE residuals from stored J-vector group angles"
@@ -53,7 +53,7 @@ e^(-i phi_(J,a)(t_(k))) sin(theta_(J,a)(t_(k))) C_(J)(t_(k)).
 $
 
 Here $Omega(t_(k))$ and $delta(t_(k))$ are selected from the saved
-`phase_index`, while $omega_(a)$ is read from `MomentParameters.omega_groups`.
+`phase_index`, while $omega_(a)$ is read from `SimulationMetadata.omega_groups`.
 The group atom-number weights are `moments.J.N_j_groups[a]`, not the fixed
 total group sizes.
 
@@ -71,12 +71,12 @@ Use `compute_mfe_residuals(...)` from `post_analysis/mfe_residuals.py` after
 ```python
 moments.mfe_residuals = compute_mfe_residuals(
     moments.J,
-    parameters=moments.parameters,
+    metadata=moments.metadata,
 )
 ```
 
 `compute_mfe_residuals(...)` should consume already-averaged J moments and
-shared moment parameters, then return an `MFEResidualSeries` or `None` when the
+shared simulation metadata, then return an `MFEResidualSeries` or `None` when the
 input is not a two-group residual case.
 
 = Output
@@ -102,6 +102,6 @@ MFEResidualSeries(
 - The residual calculation should use `theta_groups`, `phi_groups`, and
   `N_j_groups` from `moments.J`.
 - The residual calculation should use shared protocol metadata from
-  `moments.parameters`.
+  `moments.metadata`.
 - The residual calculation should not live in `solvers/mcwf/j_moments.py`
   and should not attach residual fields to `JMomentSeries`.

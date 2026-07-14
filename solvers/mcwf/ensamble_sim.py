@@ -7,7 +7,6 @@ from solvers.mcwf.sim import (
     _simulate_single_trajectory,
     build_precomputed_trajectory_data,
 )
-from common.utils.parameters import omega_G_from_weighted_average
 from common.utils.parameters import check_initial_sector_omega_ratio
 from parser.common import Array, Phase
 from parser.mcwf import (
@@ -130,11 +129,7 @@ def run_trajectory_ensemble(
         the same style as the MFE solver.
 
     parameters
-        Validated MCWF solver inputs. This includes `Ni`, `dN`, the first
-        `G-1` group couplings in `omega_i`, `Gamma`, `phases`, the sector
-        distribution, the timestep, and whether to use the shifted jump
-        operator. The final coupling is completed internally from the
-        weighted-average condition.
+        Validated physical inputs and MCWF-specific controls.
 
     verbose
         If True, print setup timing such as precompute and multiprocessing pool
@@ -165,7 +160,6 @@ def run_trajectory_ensemble(
     # _simulate_single_trajectory(...) helper called with the same child seed.
     Ni = [int(group_size) for group_size in parameters.Ni]
     omega_i = [float(coupling) for coupling in parameters.omega_i]
-    omega_i = omega_i + [omega_G_from_weighted_average(omega_i, Ni)]
 
     # initial sector coefficients 
     sector_coeffs = centered_sector_initial_coeffs(

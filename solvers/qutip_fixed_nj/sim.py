@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 import qutip as qt
 
-from common.utils.parameters import omega_G_from_weighted_average
 from parser.qutip import QutipMCSolverParameters, QutipMESolverParameters
 from solvers.qutip_fixed_nj.models import (
     build_qutip_grouped_fixed_nj_model_from_phases,
@@ -33,7 +32,6 @@ def simulate_fixed_nj_me_trajectory(
 
     Ni = [int(group_size) for group_size in parameters.Ni]
     omega_i = [float(coupling) for coupling in parameters.omega_i]
-    omega_i = omega_i + [omega_G_from_weighted_average(omega_i, Ni)]
     NJi = [group_size // 2 for group_size in Ni]
 
     model = build_qutip_grouped_fixed_nj_model_from_phases(
@@ -106,7 +104,6 @@ def simulate_fixed_nj_mc_trajectory(
 
     Ni = [int(group_size) for group_size in parameters.Ni]
     omega_i = [float(coupling) for coupling in parameters.omega_i]
-    omega_i = omega_i + [omega_G_from_weighted_average(omega_i, Ni)]
     NJi = [group_size // 2 for group_size in Ni]
 
     model = build_qutip_grouped_fixed_nj_model_from_phases(

@@ -4,7 +4,6 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from common.utils.phases import phase_values_at_time
-from common.utils.parameters import omega_G_from_weighted_average
 from parser.common import Array
 from parser.mfe import (
     MFEResult,
@@ -45,21 +44,14 @@ def solve_mfe(
     if t_eval.ndim != 1 or t_eval.size < 2:
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
 
-    completed_parameters = parameters
-    if len(parameters.omega_i) == parameters.group_count - 1:
-        omega_i = tuple(parameters.omega_i) + (
-            omega_G_from_weighted_average(parameters.omega_i, parameters.Ni),
-        )
-        completed_parameters = parameters.model_copy(update={"omega_i": omega_i})
-
-    zero_angles = (0.0,) * completed_parameters.group_count
+    zero_angles = (0.0,) * parameters.group_count
     y0 = amplitudes_from_initial_state(
         zero_angles,
         zero_angles,
-        completed_parameters,
+        parameters,
     )
     solution = solve_ivp(
-        lambda t, y: mfe_rhs(t, y, completed_parameters),
+        lambda t, y: mfe_rhs(t, y, parameters),
         (float(t_eval[0]), float(t_eval[-1])),
         y0,
         t_eval=t_eval,
@@ -68,7 +60,7 @@ def solve_mfe(
         method=method,
     )
 
-    G = completed_parameters.group_count
+    G = parameters.group_count
     D_groups = tuple(solution.y[:G])
     E_groups = tuple(solution.y[G:])
     result = MFEResult(
@@ -77,6 +69,6 @@ def solve_mfe(
         E_groups=E_groups,
         success=bool(solution.success),
         message=str(solution.message),
-        parameters=completed_parameters,
+        parameters=parameters,
     )
     return result

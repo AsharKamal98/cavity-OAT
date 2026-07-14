@@ -19,7 +19,7 @@ those rules live in the MCWF instruction files referenced below.
 
 = Method
 
-For fixed `MCWFSolverParameters`, a saved-time grid `t_eval`, and `ntraj`
+For fixed `MCWFSolverParameters(...)`, a saved-time grid `t_eval`, and `ntraj`
 trajectories, the ensemble is a collection of independent MCWF unravelings:
 
 $
@@ -32,7 +32,6 @@ snapshots by index without interpolation.
 
 The ensemble runner is responsible for:
 
-- completing group couplings once;
 - constructing and validating the initial sector coefficients;
 - building reusable precomputed data once;
 - creating reproducible child seeds;
@@ -46,7 +45,6 @@ The ensemble runner is responsible for:
 def run_trajectory_ensemble(parameters, *, t_eval, ntraj, seed=None,
                             n_processes=None, chunksize=1, verbose=False):
     validate runtime inputs
-    omega_i = complete final group coupling
     sector_coeffs = centered_sector_initial_coeffs(...)
     check_initial_sector_omega_ratio(...)
 
@@ -83,11 +81,11 @@ The ensemble entry point should receive:
 
 ```python
 MCWFSolverParameters(
-    Ni,
+    Ni=metadata.Ni,
+    omega_i=metadata.omega_groups,
+    Gamma=metadata.Gamma,
+    phases=metadata.phases,
     dN,
-    omega_i,
-    Gamma,
-    phases,
     sector_distribution="binomial",
     dt=1e-3,
     shifted_jump_operator=False,
@@ -105,10 +103,10 @@ run_trajectory_ensemble(
 ) -> TrajectoryEnsemble
 ```
 
-`omega_i` should contain the first `G-1` group couplings. The ensemble runner
-should append the final coupling with `omega_G_from_weighted_average(...)`
-before constructing precomputed data. For single-group runs, use `Ni=[N]` and
-`omega_i=[]`.
+`SimulationMetadata.omega_i` should contain the first `G-1` group couplings.
+Its validator constructs the final weighted-average coupling as
+`metadata.omega_groups`; pass that completed list as the solver's `omega_i`.
+For single-group runs, use `Ni=[N]` and `omega_i=[]`.
 
 Initial-sector conventions live in
 `docs/instructions/solvers/mcwf/initial_sector_state.typ`.

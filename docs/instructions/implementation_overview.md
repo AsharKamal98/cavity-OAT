@@ -45,16 +45,21 @@ Numerical method parameters such as timesteps, saved-time grids, and solver tole
 
 ## 2. Phase Protocol
 
-Protocol phases should be built through the shared phase-construction helper `default_three_phase_protocol(...)`:
+For the standard protocol, construct `SimulationMetadata`; its validator builds
+the phase list through `default_three_phase_protocol(...)`:
 
 ```python
-phases = default_three_phase_protocol(
+metadata = SimulationMetadata(
+    Ni=Ni,
+    omega_i=omega_i,
+    Gamma=Gamma,
+    Omega0=Omega0,
+    delta0=delta0,
     T1=T1,
     T2=T2,
     T3=T3,
-    delta0=delta0,
-    Omega0=Omega0,
 )
+phases = metadata.phases
 ```
 
 Each phase should carry duration, `Omega`, and `delta`. Phases are piecewise
@@ -79,11 +84,18 @@ into the same post-processing pipeline.
 High-level method flow should look like:
 
 ```python
-# initialize object where results will be stored
-moments = MomentSeries(num_snapshots=100, ...)
+# define shared model/protocol data and result container
+metadata = SimulationMetadata(...)
+moments = MomentSeries(num_snapshots=100, metadata=metadata, ...)
 
-# define method parameters
-parameters = <Method>SolverParameters(...)
+# define method-specific parameters from shared metadata
+parameters = <Method>SolverParameters(
+    Ni=metadata.Ni,
+    omega_i=metadata.omega_groups,
+    Gamma=metadata.Gamma,
+    phases=metadata.phases,
+    ...,
+)
 
 # run method
 mcwf_ensemble = run_trajectory_ensemble(parameters, ...)
@@ -113,7 +125,15 @@ The ensemble function should:
 High-level data flow should look like:
 
 ```python
-parameters = MCWFSolverParameters(...)
+parameters = MCWFSolverParameters(
+    Ni=metadata.Ni,
+    omega_i=metadata.omega_groups,
+    Gamma=metadata.Gamma,
+    phases=metadata.phases,
+    dN=dN,
+    dt=dt,
+    ...,
+)
 
 def run_trajectory_ensemble(
     parameters, *, t_eval, ntraj, seed=None, n_processes=None, ...
@@ -181,19 +201,20 @@ For parser output-container conventions, use:
 
 The notebook-level container is `MomentSeries`, defined in
 `parser/moments.py`. It should be initialized on the shared
-`t_eval` grid, from `total_time` and `num_snapshots`, and then filled in as
+`t_eval` grid, from the metadata phase durations and `num_snapshots`, and then filled in as
 post-processing steps are run:
 
 ```python
 raw_result = run_backend(...)
 moments = MomentSeries(
-    total_time=raw_result.metadata.t_eval[-1],
     num_snapshots=num_snapshots,
-    parameters=MomentParameters(
+    metadata=SimulationMetadata(
+        Ni=raw_result.metadata.Ni,
+        omega_i=raw_result.metadata.omega_i[:-1],
         Gamma=raw_result.metadata.Gamma,
-        phases=raw_result.metadata.phases,
-        omega_groups=raw_result.metadata.omega_i,
-        N_groups=raw_result.metadata.Ni,
+        Omega0=Omega0,
+        delta0=delta0,
+        T1=T1, T2=T2, T3=T3,
     ),
 )
 moments.J = compute_method_j_moments(raw_result)
@@ -202,9 +223,9 @@ moments.J = compute_method_j_moments(raw_result)
 Current top-level fields are:
 
 - `moments.t`: the shared saved-time grid.
-- `moments.parameters`: simulation metadata needed by moment-level diagnostics,
-  such as `Gamma`, `phases`, `omega_groups`, and `N_groups`; this can mirror
-  selected fields from `ensemble.metadata`.
+- `moments.metadata`: validated physical model and standard-protocol context,
+  including `Ni`, independent `omega_i`, completed `omega_groups`, `Gamma`,
+  and derived `phases`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
