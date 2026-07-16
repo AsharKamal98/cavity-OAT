@@ -1,49 +1,54 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 import qutip as qt
 
 from common.utils.phases import phase_boundary_times, phase_values_at_time
+from parser.common import Phase, PhaseProtocol
 
 
 def _omega_coeff(t, args):
-    omega_t, _ = phase_values_at_time(t, args["phases"])
+    omega_t, _ = phase_values_at_time(t, args["integration_phases"])
     return omega_t
 
 
 def _delta_coeff(t, args):
-    _, delta_t = phase_values_at_time(t, args["phases"])
+    _, delta_t = phase_values_at_time(t, args["integration_phases"])
     return delta_t
 
 
 @dataclass(frozen=True)
-class OmegaCoeffFromPhases:
+class OmegaCoeffFromIntegrationPhases:
     """
     Pickle-safe omega(t) coefficient for time-dependent QuTiP operators.
     """
 
-    phases: list
+    integration_phases: tuple[Phase, ...]
 
     def __call__(self, t, args=None):
-        if args is not None and "phases" in args:
+        if args is not None and "integration_phases" in args:
             return _omega_coeff(t, args)
-        omega_t, _ = phase_values_at_time(t, self.phases)
+        omega_t, _ = phase_values_at_time(t, self.integration_phases)
         return omega_t
 
 
-def build_tlist_from_phases(phases: list, num_points: int) -> np.ndarray:
+def build_tlist_from_protocol(
+    phase_protocol: PhaseProtocol,
+    num_points: int,
+) -> np.ndarray:
     if num_points < 2:
         raise ValueError("num_points must be at least 2.")
-    t_final = float(phase_boundary_times(phases)[-1])
-    return np.linspace(0.0, t_final, num_points)
+    integration_boundaries = phase_boundary_times(
+        phase_protocol.integration_phases
+    )
+    requested_times = np.linspace(0.0, phase_protocol.total_duration, num_points)
+    return np.unique(np.concatenate((requested_times, integration_boundaries)))
 
 
-def _solver_args(model) -> Dict[str, float]:
+def _solver_args(model) -> dict[str, object]:
     return {
-        "phases": model.phases,
+        "integration_phases": model.phase_protocol.integration_phases,
     }
 
 

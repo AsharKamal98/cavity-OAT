@@ -10,6 +10,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from common.utils.parameters import scaled_N_Gamma
+from common.utils.phases import default_three_phase_protocol
 from parser.moments import SimulationMetadata
 from slurm.run_solvers.run_mcwf_common import add_common_arguments, parse_int_list, run_mcwf_case
 
@@ -35,15 +36,16 @@ def main() -> None:
     N = sum(Ni)
     Omega0 = scaled_N_Gamma(args.Omega_factor, N, Gamma)
     delta0 = scaled_N_Gamma(args.delta_factor, N, Gamma)
+    phase_protocol = default_three_phase_protocol(
+        durations=(args.T1, args.T2, args.T3),
+        delta0=delta0,
+        Omega0=Omega0,
+    )
     metadata = SimulationMetadata(
         Ni=tuple(Ni),
         omega_i=tuple(omega_i),
         Gamma=Gamma,
-        Omega0=Omega0,
-        delta0=delta0,
-        T1=args.T1,
-        T2=args.T2,
-        T3=args.T3,
+        phase_protocol=phase_protocol,
     )
 
     run_mcwf_case(

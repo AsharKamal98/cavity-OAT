@@ -12,7 +12,7 @@ class JMomentSnapshot(BaseModel):
     # Legacy note: these fields were previously named Jx/Jy/Jz and
     # Jx_groups/Jy_groups/Jz_groups.
     t: float
-    phase_index: int
+    integration_phase_index: int
     x: float
     y: float
     z: float
@@ -32,7 +32,7 @@ class JMomentSeries(BaseModel):
     # Jy_groups/Jz_groups, J_len, and sx/sy/sz.
 
     t: Array
-    phase_index: Array | None = None
+    integration_phase_index: Array | None = None
     # spin components
     x: Array | None = None
     y: Array | None = None

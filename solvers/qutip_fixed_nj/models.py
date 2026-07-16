@@ -3,13 +3,18 @@ from __future__ import annotations
 import numpy as np
 import qutip as qt
 
+from parser.common import PhaseProtocol
 from parser.qutip import QutipGroupedFixedNjModel
-from solvers.qutip_fixed_nj.utils_sim import OmegaCoeffFromPhases, _delta_coeff, _omega_coeff
+from solvers.qutip_fixed_nj.utils_sim import (
+    OmegaCoeffFromIntegrationPhases,
+    _delta_coeff,
+    _omega_coeff,
+)
 
 
-def build_qutip_grouped_fixed_nj_model_from_phases(
+def build_qutip_grouped_fixed_nj_model_from_protocol(
     Gamma: float,
-    phases: list,
+    phase_protocol: PhaseProtocol,
     *,
     omega_i: list[float],
     NJi: list[int],
@@ -22,8 +27,6 @@ def build_qutip_grouped_fixed_nj_model_from_phases(
         raise ValueError("omega_i must contain exactly one coupling per group.")
     if not NJi:
         raise ValueError("NJi must contain at least one group active-atom number.")
-    if len(phases) < 3:
-        raise ValueError("Need at least 3 phases.")
     if shifted_jump_operator and Gamma <= 0.0:
         raise ValueError(
             "shifted_jump_operator=True requires Gamma > 0 because the shifted jump "
@@ -35,11 +38,7 @@ def build_qutip_grouped_fixed_nj_model_from_phases(
     # Initial state
     psi0 = qt.tensor(*(qt.basis(dim, dim - 1) for dim in dims))
 
-    Omega0 = float(phases[0].omega)
-    delta0 = float(phases[1].delta)
-    t_step1_end = float(phases[0].duration)
-    t_step2_end = float(phases[0].duration + phases[1].duration)
-    t_final = float(sum(p.duration for p in phases))
+    integration_phases = phase_protocol.integration_phases
 
     I = tuple(qt.qeye(dim) for dim in dims)
     identity = qt.tensor(*I)
@@ -74,7 +73,7 @@ def build_qutip_grouped_fixed_nj_model_from_phases(
         0 * Jm_groups[0],
     )
 
-    omega_coeff_local = OmegaCoeffFromPhases(phases)
+    omega_coeff_local = OmegaCoeffFromIntegrationPhases(integration_phases)
     if shifted_jump_operator:
         H = [
             [-N_e, _delta_coeff],
@@ -96,9 +95,7 @@ def build_qutip_grouped_fixed_nj_model_from_phases(
         omega_i=tuple(float(omega) for omega in omega_i),
         Gamma=Gamma,
         shifted_jump_operator=shifted_jump_operator,
-        omega0=Omega0,
-        delta0=delta0,
-        phases=phases,
+        phase_protocol=phase_protocol,
         Jp=Jp,
         Jm=Jm,
         Jx=Jx,
@@ -116,7 +113,4 @@ def build_qutip_grouped_fixed_nj_model_from_phases(
         H=H,
         c_ops=c_ops,
         psi0=psi0,
-        t_step1_end=t_step1_end,
-        t_step2_end=t_step2_end,
-        t_final=t_final,
     )

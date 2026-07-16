@@ -53,7 +53,8 @@ e^(-i phi_(J,a)(t_(k))) sin(theta_(J,a)(t_(k))) C_(J)(t_(k)).
 $
 
 Here $Omega(t_(k))$ and $delta(t_(k))$ are selected from the saved
-`phase_index`, while $omega_(a)$ is read from `SimulationMetadata.omega_groups`.
+`integration_phase_index`, while $omega_(a)$ is read from
+`SimulationMetadata.omega_groups`.
 The group atom-number weights are `moments.J.N_j_groups[a]`, not the fixed
 total group sizes.
 
@@ -84,13 +85,13 @@ input is not a two-group residual case.
 `compute_mfe_residuals(...)` should return `None` when the input does not
 contain exactly two group-resolved J-angle and atom-number fields. It should
 raise a `ValueError` when the required shared metadata, such as
-`parameters` or `phase_index`, is missing or inconsistent. Otherwise it should
-return:
+`parameters` or `integration_phase_index`, is missing or inconsistent.
+Otherwise it should return:
 
 ```python
 MFEResidualSeries(
     t,
-    phase_index,
+    integration_phase_index,
     residuals_groups=(R_1, R_2),
 )
 ```

@@ -33,13 +33,25 @@ def compute_mfe_residuals(
         raise ValueError("MFE residuals require matching two-group moment fields.")
     if metadata is None:
         raise ValueError("MFE residuals require moments.metadata.")
+    if j_moments.integration_phase_index is None:
+        raise ValueError("MFE residuals require integration_phase_index.")
     omega_groups = metadata.omega_groups
     if len(omega_groups) != group_count:
         raise ValueError("MFE residuals require two inhomogeneous coupling weights.")
 
-    phase_indices = np.asarray(j_moments.phase_index, dtype=int)
-    omega_t = np.asarray([metadata.phases[idx].omega for idx in phase_indices], dtype=float)
-    delta_t = np.asarray([metadata.phases[idx].delta for idx in phase_indices], dtype=float)
+    integration_phases = metadata.phase_protocol.integration_phases
+    integration_phase_indices = np.asarray(
+        j_moments.integration_phase_index,
+        dtype=int,
+    )
+    omega_t = np.asarray(
+        [integration_phases[index].omega for index in integration_phase_indices],
+        dtype=float,
+    )
+    delta_t = np.asarray(
+        [integration_phases[index].delta for index in integration_phase_indices],
+        dtype=float,
+    )
 
     theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta_groups)
     phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi_groups)
@@ -82,7 +94,7 @@ def compute_mfe_residuals(
 
     return MFEResidualSeries(
         t=j_moments.t,
-        phase_index=j_moments.phase_index,
+        integration_phase_index=j_moments.integration_phase_index,
         residuals_groups=tuple(residuals),
     )
 

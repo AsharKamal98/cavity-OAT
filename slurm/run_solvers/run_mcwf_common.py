@@ -70,7 +70,7 @@ def run_mcwf_case(
         Ni=metadata.Ni,
         omega_i=metadata.omega_groups,
         Gamma=metadata.Gamma,
-        phases=metadata.phases,
+        phase_protocol=metadata.phase_protocol,
         dN=dN,
         sector_distribution="binomial",
         dt=dt,
@@ -97,5 +97,5 @@ def run_mcwf_case(
     j_moments_time = time.perf_counter() - j_moments_t0
     print(f"{label} J-moments runtime: {j_moments_time:.2f} seconds.")
 
-    save_j_moments_artifact(mcwf_moments.J, metadata.phases, output_path)
+    save_j_moments_artifact(mcwf_moments.J, metadata.phase_protocol, output_path)
     print(f"Saved {label} J moments artifact to {output_path}")

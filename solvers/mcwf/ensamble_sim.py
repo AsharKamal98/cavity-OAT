@@ -8,7 +8,7 @@ from solvers.mcwf.sim import (
     build_precomputed_trajectory_data,
 )
 from common.utils.parameters import check_initial_sector_omega_ratio
-from parser.common import Array, Phase
+from parser.common import Array
 from parser.mcwf import (
     MCWFSolverParameters,
     SectorKey,
@@ -41,7 +41,7 @@ _WORKER_STATE = None
 def _init_trajectory_worker(
     Ni,
     Gamma,
-    phases,
+    integration_phases,
     sector_coeffs,
     dt,
     t_eval,
@@ -61,7 +61,7 @@ def _init_trajectory_worker(
     _WORKER_STATE = {
         "Ni": Ni,
         "Gamma": Gamma,
-        "phases": phases,
+        "integration_phases": integration_phases,
         "sector_coeffs": sector_coeffs,
         "dt": dt,
         "t_eval": t_eval,
@@ -84,7 +84,7 @@ def _simulate_single_trajectory_worker(seed_sequence: np.random.SeedSequence) ->
     return _simulate_single_trajectory(
         Ni=_WORKER_STATE["Ni"],
         Gamma=_WORKER_STATE["Gamma"],
-        phases=_WORKER_STATE["phases"],
+        integration_phases=_WORKER_STATE["integration_phases"],
         sector_coeffs=_WORKER_STATE["sector_coeffs"],
         dt=_WORKER_STATE["dt"],
         t_eval=_WORKER_STATE["t_eval"],
@@ -144,7 +144,9 @@ def run_trajectory_ensemble(
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
     if np.any(np.diff(t_eval) <= 0.0):
         raise ValueError("t_eval must be strictly increasing.")
-    total_time = float(sum(phase.duration for phase in parameters.phases))
+    phase_protocol = parameters.phase_protocol
+    integration_phases = phase_protocol.integration_phases
+    total_time = phase_protocol.total_duration
     if abs(float(t_eval[0])) > 1e-12:
         raise ValueError("The first t_eval point must be 0.0.")
     if abs(float(t_eval[-1]) - total_time) > 1e-9:
@@ -169,7 +171,7 @@ def run_trajectory_ensemble(
     )
     ratio_check = check_initial_sector_omega_ratio(
         sector_coeffs,
-        Omega=max(abs(phase.omega) for phase in parameters.phases),
+        Omega=max(abs(phase.omega) for phase in integration_phases),
         Gamma=parameters.Gamma,
     )
     if not ratio_check["is_valid"]:
@@ -194,7 +196,7 @@ def run_trajectory_ensemble(
     precomputed = build_precomputed_trajectory_data(
         Ni=Ni,
         Gamma=parameters.Gamma,
-        phases=parameters.phases,
+        integration_phases=integration_phases,
         sector_coeffs=sector_coeffs,
         dt=parameters.dt,
         shifted_jump_operator=parameters.shifted_jump_operator,
@@ -215,7 +217,7 @@ def run_trajectory_ensemble(
             result = _simulate_single_trajectory(
                 Ni=Ni,
                 Gamma=parameters.Gamma,
-                phases=parameters.phases,
+                integration_phases=integration_phases,
                 sector_coeffs=sector_coeffs,
                 dt=parameters.dt,
                 t_eval=t_eval,
@@ -239,7 +241,7 @@ def run_trajectory_ensemble(
             Ni=tuple(Ni),
             omega_i=tuple(omega_i),
             Gamma=parameters.Gamma,
-            phases=list(parameters.phases),
+            phase_protocol=phase_protocol,
             shifted_jump_operator=parameters.shifted_jump_operator,
             t_eval=t_eval.copy(),
             sectors=list(precomputed["sector_list"]),
@@ -271,7 +273,7 @@ def run_trajectory_ensemble(
         initargs=(
             Ni,
             parameters.Gamma,
-            parameters.phases,
+            integration_phases,
             sector_coeffs,
             parameters.dt,
             t_eval,
@@ -309,7 +311,7 @@ def run_trajectory_ensemble(
         Ni=tuple(Ni),
         omega_i=tuple(omega_i),
         Gamma=parameters.Gamma,
-        phases=list(parameters.phases),
+        phase_protocol=phase_protocol,
         shifted_jump_operator=parameters.shifted_jump_operator,
         t_eval=t_eval.copy(),
         sectors=list(precomputed["sector_list"]),

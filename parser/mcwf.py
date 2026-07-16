@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, model_validator
 from scipy.sparse import csc_matrix
 
-from parser.common import Array, Phase
+from parser.common import Array, PhaseProtocol
 
 SectorKey = int | tuple[int, int]
 
@@ -46,7 +46,7 @@ class TrajectorySnapshot:
     time: float
     sector_blocks: dict[SectorKey, Array]
     norm: float
-    phase_index: int
+    integration_phase_index: int
 
 
 class MCWFSolverParameters(BaseModel):
@@ -55,7 +55,7 @@ class MCWFSolverParameters(BaseModel):
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
     Gamma: float
-    phases: list[Phase]
+    phase_protocol: PhaseProtocol
     dN: int = 0
     sector_distribution: str = "binomial"
     dt: float = 1e-3
@@ -93,7 +93,7 @@ class TrajectoryEnsembleMetadata:
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
     Gamma: float
-    phases: list[Phase]
+    phase_protocol: PhaseProtocol
     shifted_jump_operator: bool
     t_eval: Array
     sectors: list[SectorKey]
@@ -120,7 +120,10 @@ class TrajectoryEnsemble:
         values = dict(metadata)
         values["Ni"] = tuple(int(value) for value in values["Ni"])
         values["omega_i"] = tuple(float(value) for value in values["omega_i"])
-        values["phases"] = list(values["phases"])
+        if isinstance(values["phase_protocol"], dict):
+            values["phase_protocol"] = PhaseProtocol.model_validate(
+                values["phase_protocol"]
+            )
         values["sectors"] = list(values["sectors"])
 
         return TrajectoryEnsembleMetadata(**values)

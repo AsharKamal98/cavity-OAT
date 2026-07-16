@@ -40,13 +40,11 @@
     1. Move function from sim to helper?
     2. Move instruction in sector operators?
 
-4. build_t_eval_from_phases(...) is in sim.py, while MomentSeries independently rebuilds the same grid logic. Not obviously wrong, but if we want one source of truth for t_eval, this could become a small shared helper.
+4. Unify QuTiP `tlist` with the repository-wide `t_eval` naming so all solver backends use the same public time-grid convention.
 
-5. Unify QuTiP `tlist` with the repository-wide `t_eval` naming so all solver backends use the same public time-grid convention.
+5. rename qutip num_points to num_snapshots?
 
-6. rename qutip num_points to num_snapshots?
-
-7. Remove MomentSeries Parameters?
+6. Remove MomentSeries Parameters?
 
 
 ## INSTRUCTION FILES
@@ -59,4 +57,3 @@
     2. dephasing_diagnostics.typ?
 
 3. `sector_operators.typ`. Needs more physics, currently documented in `simulation_precompute.typ`. 
-

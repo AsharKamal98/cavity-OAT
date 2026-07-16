@@ -17,6 +17,7 @@ from common.plotting.utils import (
     validated_linestyle,
 )
 from common.utils.phases import phase_boundary_times
+from parser.common import PhaseProtocol
 
 RESIDUAL_LINTHRESH = 1e-5
 
@@ -50,15 +51,18 @@ def _set_residual_scale(ax, *, show_components: bool, symlog: bool, residual_l2)
         ax.set_yscale("log")
 
 
-def _print_phase_end_residuals(mfe_residuals: Any, phases) -> None:
-    if phases is None:
+def _print_phase_end_residuals(
+    mfe_residuals: Any,
+    phase_protocol: PhaseProtocol | None,
+) -> None:
+    if phase_protocol is None:
         return
     residuals = mfe_residuals.residuals_groups
     if len(residuals) != 2:
         return
 
     t = np.asarray(mfe_residuals.t, dtype=float)
-    phase_end_times = phase_boundary_times(phases)
+    phase_end_times = phase_boundary_times(phase_protocol.family_phases)
     if t.size == 0:
         return
 
@@ -90,7 +94,7 @@ def plot_mfe_residuals(
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     label: Optional[str] = None,
-    phases=None,
+    phase_protocol: PhaseProtocol | None = None,
     print_phase_end_summary: bool = True,
     symlog: bool = True,
 ):
@@ -141,7 +145,7 @@ def plot_mfe_residuals(
         residual_l2,
         linewidth=1.8,
         color=palette_curve_color(palette, len(residual_specs) if show_components else 0),
-        linestyle="-",
+        linestyle=line_style,
         label=curve_label("L2 norm", label=label) if show_components else label,
     )
     if show_components:
@@ -164,13 +168,13 @@ def plot_mfe_residuals(
     finish_time_plot(
         fig,
         axes,
-        phases=phases,
+        phase_protocol=phase_protocol,
         title="MFE steady-state residuals" if show_components else "MFE residual L2 norm",
         output_path=output_path,
     )
 
     if print_phase_end_summary:
-        _print_phase_end_residuals(mfe_residuals, phases)
+        _print_phase_end_residuals(mfe_residuals, phase_protocol)
 
     return fig, axes
 

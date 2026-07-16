@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from common.utils.phases import integration_phase_indices_at_times
 from parser.j_moments import JMomentSeries
 from parser.mfe import MFEResult
 
@@ -23,6 +24,10 @@ def compute_mfe_j_moments(
     )
     j_moments = JMomentSeries(
         t=result.t,
+        integration_phase_index=integration_phase_indices_at_times(
+            result.t,
+            result.parameters.phase_protocol,
+        ),
         N_e_groups=tuple(np.abs(E_g) ** 2 for E_g in result.E_groups),
         N_j_groups=N_j_groups,
         length_groups=tuple(0.5 * np.asarray(N_j, dtype=float) for N_j in N_j_groups),

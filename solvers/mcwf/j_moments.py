@@ -40,7 +40,7 @@ def _compute_snapshot_j_moments(
     snapshot: TrajectorySnapshot,
     *,
     group_count: int,
-    phases: list[Phase],
+    integration_phases: tuple[Phase, ...],
     Gamma: float,
     shifted_jump_operator: bool,
     Ni: tuple[int, ...],
@@ -55,7 +55,7 @@ def _compute_snapshot_j_moments(
         zero_groups = tuple(0.0 for _ in range(group_count))
         return JMomentSnapshot(
             t=snapshot.time,
-            phase_index=snapshot.phase_index,
+            integration_phase_index=snapshot.integration_phase_index,
             x=0.0,
             y=0.0,
             z=0.0,
@@ -75,7 +75,7 @@ def _compute_snapshot_j_moments(
     ne_total = 0.0
     jump_rate = 0.0
     nj_total = 0.0
-    omega = phases[snapshot.phase_index].omega
+    omega = integration_phases[snapshot.integration_phase_index].omega
     jx_groups = np.zeros(group_count, dtype=float)
     jy_groups = np.zeros(group_count, dtype=float)
     jz_groups = np.zeros(group_count, dtype=float)
@@ -148,7 +148,7 @@ def _compute_snapshot_j_moments(
 
     return JMomentSnapshot(
         t=snapshot.time,
-        phase_index=snapshot.phase_index,
+        integration_phase_index=snapshot.integration_phase_index,
         x=jx_total / norm2,
         y=jy_total / norm2,
         z=jz_total / norm2,
@@ -180,11 +180,12 @@ def compute_trajectory_j_moments(
     _ = tol  # Kept for API symmetry with later averaging/diagnostic functions.
 
     group_count = len(metadata.Ni)
+    integration_phases = metadata.phase_protocol.integration_phases
     j_moment_snapshots = [
         _compute_snapshot_j_moments(
             snap,
             group_count=group_count,
-            phases=metadata.phases,
+            integration_phases=integration_phases,
             Gamma=metadata.Gamma,
             shifted_jump_operator=metadata.shifted_jump_operator,
             Ni=metadata.Ni,
@@ -210,7 +211,7 @@ def compute_trajectory_j_moments(
 
     return JMomentSeries(
         t=series("t"),
-        phase_index=series("phase_index", dtype=int),
+        integration_phase_index=series("integration_phase_index", dtype=int),
         x=series("x"),
         y=series("y"),
         z=series("z"),
@@ -254,12 +255,23 @@ def compute_average_j_moments(
         raise ValueError("No J-moment samples to average.")
 
     t_ref = np.asarray(samples[0].t, dtype=float)
-    phase_ref = np.asarray(samples[0].phase_index, dtype=int)
+    integration_phase_ref = np.asarray(
+        samples[0].integration_phase_index,
+        dtype=int,
+    )
     for sample in samples:
         if len(sample.t) != len(t_ref) or not np.allclose(sample.t, t_ref, atol=1e-12, rtol=0.0):
             raise ValueError("All J-moment samples must share the same t grid.")
-        if len(sample.phase_index) != len(phase_ref) or not np.array_equal(sample.phase_index, phase_ref):
-            raise ValueError("All J-moment samples must share the same phase_index grid.")
+        if len(sample.integration_phase_index) != len(
+            integration_phase_ref
+        ) or not np.array_equal(
+            sample.integration_phase_index,
+            integration_phase_ref,
+        ):
+            raise ValueError(
+                "All J-moment samples must share the same "
+                "integration_phase_index grid."
+            )
 
     def mean_series(field_name: str) -> Array:
         return np.mean(
@@ -290,7 +302,7 @@ def compute_average_j_moments(
 
     return JMomentSeries(
         t=t_ref,
-        phase_index=phase_ref,
+        integration_phase_index=integration_phase_ref,
         x=mean_series("x"),
         y=mean_series("y"),
         z=mean_series("z"),

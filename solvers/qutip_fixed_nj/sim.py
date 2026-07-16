@@ -5,12 +5,12 @@ import qutip as qt
 
 from parser.qutip import QutipMCSolverParameters, QutipMESolverParameters
 from solvers.qutip_fixed_nj.models import (
-    build_qutip_grouped_fixed_nj_model_from_phases,
+    build_qutip_grouped_fixed_nj_model_from_protocol,
 )
 from solvers.qutip_fixed_nj.utils_sim import (
     _observable_e_ops,
     _solver_args,
-    build_tlist_from_phases,
+    build_tlist_from_protocol,
 )
 
 def simulate_fixed_nj_me_trajectory(
@@ -34,9 +34,9 @@ def simulate_fixed_nj_me_trajectory(
     omega_i = [float(coupling) for coupling in parameters.omega_i]
     NJi = [group_size // 2 for group_size in Ni]
 
-    model = build_qutip_grouped_fixed_nj_model_from_phases(
+    model = build_qutip_grouped_fixed_nj_model_from_protocol(
         Gamma=parameters.Gamma,
-        phases=parameters.phases,
+        phase_protocol=parameters.phase_protocol,
         omega_i=omega_i,
         NJi=NJi,
         shifted_jump_operator=parameters.shifted_jump_operator,
@@ -45,7 +45,10 @@ def simulate_fixed_nj_me_trajectory(
         f"Using QuTiP master equation solver fixed {len(Ni)}-group sector "
         f"NJi={NJi} with Ni={Ni} and omega_i={model.omega_i}."
     )
-    tlist = build_tlist_from_phases(parameters.phases, num_points=num_points)
+    tlist = build_tlist_from_protocol(
+        parameters.phase_protocol,
+        num_points=num_points,
+    )
     tlist = np.asarray(tlist, dtype=float)
 
     options = {
@@ -69,7 +72,7 @@ def simulate_fixed_nj_me_trajectory(
         "Gamma": parameters.Gamma,
         "ntraj": None,
         "tlist": tlist,
-        "num_points": num_points,
+        "num_points": len(tlist),
         "states": result.states if store_states else None,
     }
 
@@ -91,8 +94,8 @@ def simulate_fixed_nj_mc_trajectory(
     Run fixed-N_J mcsolve benchmark and return raw solver output together with
     the metadata needed for later post-processing.
 
-    The time grid is built internally as num_points equally spaced samples over
-    the full protocol duration.
+    The time grid contains `num_points` equally spaced samples plus any missing
+    integration-Phase boundaries.
 
     """
     if num_points < 2:
@@ -106,9 +109,9 @@ def simulate_fixed_nj_mc_trajectory(
     omega_i = [float(coupling) for coupling in parameters.omega_i]
     NJi = [group_size // 2 for group_size in Ni]
 
-    model = build_qutip_grouped_fixed_nj_model_from_phases(
+    model = build_qutip_grouped_fixed_nj_model_from_protocol(
         Gamma=parameters.Gamma,
-        phases=parameters.phases,
+        phase_protocol=parameters.phase_protocol,
         omega_i=omega_i,
         NJi=NJi,
         shifted_jump_operator=parameters.shifted_jump_operator,
@@ -117,7 +120,10 @@ def simulate_fixed_nj_mc_trajectory(
         f"Using QuTiP quantum trajectories fixed {len(Ni)}-group sector "
         f"NJi={NJi} with Ni={Ni} and omega_i={model.omega_i}."
     )
-    tlist = build_tlist_from_phases(parameters.phases, num_points=num_points)
+    tlist = build_tlist_from_protocol(
+        parameters.phase_protocol,
+        num_points=num_points,
+    )
     tlist = np.asarray(tlist, dtype=float)
 
     options = {
@@ -159,7 +165,7 @@ def simulate_fixed_nj_mc_trajectory(
         "Gamma": parameters.Gamma,
         "ntraj": ntraj,
         "tlist": tlist,
-        "num_points": num_points,
+        "num_points": len(tlist),
         "states": getattr(result, "states", None),
         "runs_states": getattr(result, "runs_states", None),
     }

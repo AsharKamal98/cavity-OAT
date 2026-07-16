@@ -5,6 +5,7 @@ from typing import Optional, Union
 
 import numpy as np
 from common.utils.phases import phase_boundary_times
+from parser.common import PhaseProtocol
 
 FIGURE_FACE_COLOR = "white"
 AXES_FACE_COLOR = "white"
@@ -111,11 +112,11 @@ def get_axes(axes, *, n_axes: int, create_figure, error_message: str):
     return fig, axes
 
 
-def add_phase_regions(axes, phases) -> None:
-    if phases is None:
+def add_phase_regions(axes, phase_protocol: PhaseProtocol | None) -> None:
+    if phase_protocol is None:
         return
 
-    ends = phase_boundary_times(phases)
+    ends = phase_boundary_times(phase_protocol.family_phases)
     starts = np.concatenate(([0.0], ends[:-1]))
     for ax in np.asarray(axes).ravel():
         has_shading = any(patch.get_gid() == "phase_shading" for patch in ax.patches)
@@ -158,12 +159,12 @@ def finish_time_plot(
     fig,
     axes,
     *,
-    phases,
+    phase_protocol: PhaseProtocol | None,
     title: str,
     output_path,
     title_y: float = 1.05,
 ) -> None:
-    add_phase_regions(axes, phases)
+    add_phase_regions(axes, phase_protocol)
     fig.supxlabel(r"$\Gamma t$")
     fig.suptitle(title, y=title_y, fontsize=14)
     save_figure(fig, output_path)

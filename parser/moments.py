@@ -3,31 +3,25 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, root_validator
 
-from parser.common import Array, Phase
+from parser.common import Array, PhaseProtocol
 from parser.j_moments import JMomentSeries
 from parser.mfe_residuals import MFEResidualSeries
 from common.utils.parameters import omega_G_from_weighted_average
-from common.utils.phases import default_three_phase_protocol
 
 
 class SimulationMetadata(BaseModel):
-    """Shared physical model and standard protocol data for one simulation."""
+    """Shared physical model and supplied protocol data for one simulation."""
 
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
     Gamma: float
-    Omega0: float
-    delta0: float
-    T1: float
-    T2: float
-    T3: float
+    phase_protocol: PhaseProtocol
     omega_groups: tuple[float, ...] = ()
-    phases: list[Phase] = Field(default_factory=list)
 
     @root_validator(skip_on_failure=True)
-    def complete_couplings_and_phases(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def complete_couplings(cls, values: dict[str, Any]) -> dict[str, Any]:
         Ni = values["Ni"]
         omega_i = values["omega_i"]
         if any(N_g < 0 for N_g in Ni):
@@ -39,13 +33,6 @@ class SimulationMetadata(BaseModel):
 
         values["omega_groups"] = omega_i + (
             omega_G_from_weighted_average(omega_i, Ni),
-        )
-        values["phases"] = default_three_phase_protocol(
-            T1=values["T1"],
-            T2=values["T2"],
-            T3=values["T3"],
-            delta0=values["delta0"],
-            Omega0=values["Omega0"],
         )
         return values
 
@@ -75,9 +62,9 @@ class MomentSeries(BaseModel):
         if num_snapshots < 2:
             raise ValueError("num_snapshots must be at least 2.")
         if isinstance(metadata, dict):
-            total_time = float(metadata["T1"] + metadata["T2"] + metadata["T3"])
-        else:
-            total_time = float(metadata.T1 + metadata.T2 + metadata.T3)
+            metadata = SimulationMetadata.model_validate(metadata)
+            values["metadata"] = metadata
+        total_time = metadata.phase_protocol.total_duration
         values["t"] = np.linspace(0.0, total_time, num_snapshots, dtype=float)
         return values
 

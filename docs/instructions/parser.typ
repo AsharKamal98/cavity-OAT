@@ -24,7 +24,7 @@ trajectory snapshot:
 ```python
 JMomentSnapshot(
     t,
-    phase_index,
+    integration_phase_index,
     x, y, z,
     N_e,
     N_j,
@@ -43,7 +43,7 @@ average, or a non-MCWF method converted into the shared J-sphere format:
 ```python
 JMomentSeries(
     t,
-    phase_index=None,
+    integration_phase_index=None,
     x=None, y=None, z=None,
     x_groups=None, y_groups=None, z_groups=None,
     length=None, length_groups=None,
@@ -62,30 +62,31 @@ data exist, the corresponding fields should remain `None`.
 
 = Simulation Metadata
 
-`SimulationMetadata` stores shared physical model inputs and the standard
-three-phase protocol for one run:
+`SimulationMetadata` stores shared physical model inputs and the supplied phase
+protocol for one run:
 
 ```python
 SimulationMetadata(
     Ni, omega_i,
-    Gamma, Omega0, delta0,
-    T1, T2, T3,
+    Gamma,
+    phase_protocol,
 )
 ```
 
 `omega_i` contains the first $G-1$ independent couplings and `Ni` contains
 $G$ group sizes. Its validator constructs the final weighted-average coupling
-and saves the full-length `omega_groups`, then constructs and saves `phases`
-using `default_three_phase_protocol(...)`. Store this context as
-`moments.metadata`.
+and saves the full-length `omega_groups`. Construct `phase_protocol` separately,
+as defined in `docs/instructions/phases.typ`, and provide it explicitly. Store
+this context as `moments.metadata`.
 
 When `MomentSeries` receives `metadata` and `num_snapshots`, its validator
-constructs `t` from $T_1 + T_2 + T_3$; do not pass `total_time` separately.
+constructs `t` from `metadata.phase_protocol.total_duration`; do not pass
+`total_time` separately.
 
 Use this object to construct solver-input containers, but do not store it as a
 solver-parameter field. Each solver container should explicitly receive only
 the physical fields it consumes, such as `Ni`, completed `omega_i`, `Gamma`,
-and `phases`, alongside its method-specific controls.
+and `phase_protocol`, alongside its method-specific controls.
 
 = Derived-Field Class Methods
 

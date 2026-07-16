@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
 
 import qutip as qt
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from parser.common import Phase
+from parser.common import PhaseProtocol
 
 
 class QutipMESolverParameters(BaseModel):
@@ -15,7 +14,7 @@ class QutipMESolverParameters(BaseModel):
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
     Gamma: float
-    phases: list[Phase]
+    phase_protocol: PhaseProtocol
     shifted_jump_operator: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -35,7 +34,7 @@ class QutipMCSolverParameters(BaseModel):
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
     Gamma: float
-    phases: list[Phase]
+    phase_protocol: PhaseProtocol
     shifted_jump_operator: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -54,9 +53,7 @@ class QutipGroupedFixedNjModel:
     omega_i: tuple[float, ...]
     Gamma: float
     shifted_jump_operator: bool
-    omega0: float
-    delta0: float
-    phases: Sequence[Phase]
+    phase_protocol: PhaseProtocol
     Jp: qt.Qobj
     Jm: qt.Qobj
     Jx: qt.Qobj
@@ -74,6 +71,3 @@ class QutipGroupedFixedNjModel:
     H: list
     c_ops: list
     psi0: qt.Qobj
-    t_step1_end: float
-    t_step2_end: float
-    t_final: float

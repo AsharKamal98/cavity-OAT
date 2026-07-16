@@ -101,7 +101,7 @@ build_precomputed_trajectory_data(
     Ni,
     omega_i,
     Gamma,
-    phases,
+    integration_phases,
     sector_coeffs,
     dt,
     shifted_jump_operator=False,
@@ -135,9 +135,9 @@ precomputed = {
     "ops_list": [...],
     "multiplicities": {...},
     "dims": {...},
-    "phase_jump_operators": [[...], ...],
-    "phase_generators": [[...], ...],
-    "phase_propagators": [[...], ...],
+    "integration_phase_jump_operators": [[...], ...],
+    "integration_phase_generators": [[...], ...],
+    "integration_phase_propagators": [[...], ...],
 }
 ```
 
@@ -156,13 +156,14 @@ The keys have the following meanings (details further down):
   full atom ensemble.
 - `dims` maps each sector key (`NJ` in homogeneous case, `(NJ1,NJ2)` in two-group inhomogeneous case) to the reduced Hilbert-space dimension of that
   sector.
-- `phase_jump_operators` stores the jump operator for every phase and sector,
-  indexed as `[phase_index][sector_index]`.
-- `phase_generators` stores the non-Hermitian effective generator
-  `H_eff` for every phase and sector, using the same two-level indexing.
-- `phase_propagators` stores the precomputed full-`dt` propagator
-  `exp(-i H_eff dt)` for every phase and sector, used only on exact full-`dt`
-  steps. 
+- `integration_phase_jump_operators` stores the jump operator for every
+  integration `Phase` and sector, indexed as
+  `[integration_phase_index][sector_index]`.
+- `integration_phase_generators` stores the non-Hermitian effective generator
+  `H_eff` for every integration `Phase` and sector.
+- `integration_phase_propagators` stores the precomputed full-`dt` propagator
+  `exp(-i H_eff dt)` for every integration `Phase` and sector, used only on
+  exact full-`dt` steps.
 
 
 == Sector List (`sector_list`)
@@ -276,9 +277,9 @@ n_(e,1) = 0, 1, ... N_(J,1),quad
 n_(e,2) = 0, 1, ... N_(J,2).
 $
 
-== Jump Operators (`phase_jump_operators`)
+== Jump Operators (`integration_phase_jump_operators`)
 jump operators should be constructed through:
-```python phase_jump_operators = [
+```python integration_phase_jump_operators = [
     [build_phase_jump_operator_for_sector(
         ops,
         phase.omega, 
@@ -286,7 +287,7 @@ jump operators should be constructed through:
         build_phase_jump_operator_for_sector,
     )
     ]
-    for phase in phases
+    for phase in integration_phases
 ]
 ```
 
@@ -304,12 +305,12 @@ where the phase-specific $Omega$ is given by `phase.omega`.
 
 
 
-== Effective Generators (`phase_generators`)
+== Effective Generators (`integration_phase_generators`)
 
 Effective generators should be constructed through:
 
 ```python
-phase_generators = [
+integration_phase_generators = [
     [
         heff_for_sector(
             ops,
@@ -321,13 +322,17 @@ phase_generators = [
         )
         for ops, jump_operator in zip(ops_list, jump_operators_for_phase)
     ]
-    for phase, jump_operators_for_phase in zip(phases, phase_jump_operators)
+    for phase, jump_operators_for_phase in zip(
+        integration_phases,
+        integration_phase_jump_operators,
+    )
 ]
 ```
 
-This produces one generator for every phase and every sector. The indexing
-should match the other phase-resolved lists: `phase_generators[phase_index][sector_index]`
-is the $H_("eff")$ matrix for that phase and sector.
+This produces one generator for every integration `Phase` and every sector.
+The indexing should match the other integration-`Phase`-resolved lists:
+`integration_phase_generators[integration_phase_index][sector_index]` is the
+$H_("eff")$ matrix for that integration `Phase` and sector.
 
 The effective generator should always be written in the MCWF form
 
@@ -386,24 +391,25 @@ The explicit drive term should not be added separately in this shifted picture,
 because it is already represented through the shifted collapse operator
 convention used by the simulator.
 
-== Phase Propagators (`phase_propagators`)
+== Integration-Phase Propagators (`integration_phase_propagators`)
 
 Full-step propagators should be constructed from the precomputed effective
 generators:
 
 ```python
-phase_propagators = [
+integration_phase_propagators = [
     [
         expm((-1j * H_eff) * dt).tocsc()
         for H_eff in generators_for_phase
     ]
-    for generators_for_phase in phase_generators
+    for generators_for_phase in integration_phase_generators
 ]
 ```
 
-This produces one full-`dt` propagator for every phase and every sector, with
-the same indexing convention as the other phase-resolved lists:
-`phase_propagators[phase_index][sector_index]`.
+This produces one full-`dt` propagator for every integration `Phase` and every
+sector, with the same indexing convention as the other integration-`Phase`
+lists:
+`integration_phase_propagators[integration_phase_index][sector_index]`.
 
 Mathematically, each stored propagator is
 
@@ -419,11 +425,11 @@ A propagation step should use precomputed propagators only when the actual step
 length is exactly the base `dt`, up to the small tolerance used by the
 simulation loop:
 
-For a given phase, `full_step_propagators` should be the corresponding entry
-from `phase_propagators`:
+For a given integration `Phase`, `full_step_propagators` should be the
+corresponding entry from `integration_phase_propagators`:
 
 ```python
-full_step_propagators = phase_propagators[phase_index]
+full_step_propagators = integration_phase_propagators[integration_phase_index]
 ```
 
 ```python

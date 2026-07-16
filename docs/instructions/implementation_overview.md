@@ -45,25 +45,27 @@ Numerical method parameters such as timesteps, saved-time grids, and solver tole
 
 ## 2. Phase Protocol
 
-For the standard protocol, construct `SimulationMetadata`; its validator builds
-the phase list through `default_three_phase_protocol(...)`:
+For the standard protocol, construct the phase protocol first and provide it to
+`SimulationMetadata`:
 
 ```python
+phase_protocol = default_three_phase_protocol(
+    durations=(T1, T2, T3),
+    delta0=delta0,
+    Omega0=Omega0,
+)
 metadata = SimulationMetadata(
     Ni=Ni,
     omega_i=omega_i,
     Gamma=Gamma,
-    Omega0=Omega0,
-    delta0=delta0,
-    T1=T1,
-    T2=T2,
-    T3=T3,
+    phase_protocol=phase_protocol,
 )
-phases = metadata.phases
 ```
 
-Each phase should carry duration, `Omega`, and `delta`. Phases are piecewise
-constant, which enables phase-level operator and propagator precomputation.
+Each `FamilyPhase` carries a duration and target `Omega` and `delta`. Its
+integration `Phase` objects are piecewise constant, which enables operator and
+propagator precomputation. Optional ramp durations and ramp-segment counts
+control a piecewise-constant ramp followed by a hold at the target values.
 
 The resulting standard phase protocol is:
 
@@ -73,8 +75,8 @@ Phase 2: T = T2, Omega = Omega0, delta = delta0
 Phase 3: T = T3, Omega = 0,      delta = 0
 ```
 
-Shared phase helpers in `common/utils/phases.py` are summarized in
-  `docs/instructions/common/utils.typ`.
+Detailed phase-protocol conventions live in
+`docs/instructions/phases.typ`.
 
 ## 3. Simulation Backends
 
@@ -93,7 +95,7 @@ parameters = <Method>SolverParameters(
     Ni=metadata.Ni,
     omega_i=metadata.omega_groups,
     Gamma=metadata.Gamma,
-    phases=metadata.phases,
+    phase_protocol=metadata.phase_protocol,
     ...,
 )
 
@@ -129,7 +131,7 @@ parameters = MCWFSolverParameters(
     Ni=metadata.Ni,
     omega_i=metadata.omega_groups,
     Gamma=metadata.Gamma,
-    phases=metadata.phases,
+    phase_protocol=metadata.phase_protocol,
     dN=dN,
     dt=dt,
     ...,
@@ -144,7 +146,9 @@ def run_trajectory_ensemble(
     return TrajectoryEnsemble(trajectories=trajectories, metadata=metadata)
 ```
 
-Shared simulation-level fields such as `Ni`, `omega_i`, `Gamma`, `phases`, `shifted_jump_operator`, `t_eval`, and sector metadata should live in `TrajectoryEnsemble.metadata`.
+Shared simulation-level fields such as `Ni`, `omega_i`, `Gamma`,
+`phase_protocol`, `shifted_jump_operator`, `t_eval`, and sector metadata should
+live in `TrajectoryEnsemble.metadata`.
 
 Detailed initialization conventions live in:
 
@@ -212,9 +216,7 @@ moments = MomentSeries(
         Ni=raw_result.metadata.Ni,
         omega_i=raw_result.metadata.omega_i[:-1],
         Gamma=raw_result.metadata.Gamma,
-        Omega0=Omega0,
-        delta0=delta0,
-        T1=T1, T2=T2, T3=T3,
+        phase_protocol=raw_result.metadata.phase_protocol,
     ),
 )
 moments.J = compute_method_j_moments(raw_result)
@@ -225,7 +227,7 @@ Current top-level fields are:
 - `moments.t`: the shared saved-time grid.
 - `moments.metadata`: validated physical model and standard-protocol context,
   including `Ni`, independent `omega_i`, completed `omega_groups`, `Gamma`,
-  and derived `phases`.
+  and the supplied `phase_protocol`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE

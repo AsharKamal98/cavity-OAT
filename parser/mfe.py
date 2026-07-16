@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from parser.common import Array, Phase
+from parser.common import Array, PhaseProtocol
 
 
 class MFESolverParameters(BaseModel):
@@ -11,7 +11,7 @@ class MFESolverParameters(BaseModel):
     Ni: tuple[int, ...]
     omega_i: tuple[float, ...]
     Gamma: float
-    phases: list[Phase]
+    phase_protocol: PhaseProtocol
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

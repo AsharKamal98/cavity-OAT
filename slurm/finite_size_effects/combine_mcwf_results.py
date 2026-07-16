@@ -30,17 +30,26 @@ def main() -> None:
         for array_index in range(args.num_files)
     ]
     samples = [artifact["J"] for artifact in artifacts]
-    phases_ref = artifacts[0]["phases"]
+    phase_protocol_ref = artifacts[0]["phase_protocol"]
 
     t_ref = np.asarray(samples[0].t, dtype=float)
-    phase_ref = np.asarray(samples[0].phase_index, dtype=int)
+    integration_phase_ref = np.asarray(
+        samples[0].integration_phase_index,
+        dtype=int,
+    )
     for artifact, sample in zip(artifacts, samples):
-        if artifact["phases"] != phases_ref:
-            raise ValueError("All J-moment files must share the same phases.")
+        if artifact["phase_protocol"] != phase_protocol_ref:
+            raise ValueError("All J-moment files must share the same phase protocol.")
         if not np.allclose(sample.t, t_ref, atol=1e-12, rtol=0.0):
             raise ValueError("All J-moment files must share the same t grid.")
-        if not np.array_equal(sample.phase_index, phase_ref):
-            raise ValueError("All J-moment files must share the same phase_index grid.")
+        if not np.array_equal(
+            sample.integration_phase_index,
+            integration_phase_ref,
+        ):
+            raise ValueError(
+                "All J-moment files must share the same "
+                "integration_phase_index grid."
+            )
 
     def mean_series(field_name: str):
         return np.mean(
@@ -63,7 +72,7 @@ def main() -> None:
 
     combined = JMomentSeries(
         t=t_ref,
-        phase_index=phase_ref,
+        integration_phase_index=integration_phase_ref,
         x=mean_series("x"),
         y=mean_series("y"),
         z=mean_series("z"),
@@ -75,7 +84,7 @@ def main() -> None:
     JMomentSeries.attatch_angles_from_norm_spin_components(combined)
 
     output_path = output_dir / f"{args.filename}.pkl"
-    save_j_moments_artifact(combined, phases_ref, output_path)
+    save_j_moments_artifact(combined, phase_protocol_ref, output_path)
     print(f"Saved combined J moments artifact to {output_path}")
 
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from common.utils.phases import phase_values_at_time
-from parser.common import Array
+from common.utils.phases import phase_boundary_times
+from parser.common import Array, Phase
 from parser.mfe import (
     MFEResult,
     MFESolverParameters,
@@ -12,14 +12,21 @@ from parser.mfe import (
 from solvers.mfe.utils import amplitudes_from_initial_state
 
 
-def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
+def mfe_rhs(
+    t: float,
+    y: Array,
+    parameters: MFESolverParameters,
+    integration_phase: Phase,
+) -> Array:
     """
     Right-hand side of the group-resolved mean-field equations.
     """
+    _ = t
     G = parameters.group_count
     D, E = y[:G], y[G:]
     omega = np.asarray(parameters.omega_i, dtype=float)
-    Omega_t, delta_t = phase_values_at_time(t, parameters.phases)
+    Omega_t = integration_phase.omega
+    delta_t = integration_phase.delta
 
     ED = sum(omega_b * np.conj(E_b) * D_b for omega_b, E_b, D_b in zip(omega, E, D))
     DE = sum(omega_b * np.conj(D_b) * E_b for omega_b, D_b, E_b in zip(omega, D, E))
@@ -43,6 +50,15 @@ def solve_mfe(
     t_eval = np.asarray(t_eval, dtype=float)
     if t_eval.ndim != 1 or t_eval.size < 2:
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
+    if np.any(np.diff(t_eval) <= 0.0):
+        raise ValueError("t_eval must be strictly increasing.")
+
+    phase_protocol = parameters.phase_protocol
+    integration_phases = phase_protocol.integration_phases
+    if abs(float(t_eval[0])) > 1e-12:
+        raise ValueError("The first t_eval point must be 0.0.")
+    if abs(float(t_eval[-1]) - phase_protocol.total_duration) > 1e-9:
+        raise ValueError("The last t_eval point must match the total protocol time.")
 
     zero_angles = (0.0,) * parameters.group_count
     y0 = amplitudes_from_initial_state(
@@ -50,8 +66,17 @@ def solve_mfe(
         zero_angles,
         parameters,
     )
+    integration_boundaries = phase_boundary_times(integration_phases)
+
+    def rhs(t: float, y: Array) -> Array:
+        phase_index = min(
+            int(np.searchsorted(integration_boundaries, t, side="left")),
+            len(integration_phases) - 1,
+        )
+        return mfe_rhs(t, y, parameters, integration_phases[phase_index])
+
     solution = solve_ivp(
-        lambda t, y: mfe_rhs(t, y, parameters),
+        rhs,
         (float(t_eval[0]), float(t_eval[-1])),
         y0,
         t_eval=t_eval,

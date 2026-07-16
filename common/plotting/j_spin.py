@@ -16,6 +16,7 @@ from common.plotting.utils import (
     style_axis,
     validated_linestyle,
 )
+from parser.common import PhaseProtocol
 
 
 def plot_spin_components(
@@ -28,7 +29,7 @@ def plot_spin_components(
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     label: Optional[str] = None,
-    phases=None,
+    phase_protocol: PhaseProtocol | None = None,
 ):
     """
     Plot any available full and group-resolved x/y/z/length series on a 2x2 grid.
@@ -89,8 +90,8 @@ def plot_spin_components(
                     label=curve_label(group_label, label=label),
                 )
 
-        if values is not None:
-        # if False:
+        #if values is not None:
+        if False:
             full_color = palette_curve_color(
                 palette, len(group_values) if group_values is not None else 0
             )
@@ -109,7 +110,13 @@ def plot_spin_components(
         ax.legend()
         format_time_axis(ax)
     title = "Normalized spin components" if normalized else "Spin components"
-    finish_time_plot(fig, axes, phases=phases, title=title, output_path=output_path)
+    finish_time_plot(
+        fig,
+        axes,
+        phase_protocol=phase_protocol,
+        title=title,
+        output_path=output_path,
+    )
 
     return fig, axes
 
@@ -123,7 +130,7 @@ def plot_bloch_angles(
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     label: Optional[str] = None,
-    phases=None,
+    phase_protocol: PhaseProtocol | None = None,
 ):
     """
     Plot any available full and group-resolved Bloch-angle series stored on an input object.
@@ -173,8 +180,8 @@ def plot_bloch_angles(
                 label=curve_label(rf"$\phi_{group_index}$", label=label),
             )
 
-    if has_full:
-    # if False:
+    #if has_full:
+    if False:
         full_color = palette_curve_color(palette, len(theta_groups) if has_groups else 0)
         axes[0].plot(
             t,
@@ -204,6 +211,12 @@ def plot_bloch_angles(
         ax.legend()
         format_time_axis(ax)
 
-    finish_time_plot(fig, axes, phases=phases, title="Bloch angles", output_path=output_path)
+    finish_time_plot(
+        fig,
+        axes,
+        phase_protocol=phase_protocol,
+        title="Bloch angles",
+        output_path=output_path,
+    )
 
     return fig, axes

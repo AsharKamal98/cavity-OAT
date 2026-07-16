@@ -38,7 +38,7 @@ This function lives in `common/plotting/j_spin.py`.
   corresponding `x_groups`, `y_groups`, `z_groups`, or `length_groups` fields
   exist. It currently does not draw the full-system curves even if `x`, `y`,
   `z`, and `length` are also present.
-- The function should support `axes`, `output_path`, `label`, `phases`,
+- The function should support `axes`, `output_path`, `label`, `phase_protocol`,
   `colour_family_index`, `shade_index`, and `linestyle`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
@@ -58,7 +58,7 @@ This function lives in `common/plotting/j_spin.py`.
 - The current common implementation plots only group-resolved angles when
   `theta_groups` and `phi_groups` exist. It currently does not draw the
   full-system `theta` and `phi` curves even if those fields are also present.
-- The function should support `axes`, `output_path`, `label`, `phases`,
+- The function should support `axes`, `output_path`, `label`, `phase_protocol`,
   `colour_family_index`, `shade_index`, and `linestyle`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
@@ -78,10 +78,10 @@ This function lives in `common/plotting/mfe_residuals.py`.
   `linthresh=1e-5` for signed residual components. For an L2-only plot, use a
   regular logarithmic y-axis when all values are positive; fall back to symlog
   if any L2 value is zero.
-- The function should support `axes`, `output_path`, `label`, `phases`,
+- The function should support `axes`, `output_path`, `label`, `phase_protocol`,
   `colour_family_index`, `shade_index`, `linestyle`, `symlog`, and
   `show_components`.
-- If `phases` are provided, the function may also print a phase-end residual
+- If `phase_protocol` is provided, the function may also print a family-phase-end residual
   summary.
 - Resolve residual colors through the shared `colour_family_index` and
   `shade_index` palette controls. The signed residuals and L2 norm cycle
@@ -105,9 +105,11 @@ This function lives in `common/plotting/mfe_residuals.py`.
 
 - Time axes should use scientific notation when useful and should disable
   additive offset notation.
-- Plotting functions for time-series data should accept optional `phases`.
-- If `phases` are provided, show protocol phases with subtle background bands
-  and phase boundaries.
+- Plotting functions for time-series data should accept an optional
+  `phase_protocol`.
+- If `phase_protocol` is provided, show its `family_phases` with subtle
+  background bands and family-phase boundaries. Do not shade individual
+  integration `Phase` segments.
 - Phase-boundary logic should be reused from shared plotting helpers rather
   than recomputed inside each plotting function.
 

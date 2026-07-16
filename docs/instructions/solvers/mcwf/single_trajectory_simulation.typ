@@ -58,9 +58,9 @@ def _simulate_single_trajectory(..., seed_sequence, precomputed):
     save snapshot at t = 0
 
     threshold = rng.random()
-    for each nonzero-duration phase:
-        load phase-local jump operators, generators, and full-step propagators
-        while current_time is before the phase end:
+    for each nonzero-duration integration_phase:
+        load integration-Phase-local operators, generators, and propagators
+        while current_time is before the integration Phase end:
             step = min(dt, phase boundary, next t_eval boundary)
             trial = full-step propagator path if step == dt else variable-step path
 
@@ -97,7 +97,7 @@ _simulate_single_trajectory(
     Ni,
     omega_i,
     Gamma,
-    phases,
+    integration_phases,
     sector_coeffs,
     *,
     dt,
@@ -127,9 +127,9 @@ TrajectoryResult(
 )
 ```
 
-Shared run metadata such as `Ni`, `omega_i`, `Gamma`, `phases`, `t_eval`, and
-sector dimensions should live on `TrajectoryEnsemble.metadata`, not on each
-`TrajectoryResult`.
+Shared run metadata such as `Ni`, `omega_i`, `Gamma`, `phase_protocol`,
+`t_eval`, and sector dimensions should live on `TrajectoryEnsemble.metadata`,
+not on each `TrajectoryResult`.
 
 = Invariants and Edge Cases
 
@@ -137,6 +137,7 @@ sector dimensions should live on `TrajectoryEnsemble.metadata`, not on each
   `psi_blocks`, phase-local operator lists, snapshots, and final output blocks.
 - Save exactly one snapshot per requested `t_eval` point, with the first
   snapshot at `t=0`.
+- Each snapshot stores the corresponding `integration_phase_index`.
 - Split steps so the solver lands on phase boundaries and saved-time points
   exactly, rather than interpolating snapshots afterward.
 - Saved no-jump `sector_blocks` may be unnormalized; snapshot `norm` stores

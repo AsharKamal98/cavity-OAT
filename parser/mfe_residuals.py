@@ -9,7 +9,7 @@ class MFEResidualSeries(BaseModel):
     """Per-timestep mean-field-equation residual diagnostics."""
 
     t: Array
-    phase_index: Array
+    integration_phase_index: Array
     residuals_groups: tuple[Array, ...]
 
     class Config:

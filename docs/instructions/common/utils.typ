@@ -27,12 +27,15 @@ This file contains backend-neutral helpers used across phase handling.
 
 === Phase Helpers
 
-- `default_three_phase_protocol(T1, T2, T3, delta0, Omega0)` returns the
-  standard three-phase protocol as a list of `Phase` objects.
+- `default_three_phase_protocol(durations, ..., ramp_durations, ramp_segment_counts)`
+  returns the standard `PhaseProtocol`, optionally with a ramp and target hold
+  in each family phase.
 - `phase_boundary_times(phases)` returns all cumulative phase-end times for a
   phase protocol.
 - `phase_values_at_time(t, phases)` returns the phase-local `(Omega, delta)`
   values for a piecewise-constant protocol.
+- `integration_phase_indices_at_times(times, phase_protocol)` returns the
+  integration-`Phase` index for every supplied time.
 
 == `common/utils/parameters.py`
 

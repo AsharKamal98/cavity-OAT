@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from common.utils.phases import integration_phase_indices_at_times
 from parser.j_moments import JMomentSeries
 
 
@@ -71,6 +72,10 @@ def compute_qutip_j_moments(
 
     j_moments = JMomentSeries(
         t=t,
+        integration_phase_index=integration_phase_indices_at_times(
+            t,
+            model.phase_protocol,
+        ),
         x=x,
         y=y,
         z=z,

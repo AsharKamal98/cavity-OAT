@@ -45,6 +45,7 @@ The ensemble runner is responsible for:
 def run_trajectory_ensemble(parameters, *, t_eval, ntraj, seed=None,
                             n_processes=None, chunksize=1, verbose=False):
     validate runtime inputs
+    integration_phases = parameters.phase_protocol.integration_phases
     sector_coeffs = centered_sector_initial_coeffs(...)
     check_initial_sector_omega_ratio(...)
 
@@ -84,7 +85,7 @@ MCWFSolverParameters(
     Ni=metadata.Ni,
     omega_i=metadata.omega_groups,
     Gamma=metadata.Gamma,
-    phases=metadata.phases,
+    phase_protocol=metadata.phase_protocol,
     dN,
     sector_distribution="binomial",
     dt=1e-3,
@@ -133,8 +134,8 @@ TrajectoryEnsemble(
 
 `TrajectoryEnsemble.trajectories` should preserve submission order.
 `TrajectoryEnsemble.metadata` should store shared simulation metadata such as
-`Ni`, completed `omega_i`, `Gamma`, `phases`, `shifted_jump_operator`, `t_eval`,
-sector keys, sector multiplicities, and sector dimensions.
+`Ni`, completed `omega_i`, `Gamma`, `phase_protocol`, `shifted_jump_operator`,
+`t_eval`, sector keys, sector multiplicities, and sector dimensions.
 
 Each trajectory should already be a complete `TrajectoryResult`; see
 `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ` for its

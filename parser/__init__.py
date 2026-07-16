@@ -1,4 +1,4 @@
-from parser.common import Array, Phase
+from parser.common import Array, FamilyPhase, Phase, PhaseProtocol
 from parser.j_moments import JMomentSeries, JMomentSnapshot
 from parser.mfe import MFEResult, MFESolverParameters
 from parser.qutip import (
@@ -21,6 +21,7 @@ from parser.mcwf import (
 
 __all__ = [
     "Array",
+    "FamilyPhase",
     "JMomentSeries",
     "JMomentSnapshot",
     "MFEResidualSeries",
@@ -30,6 +31,7 @@ __all__ = [
     "MomentSeries",
     "SimulationMetadata",
     "Phase",
+    "PhaseProtocol",
     "QutipGroupedFixedNjModel",
     "QutipMCSolverParameters",
     "QutipMESolverParameters",

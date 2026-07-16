@@ -109,16 +109,16 @@ abs(E_(a)(t_(k)))^2$. Full additive fields are sums over groups, following the
 = Method in Pseudo-code
 
 The solver should be split into small functions with pure data flow. The core
-solver should not import `solvers.mcwf`. `Phase` and
-`phase_values_at_time(...)` are defined in `common` and follow the convention
-described in `docs/instructions/model_parameters.typ`.
+solver should not import `solvers.mcwf`. The shared `PhaseProtocol` convention
+is defined in `docs/instructions/phases.typ`.
 
 ```python
-def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
+def mfe_rhs(t, y, parameters, integration_phase) -> Array:
     G = parameters.group_count
     D, E = y[:G], y[G:]
     omega = np.asarray(parameters.omega_i)
-    Omega_t, delta_t = phase_values_at_time(t, parameters.phases)
+    Omega_t = integration_phase.omega
+    delta_t = integration_phase.delta
 
     ED = sum(omega_b * np.conj(E_b) * D_b for omega_b, E_b, D_b in zip(omega, E, D))
     DE = sum(omega_b * np.conj(D_b) * E_b for omega_b, D_b, E_b in zip(omega, D, E))
@@ -131,8 +131,24 @@ def mfe_rhs(t: float, y: Array, parameters: MFESolverParameters) -> Array:
 ```python
 def solve_mfe(parameters, *, t_eval, rtol=1e-9, atol=1e-11) -> MFEResult:
     zero_angles = (0.0,) * parameters.group_count
-    y0 = amplitudes_from_initial_state(zero_angles, zero_angles, parameters)
-    solution = solve_ivp(lambda t, y: mfe_rhs(t, y, parameters), ...)
+    y0 = amplitudes_from_initial_state(
+        zero_angles, zero_angles, parameters
+    )
+    integration_phases = parameters.phase_protocol.integration_phases
+    integration_boundaries = phase_boundary_times(integration_phases)
+
+    def rhs(t, y):
+        phase_index = searchsorted(integration_boundaries, t, side="left")
+        return mfe_rhs(t, y, parameters, integration_phases[phase_index])
+
+    solution = solve_ivp(
+        rhs,
+        (t_eval[0], t_eval[-1]),
+        y0,
+        t_eval=t_eval,
+        rtol=rtol,
+        atol=atol,
+    )
     G = parameters.group_count
     D_groups, E_groups = solution.y[:G], solution.y[G:]
     return MFEResult(t=t_eval, D_groups=D_groups, E_groups=E_groups, ...)
@@ -146,6 +162,7 @@ def compute_mfe_j_moments(result: MFEResult, *, tol=1e-12) -> JMomentSeries:
     )
     j_moments = JMomentSeries(
         result.t,
+        integration_phase_index=integration_phase_indices_at_times(...),
         N_e_groups=tuple(abs(E_g)**2 for E_g in result.E_groups),
         N_j_groups=N_j_groups,
         theta_groups=theta_groups,
@@ -160,9 +177,9 @@ def compute_mfe_j_moments(result: MFEResult, *, tol=1e-12) -> JMomentSeries:
     return j_moments
 ```
 
-If the phase protocol has discontinuities, solving phase-by-phase and using the
-end state of one phase as the initial state of the next is preferred over
-forcing one adaptive solve across discontinuous coefficients.
+Run one adaptive solve over the complete protocol. Flatten the integration
+`Phase` sequence and compute its boundaries once before calling `solve_ivp`;
+the RHS selects the active integration `Phase` from the current time.
 
 Undefined helper notes:
 
@@ -178,8 +195,7 @@ Function flow: `solve_mfe(...)` is the main entry point. It calls
 `compute_mfe_j_moments(...)` is the post-processing step that converts an
 `MFEResult` into a `JMomentSeries` containing group-resolved and full-system
 fields.
-`mfe_rhs(...)` calls `phase_values_at_time(...)` to evaluate the phase-local
-equations of motion.
+`mfe_rhs(...)` receives the current integration `Phase` explicitly.
 
 If a top-level `MomentSeries` container is already in use,
 store the solved observable series explicitly as `moments.J`, for example via
@@ -190,7 +206,7 @@ store the solved observable series explicitly as `moments.J`, for example via
 The solver needs:
 
 - `metadata`: `SimulationMetadata` with `Ni`, the first `G-1` `omega_i`
-  inputs, `Gamma`, and the standard phase protocol. Its validator supplies the
+  inputs, `Gamma`, and a supplied `phase_protocol`. Its validator supplies the
   full `omega_groups` vector used by the MFE equations;
 - `t_eval`: saved output times.
 
@@ -207,7 +223,7 @@ minimal output structure is:
 ```python
 MFESolverParameters(
     Gamma,
-    phases,
+    phase_protocol,
     omega_i,
     Ni,
 )
@@ -223,6 +239,7 @@ MFEResult(
 
 JMomentSeries(
     t,
+    integration_phase_index,
     N_e,
     N_j,
     theta,
@@ -255,8 +272,8 @@ objects.
 = Invariants
 
 - The standalone MFE solver should not import from `solvers.mcwf`.
-- Use `parser.common.Phase` for phase metadata unless a stronger reason exists
-  to define a solver-specific phase class.
+- Use the shared `PhaseProtocol` and integration `Phase` classes; do not define
+  solver-specific phase classes.
 - The solver should support arbitrary group count $G$ when the equations are
   written as sums over groups. Two-group-only logic belongs in residual
   diagnostics unless the theory explicitly requires two groups.

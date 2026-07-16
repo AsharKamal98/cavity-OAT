@@ -19,7 +19,7 @@ _compute_snapshot_j_moments(snapshot, ...)
     -> JMomentSnapshot:
     # Compute J moments for one saved snapshot of one trajectory.
     return JMomentSnapshot(
-        t, phase_index, x, y, z, N_e, N_j, jump_rate,
+        t, integration_phase_index, x, y, z, N_e, N_j, jump_rate,
         x_groups, y_groups, z_groups, N_e_groups, N_j_groups,
     )
 
@@ -34,7 +34,7 @@ compute_trajectory_j_moments(
     j_moment_snapshots = [
         _compute_snapshot_j_moments(
             snapshot,
-            metadata.phases,
+            metadata.phase_protocol.integration_phases,
             metadata.Gamma,
             ...
             )
@@ -206,7 +206,7 @@ The snapshot helper should return a `JMomentSnapshot` with scalar fields:
 
 ```python
 JMomentSnapshot(
-    t, phase_index,
+    t, integration_phase_index,
     x, y, z,
     N_e,
     N_j,
@@ -225,7 +225,7 @@ return `JMomentSeries`:
 ```python
 JMomentSeries(
     t,
-    phase_index=None or array,
+    integration_phase_index=None or array,
     x=None or array,
     y=None or array,
     z=None or array,
@@ -277,4 +277,4 @@ Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
   `theta`, and `phi` from the averaged J components, plus group-resolved
   versions when group fields exist.
 - `compute_mcwf_j_moments(...)` should require all internally computed
-  samples to share the same `t` and `phase_index` grids.
+  samples to share the same `t` and `integration_phase_index` grids.
