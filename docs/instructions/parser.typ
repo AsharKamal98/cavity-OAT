@@ -104,6 +104,9 @@ JMomentSeries.attatch_norm_spin_components_from_angles(j_moments)
 
 JMomentSeries.attatch_spin_components_from_norm_spin_components(j_moments)
     -> attach x, y, z from length, nx, ny, nz
+
+JMomentSeries.attatch_additive_full_fields_from_group_fields(j_moments)
+    -> attach x, y, z, N_e, N_j by summing their group-resolved fields
 ```
 
 The same methods should also attach group-resolved fields when the required
@@ -140,12 +143,24 @@ components and angles should use the safe fallback behavior implemented by
 Angles alone determine only the normalized direction. To recover spin
 components, the series must also contain a vector length.
 
+For additive observables $q in {x, y, z, N_e, N_J}$, construct the full-system
+field from group-resolved fields as
+
+$
+q(t) = sum_g q_g(t).
+$
+
+Do not apply this sum to vector lengths, normalized directions, or angles.
+
 = Invariants
 
 - Parser classes should stay as Pydantic containers with explicit typed fields.
 - Derived-field class methods should mutate the supplied `JMomentSeries`
   instance in place.
 - Full-system and group-resolved conversions should use the same formulas.
+- Only additive fields `x`, `y`, `z`, `N_e`, and `N_j` should be summed across
+  groups; derive full lengths, directions, and angles from the summed spin
+  components.
 - J-moment extraction code should call these class methods instead of
   duplicating spin-component, direction, or angle conversion logic.
 - Legacy field names such as `Jx`, `Jy`, `Jz`, `J_len`, and `sx`, `sy`, `sz`

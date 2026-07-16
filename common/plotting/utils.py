@@ -10,14 +10,6 @@ FIGURE_FACE_COLOR = "white"
 AXES_FACE_COLOR = "white"
 GRID_COLOR = "#d7d7d7"
 SPINE_COLOR = "#b8b8b8"
-COLOUR_PALETTES = (
-    ("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"),
-    ("#800000", "#556b2f", "#2f4f4f", "#7a3e9d"),
-    ("#56B4E9", "#E69F00", "#F0E442", "#8c564b"),
-    ("#4d4d4d", "#7f7f7f", "#a6a6a6", "#c0c0c0"),
-    ("#4d4d4d", "#4d4d4d", "#4d4d4d", "#4d4d4d"),
-    ("#800000", "#800000", "#800000", "#800000"),
-)
 GRADIENT_COLOUR_PALETTE = (
     ("#93c5fd", "#60a5fa", "#3b82f6", "#2563eb", "#1d4ed8", "#1e3a8a"),
     ("#fed7aa", "#fdba74", "#fb923c", "#f97316", "#ea580c", "#9a3412"),
@@ -60,11 +52,6 @@ def format_time_axis(ax) -> None:
     ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useOffset=False)
 
 
-def indexed_curve_color(colour_index: int = 0, curve_index: int = 0) -> str:
-    palette = COLOUR_PALETTES[colour_index % len(COLOUR_PALETTES)]
-    return palette[curve_index % len(palette)]
-
-
 def colour_palette(
     *,
     colour_family_index: Optional[int] = None,
@@ -87,14 +74,17 @@ def colour_palette(
     return family[shade_index % len(family)]
 
 
+def palette_curve_color(palette: Union[tuple[str, ...], str], curve_index: int) -> str:
+    """Select one curve color from a shared palette."""
+    if isinstance(palette, str):
+        return palette
+    return palette[curve_index % len(palette)]
+
+
 def validated_linestyle(linestyle: str = "-") -> str:
     if linestyle not in LINESTYLES:
         raise ValueError(f"linestyle must be one of {LINESTYLES}, got {linestyle!r}.")
     return linestyle
-
-
-def full_curve_color(colour_index: int = 0) -> str:
-    return indexed_curve_color(colour_index, 0)
 
 
 def sector_curve_color(sector_index: int) -> str:
@@ -161,7 +151,7 @@ def save_figure(fig, output_path: Optional[Union[str, Path]]) -> None:
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=200)
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
 
 
 def finish_time_plot(

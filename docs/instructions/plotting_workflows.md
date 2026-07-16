@@ -67,11 +67,12 @@ palette, and line-style behavior, use the plotting-workflows skill.
 4. The output should be a single panel showing `Re R_1`, `Im R_1`,
    `Re R_2`, `Im R_2`, and the L2 norm `sqrt(|R_1|^2 + |R_2|^2)`.
 
-5. The signed residual components should use the selected `colour_index`
-   palette and `linestyle`. The L2 norm should use a solid gray curve.
+5. The signed residual components and L2 norm should use the selected
+   `colour_family_index` / `shade_index` palette, cycling by plotted-curve
+   order. The L2 norm should use a solid line.
 
 6. The function should support `axes`, `output_path`, `label`, `phases`,
-   `colour_index`, and `linestyle`.
+   `colour_family_index`, `shade_index`, and `linestyle`.
    If `phases` are provided, optionally print the same phase-end residual
    summary as the old pipeline.
 

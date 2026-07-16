@@ -255,7 +255,8 @@ atom-number fields, jump rates, and group-resolved counterparts when those
 quantities are available. Derived fields such as spin directions and angles
 should be attached inside the J-moment layer, so plotting and diagnostics can
 consume one common structure independent of whether the data came from MCWF,
-MFE, or QuTiP.
+MFE, or QuTiP. Additive full-system fields may be constructed by summing their
+group-resolved counterparts before nonlinear derived fields are attached.
 
 Detailed definitions and averaging rules live in
 `docs/instructions/j_moments.typ`.
@@ -291,7 +292,8 @@ The shared spin-component plot lives in `common/plotting/j_spin.py`:
 The shared angle plot lives in `common/plotting/j_spin.py`:
 - `plot_bloch_angles(series, ...)`: plots whatever stored `theta`, `phi`,
   `theta_groups`, and `phi_groups` fields are available on the input series,
-  using the selected `colour_index` palette and `linestyle`.
+  using the selected `colour_family_index` / `shade_index` palette and
+  `linestyle`.
 
 The shared MFE residual diagnostic plotting function lives in
 `common/plotting/mfe_residuals.py`:

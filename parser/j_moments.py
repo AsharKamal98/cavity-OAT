@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 from pydantic import BaseModel
 
 from parser.common import Array
@@ -60,6 +61,41 @@ class JMomentSeries(BaseModel):
     phi_groups: tuple[Array, ...] | None = None
     # other
     jump_rate: Array | None = None
+
+    @classmethod
+    def attatch_additive_full_fields_from_group_fields(
+        cls,
+        j_moments: "JMomentSeries",
+    ) -> None:
+        """
+        Attach full additive fields by summing their group-resolved values.
+        """
+        field_names = ("x", "y", "z", "N_e", "N_j")
+        group_fields = {
+            field_name: getattr(j_moments, f"{field_name}_groups")
+            for field_name in field_names
+        }
+        missing_fields = [
+            f"{field_name}_groups"
+            for field_name, groups in group_fields.items()
+            if groups is None
+        ]
+        if missing_fields:
+            raise ValueError(
+                "Additive full-field attachment requires "
+                + ", ".join(missing_fields)
+                + "."
+            )
+
+        group_count = len(group_fields["x"])
+        if group_count == 0 or any(
+            len(groups) != group_count for groups in group_fields.values()
+        ):
+            raise ValueError("All additive group fields must have the same nonzero group count.")
+
+        for field_name, groups in group_fields.items():
+            group_arrays = [np.asarray(group, dtype=float) for group in groups]
+            setattr(j_moments, field_name, np.sum(np.stack(group_arrays), axis=0))
 
     @classmethod
     def attatch_norm_spin_components_from_spin_components(

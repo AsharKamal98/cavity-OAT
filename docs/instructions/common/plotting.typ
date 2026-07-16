@@ -73,16 +73,19 @@ This function lives in `common/plotting/mfe_residuals.py`.
 - The current common implementation should assume exactly two residual groups.
 - The output should be a single panel showing `Re R_1`, `Im R_1`, `Re R_2`,
   `Im R_2`, and the L2 norm `sqrt(|R_1|^2 + |R_2|^2)`.
+- With `show_components=False`, plot only the nonnegative L2 norm.
 - With `symlog=True` (the default), use a symmetric logarithmic y-axis with
-  `linthresh=1e-5` so phase-boundary spikes and small signed steady-state
-  residuals remain visible together.
+  `linthresh=1e-5` for signed residual components. For an L2-only plot, use a
+  regular logarithmic y-axis when all values are positive; fall back to symlog
+  if any L2 value is zero.
 - The function should support `axes`, `output_path`, `label`, `phases`,
-  `colour_index`, `linestyle`, and `symlog`.
+  `colour_family_index`, `shade_index`, `linestyle`, `symlog`, and
+  `show_components`.
 - If `phases` are provided, the function may also print a phase-end residual
   summary.
-- The current common implementation uses `colour_index` rather than
-  `colour_family_index` / `shade_index` for the signed residual curves, and a
-  solid gray curve for the L2 norm.
+- Resolve residual colors through the shared `colour_family_index` and
+  `shade_index` palette controls. The signed residuals and L2 norm cycle
+  through that palette in plotted-curve order.
 - For shared overlay and line-style behavior, use the plotting-workflows
   skill.
 
