@@ -23,22 +23,15 @@ plotting-workflows skill.
 
 This function lives in `common/plotting/j_spin.py`.
 
-- The function should take a series object directly, for example `moments.J`
-  or another series with matching `x/y/z/length` field names.
-- The default call should plot the stored `x`, `y`, `z`, and `length`
-  fields.
-- If `normalized=True`, the function should instead plot `nx`, `ny`, `nz`,
-  and `length`.
-- The function should read `x`, `y`, `z`, `length`, and optional
-  `x_groups`, `y_groups`, `z_groups`, `length_groups`. For normalized plots it
-  should analogously read `nx`, `ny`, `nz`, and optional group-resolved
-  normalized fields.
+- The function should take `t` and four sequences containing the x, y, z, and
+  length curves to plot.
+- Each position across the four sequences describes one Bloch vector, and the
+  matching `labels` entry identifies that vector in every panel.
+- The caller chooses whether the supplied curves are full-system,
+  group-resolved, normalized, or derived combinations. The plotting function
+  should not inspect a moment class or transform the supplied data.
 - The output should be a `2x2` panel showing x, y, z, and length.
-- The current common implementation plots only group-resolved curves when the
-  corresponding `x_groups`, `y_groups`, `z_groups`, or `length_groups` fields
-  exist. It currently does not draw the full-system curves even if `x`, `y`,
-  `z`, and `length` are also present.
-- The function should support `axes`, `output_path`, `label`, `phase_protocol`,
+- The function should support `axes`, `output_path`, `phase_protocol`, `title`,
   `colour_family_index`, `shade_index`, and `linestyle`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
@@ -46,19 +39,14 @@ This function lives in `common/plotting/j_spin.py`.
 
 This function lives in `common/plotting/j_spin.py`.
 
-- The function should take a series object as input.
-- The input must contain `t`, and may contain full-system `theta`/`phi`,
-  group-resolved `theta_groups`/`phi_groups`, or both.
+- The function should take `t` and matching sequences of theta and phi curves.
+- Each position across the two sequences describes one Bloch vector, and the
+  matching `labels` entry identifies that vector in both panels.
 - The output should be a `2x1` panel showing `theta` and `phi`.
-- The plotting function should read whatever stored angle fields are available
-  on the input series. Angle construction should happen upstream; the plotting
-  function should not recompute angles from spin components.
-- If group-resolved fields exist, plot those first using the selected palette
-  and `linestyle`.
-- The current common implementation plots only group-resolved angles when
-  `theta_groups` and `phi_groups` exist. It currently does not draw the
-  full-system `theta` and `phi` curves even if those fields are also present.
-- The function should support `axes`, `output_path`, `label`, `phase_protocol`,
+- The caller chooses whether the supplied curves are full-system,
+  group-resolved, or derived combinations. The plotting function should not
+  inspect a moment class or recompute angles.
+- The function should support `axes`, `output_path`, `phase_protocol`,
   `colour_family_index`, `shade_index`, and `linestyle`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
@@ -97,9 +85,9 @@ This function lives in `common/plotting/mfe_residuals.py`.
   observables, moments, or diagnostics rather than recomputing expensive
   physics.
 - Shared plotting helpers should live in `common/plotting/utils.py`.
-- Common plotting functions should support both single-group and
-  group-resolved data when the input container provides the relevant group
-  fields.
+- Common plotting functions should accept caller-selected curve collections so
+  single-group, group-resolved, full-system, and derived data can use the same
+  plotting code.
 
 == Time and Phase Handling
 
