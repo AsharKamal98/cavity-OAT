@@ -11,6 +11,13 @@ summaries attached to them.
   shared moment parameters. It returns an `MFEResidualSeries` when the input
   contains compatible two-group fields, otherwise `None`.
 
+## `post_analysis/j_modes.py`
+
+- `compute_j_modes(t, x_components, y_components, z_components, *,
+  populations, omega_groups)` computes one- or two-group common, contrast,
+  drive-bright, and drive-dark vectors from active-population-normalized group
+  components and returns a `JModeSeries`.
+
 ## `post_analysis/theory_benchmarks.py`
 
 - `phase1_ss_angles_for_nj(Nj, Omega, Gamma)` returns the phase-1

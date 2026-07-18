@@ -16,15 +16,16 @@ from common.plotting.utils import (
     style_axis,
     validated_linestyle,
 )
-from parser.common import PhaseProtocol
+from common.utils.moments import as_series_tuple
+from parser.common import Array, PhaseProtocol
 
 
 def plot_spin_components(
     t,
-    x_components: Sequence,
-    y_components: Sequence,
-    z_components: Sequence,
-    lengths: Sequence,
+    x_components: Sequence[Array] | Array,
+    y_components: Sequence[Array] | Array,
+    z_components: Sequence[Array] | Array,
+    lengths: Sequence[Array] | Array,
     *,
     labels: Sequence[str],
     colour_family_index: Optional[int] = None,
@@ -51,7 +52,10 @@ def plot_spin_components(
     )
 
     t = np.asarray(t, dtype=float)
-    component_sets = (x_components, y_components, z_components, lengths)
+    component_sets = tuple(
+        as_series_tuple(components)
+        for components in (x_components, y_components, z_components, lengths)
+    )
     labels = tuple(labels)
     if not labels:
         raise ValueError("plot_spin_components requires at least one spin vector.")
@@ -96,8 +100,8 @@ def plot_spin_components(
 
 def plot_bloch_angles(
     t,
-    theta_curves: Sequence,
-    phi_curves: Sequence,
+    theta_curves: Sequence[Array] | Array,
+    phi_curves: Sequence[Array] | Array,
     *,
     labels: Sequence[str],
     colour_family_index: Optional[int] = None,
@@ -123,6 +127,8 @@ def plot_bloch_angles(
     )
 
     t = np.asarray(t, dtype=float)
+    theta_curves = as_series_tuple(theta_curves)
+    phi_curves = as_series_tuple(phi_curves)
     labels = tuple(labels)
     if not labels:
         raise ValueError("plot_bloch_angles requires at least one Bloch vector.")

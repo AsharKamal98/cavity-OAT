@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Tuple
 
 import numpy as np
 
 from parser.common import Array
+
+
+def as_series_tuple(series: Sequence[Array] | Array) -> tuple[Array, ...]:
+    """Return one time series or a sequence of time series as a tuple."""
+    values = np.asarray(series, dtype=float)
+    if values.ndim == 1:
+        return (values,)
+    if values.ndim == 2:
+        return tuple(values)
+    raise ValueError("Expected one time series or a sequence of time series.")
 
 
 def norm_spin_components_from_spin_components(

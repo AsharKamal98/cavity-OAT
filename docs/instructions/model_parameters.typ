@@ -34,6 +34,25 @@ Omega_factor, delta_factor
     -> delta0 = scaled_N_Gamma(delta_factor, N, Gamma)
 ```
 
+== TWA-Matched Parameters
+
+For comparisons with the TWA cavity-plus-spin code, use these helpers from
+`common/utils/parameters.py`:
+
+```
+Gamma_from_twa(N) -> Gamma
+Omega_from_twa(N) -> Omega_eff
+```
+
+They fix $g_1=1$, $g_2=g_1/2$, $g_"eff"=(g_1+g_2)/2$, and
+$alpha_"in"=1$, giving
+
+$
+Gamma = frac(4, 15 sqrt(N / 2)),
+quad
+Omega_"eff" = frac(4 sqrt(g_"eff") alpha_"in", sqrt(15 sqrt(N / 2))).
+$
+
 == Cavity-Derived Parameters
 
 When the effective parameters should be derived from cavity inputs, code should reuse:
@@ -134,6 +153,8 @@ For the inhomogeneous Hamiltonian, jump operator, sector keys, and residual diag
 
 - `scaled_N_Gamma` in `common/utils/parameters.py` returns a direct
   $N Gamma$-scaled model parameter from a dimensionless factor.
+- `Gamma_from_twa(N)` and `Omega_from_twa(N)` return the fixed parameter
+  convention used to match the TWA cavity-plus-spin simulation.
 - `Omega_Gamma_from_cavity_parameters` in
   `common/utils/parameters.py` returns $(Omega,Gamma)$.
 - `omega_c` in `common/utils/parameters.py` returns $Omega_c$.

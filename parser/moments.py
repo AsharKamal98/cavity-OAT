@@ -6,6 +6,7 @@ import numpy as np
 from pydantic import BaseModel, root_validator
 
 from parser.common import Array, PhaseProtocol
+from parser.j_modes import JModeSeries
 from parser.j_moments import JMomentSeries
 from parser.mfe_residuals import MFEResidualSeries
 from common.utils.parameters import omega_G_from_weighted_average
@@ -46,6 +47,7 @@ class MomentSeries(BaseModel):
     t: Array
     metadata: SimulationMetadata | None = None
     J: JMomentSeries | None = None
+    J_modes: JModeSeries | None = None
     mfe_residuals: MFEResidualSeries | None = None
     S: Any | None = None
 

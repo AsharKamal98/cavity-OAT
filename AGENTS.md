@@ -84,6 +84,7 @@ AGENTS.md
       -> docs/instructions/solvers/mcwf/single_trajectory_simulation.typ
       -> docs/instructions/observable_moment_pipeline.typ
       -> docs/instructions/j_moments.typ
+      -> docs/instructions/post_analysis/j_modes.typ
       -> docs/instructions/post_analysis/mfe_residuals.typ
       -> docs/instructions/bloch_vector_averaging.typ
       -> docs/instructions/plot_spin_components.typ

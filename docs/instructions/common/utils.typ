@@ -50,6 +50,8 @@ parameter-validation helpers.
   direct $N$-scaling model parameters such as $Omega_0$ and $delta_0$.
 - `inverse_scaled_N_Gamma(factor, N, Gamma)` returns `factor / (N * Gamma)`
   for inverse rate scales such as MCWF timesteps.
+- `Gamma_from_twa(N)` and `Omega_from_twa(N)` return the fixed effective
+  parameters used to match the TWA cavity-plus-spin simulation.
 - `mcwf_dt_from_scales(Omega0, delta0, N, Gamma, ...)` returns the minimum of
   the drive-based, detuning-based, and collective-decay-based MCWF timestep
   scales.
@@ -70,6 +72,8 @@ pipeline.
 
 === Spin-Conversion Helpers
 
+- `as_series_tuple(series)` converts one array or a sequence of arrays into a
+  tuple of time series for shared analysis and plotting code.
 - `norm_spin_components_from_spin_components(x, y, z, tol=...)` returns
   Euclidean vector length and normalized vector components.
 - `angles_from_norm_spin_components(sx, sy, sz, valid, tol=...)` returns

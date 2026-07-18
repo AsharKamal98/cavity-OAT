@@ -38,6 +38,27 @@ def inverse_scaled_N_Gamma(factor: float, N: int, Gamma: float) -> float:
     return float(factor) / (float(N) * float(Gamma))
 
 
+def Gamma_from_twa(N: int) -> float:
+    """Return the effective decay rate matching the fixed TWA parameters."""
+    if N <= 0:
+        raise ValueError("N must be positive.")
+    return float(4.0 / (15.0 * np.sqrt(float(N) / 2.0)))
+
+
+def Omega_from_twa(N: int) -> float:
+    """Return the effective drive matching the fixed TWA parameters."""
+    if N <= 0:
+        raise ValueError("N must be positive.")
+
+    g1 = 1.0
+    g2 = g1 / 2.0
+    g_eff = (g1 + g2) / 2.0
+    alpha_in = 1.0
+    return float(
+        4.0 * np.sqrt(g_eff) * alpha_in / np.sqrt(15.0 * np.sqrt(float(N) / 2.0))
+    )
+
+
 def mcwf_dt_from_scales(
     Omega0: float,
     delta0: float,

@@ -1,4 +1,5 @@
 from parser.common import Array, FamilyPhase, Phase, PhaseProtocol
+from parser.j_modes import BlochVectorSeries, JModeSeries
 from parser.j_moments import JMomentSeries, JMomentSnapshot
 from parser.mfe import MFEResult, MFESolverParameters
 from parser.qutip import (
@@ -21,9 +22,11 @@ from parser.mcwf import (
 
 __all__ = [
     "Array",
+    "BlochVectorSeries",
     "FamilyPhase",
     "JMomentSeries",
     "JMomentSnapshot",
+    "JModeSeries",
     "MFEResidualSeries",
     "MFEResult",
     "MFESolverParameters",

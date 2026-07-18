@@ -23,8 +23,8 @@ plotting-workflows skill.
 
 This function lives in `common/plotting/j_spin.py`.
 
-- The function should take `t` and four sequences containing the x, y, z, and
-  length curves to plot.
+- The function should take `t` and x, y, z, and length inputs. Each input may
+  be one array or a sequence of arrays.
 - Each position across the four sequences describes one Bloch vector, and the
   matching `labels` entry identifies that vector in every panel.
 - The caller chooses whether the supplied curves are full-system,
@@ -39,7 +39,8 @@ This function lives in `common/plotting/j_spin.py`.
 
 This function lives in `common/plotting/j_spin.py`.
 
-- The function should take `t` and matching sequences of theta and phi curves.
+- The function should take `t` and matching theta and phi inputs. Each input
+  may be one array or a sequence of arrays.
 - Each position across the two sequences describes one Bloch vector, and the
   matching `labels` entry identifies that vector in both panels.
 - The output should be a `2x1` panel showing `theta` and `phi`.

@@ -60,6 +60,21 @@ JMomentSeries(
 Group-resolved fields should be tuples ordered by group. If no group-resolved
 data exist, the corresponding fields should remain `None`.
 
+`JModeSeries` stores post-analysis combinations separately from raw J moments:
+
+```python
+JModeSeries(
+    t,
+    common=BlochVectorSeries(x, y, z, length),
+    contrast=BlochVectorSeries(x, y, z, length),
+    bright=BlochVectorSeries(x, y, z, length),
+    dark=BlochVectorSeries(x, y, z, length),
+)
+```
+
+Store it as nullable `moments.J_modes`; do not add derived mode fields to
+`JMomentSeries`.
+
 = Simulation Metadata
 
 `SimulationMetadata` stores shared physical model inputs and the supplied phase

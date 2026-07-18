@@ -230,6 +230,8 @@ Current top-level fields are:
   and the supplied `phase_protocol`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles.
+- `moments.J_modes`: an optional `JModeSeries` containing post-analysis common,
+  contrast, drive-bright, and drive-dark two-group vectors.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
 - `moments.S`: placeholder for future S-moment or spin-direction data.
@@ -280,6 +282,7 @@ diagnostics should live in the root-level `post_analysis/` package.
 
 Current task-specific diagnostic instructions include:
 
+- `docs/instructions/post_analysis/j_modes.typ`
 - `docs/instructions/post_analysis/mfe_residuals.typ`
 - `docs/instructions/post_analysis/squeezing.typ`
 
@@ -288,14 +291,12 @@ summarized in
 
 ## 6. Plotting
 The shared spin-component plot lives in `common/plotting/j_spin.py`:
-- `plot_spin_components(series, ...)`: plots stored `x`, `y`, `z`, `length`,
-  and the matching group-resolved fields when present.
+- `plot_spin_components(t, x_components, y_components, z_components, lengths,
+  labels=..., ...)`: plots caller-selected vectors.
 
 The shared angle plot lives in `common/plotting/j_spin.py`:
-- `plot_bloch_angles(series, ...)`: plots whatever stored `theta`, `phi`,
-  `theta_groups`, and `phi_groups` fields are available on the input series,
-  using the selected `colour_family_index` / `shade_index` palette and
-  `linestyle`.
+- `plot_bloch_angles(t, theta_curves, phi_curves, labels=..., ...)`: plots
+  caller-selected angle curves using the selected palette and `linestyle`.
 
 The shared MFE residual diagnostic plotting function lives in
 `common/plotting/mfe_residuals.py`:
