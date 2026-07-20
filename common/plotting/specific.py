@@ -13,6 +13,7 @@ from common.plotting.utils import (
     format_time_axis,
     get_axes,
     palette_curve_color,
+    set_bottom_figure_legend,
     style_axis,
     validated_linestyle,
 )
@@ -45,7 +46,7 @@ def plot_transverse_spin_components(
         create_figure=lambda: plt.subplots(
             3,
             1,
-            figsize=(8, 9),
+            figsize=(8, 8),
             sharex=True,
             constrained_layout=True,
         ),
@@ -105,8 +106,9 @@ def plot_transverse_spin_components(
         ax.set_ylabel(ylabel)
         ax.set_title(panel_title, fontsize=11)
         style_axis(ax)
-        ax.legend()
         format_time_axis(ax)
+
+    set_bottom_figure_legend(fig, axes[0])
     finish_time_plot(
         fig,
         axes,

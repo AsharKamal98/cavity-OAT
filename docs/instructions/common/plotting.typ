@@ -111,6 +111,8 @@ This function lives in `common/plotting/mfe_residuals.py`.
   `fig.suptitle(..., y=1.02)`.
 - Labels should name the physical quantity being plotted, using math labels
   when appropriate.
+- Multi-panel plots should show shared curve labels once in a figure legend
+  centered below the panel grid.
 
 == Skill-Routed Behavior
 

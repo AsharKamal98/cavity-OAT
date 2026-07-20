@@ -13,6 +13,7 @@ from common.plotting.utils import (
     format_time_axis,
     get_axes,
     palette_curve_color,
+    set_bottom_figure_legend,
     style_axis,
     validated_linestyle,
 )
@@ -42,7 +43,7 @@ def plot_spin_components(
     fig, axes = get_axes(
         axes,
         n_axes=4,
-        create_figure=lambda: plt.subplots(2, 2, figsize=(10, 7), sharex=True, constrained_layout=True),
+        create_figure=lambda: plt.subplots(2, 2, figsize=(10, 6.5), sharex=True, constrained_layout=True),
         error_message="axes must contain exactly four axes for the 2x2 spin-component grid.",
     )
     line_style = validated_linestyle(linestyle)
@@ -85,8 +86,8 @@ def plot_spin_components(
         ax.set_ylabel(component_label)
         ax.set_title(panel_title, fontsize=11)
         style_axis(ax)
-        ax.legend()
         format_time_axis(ax)
+    set_bottom_figure_legend(fig, axes[0])
     finish_time_plot(
         fig,
         axes,
@@ -164,9 +165,9 @@ def plot_bloch_angles(
         ax.set_ylabel(ylabel)
         ax.set_title(title, fontsize=11)
         style_axis(ax)
-        ax.legend()
         format_time_axis(ax)
 
+    set_bottom_figure_legend(fig, axes[0])
     finish_time_plot(
         fig,
         axes,

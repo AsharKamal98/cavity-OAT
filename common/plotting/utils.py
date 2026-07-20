@@ -112,6 +112,24 @@ def get_axes(axes, *, n_axes: int, create_figure, error_message: str):
     return fig, axes
 
 
+def set_bottom_figure_legend(fig, source_ax, *, max_columns: int = 4) -> None:
+    """Replace panel legends with one combined legend below the figure grid."""
+    for ax in fig.axes:
+        if ax.get_legend() is not None:
+            ax.get_legend().remove()
+    for legend in tuple(fig.legends):
+        legend.remove()
+
+    handles, labels = source_ax.get_legend_handles_labels()
+    if labels:
+        fig.legend(
+            handles,
+            labels,
+            loc="outside lower center",
+            ncols=min(len(labels), max_columns),
+        )
+
+
 def add_phase_regions(axes, phase_protocol: PhaseProtocol | None) -> None:
     if phase_protocol is None:
         return
