@@ -89,7 +89,7 @@ MCWFSolverParameters(
     dN,
     sector_distribution="binomial",
     dt=1e-3,
-    shifted_jump_operator=False,
+    shifted_jump_operator=True,
 )
 
 run_trajectory_ensemble(
@@ -103,6 +103,9 @@ run_trajectory_ensemble(
     verbose=False,
 ) -> TrajectoryEnsemble
 ```
+
+The public MCWF parameters default to the shifted jump-operator picture. Set
+`shifted_jump_operator=False` explicitly for an unshifted ensemble.
 
 `SimulationMetadata.omega_i` should contain the first `G-1` group couplings.
 Its validator constructs the final weighted-average coupling as

@@ -16,6 +16,7 @@ from common.plotting.utils import (
     set_bottom_figure_legend,
     style_axis,
     validated_linestyle,
+    validated_marker,
 )
 from common.utils.moments import as_series_tuple
 from parser.common import Array, PhaseProtocol
@@ -32,7 +33,8 @@ def plot_transverse_spin_components(
     transverse_definition: Literal["magnitude", "sum"] = "magnitude",
     colour_family_index: Optional[int] = None,
     shade_index: Optional[int] = None,
-    linestyle: str = "-",
+    linestyle: str | None = "-",
+    marker: str | None = None,
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     phase_protocol: PhaseProtocol | None = None,
@@ -53,6 +55,7 @@ def plot_transverse_spin_components(
         error_message="axes must contain exactly three axes for the 3x1 spin-component grid.",
     )
     line_style = validated_linestyle(linestyle)
+    marker_style = validated_marker(marker)
     palette = colour_palette(
         colour_family_index=colour_family_index,
         shade_index=shade_index,
@@ -66,7 +69,9 @@ def plot_transverse_spin_components(
     labels = tuple(labels)
     component_sets = (x_components, y_components, z_components, lengths)
     if not labels:
-        raise ValueError("plot_transverse_spin_components requires at least one spin vector.")
+        raise ValueError(
+            "plot_transverse_spin_components requires at least one spin vector."
+        )
     if any(len(components) != len(labels) for components in component_sets):
         raise ValueError("Each component input requires one curve per label.")
 
@@ -91,6 +96,7 @@ def plot_transverse_spin_components(
             "linewidth": 1.8,
             "color": color,
             "linestyle": line_style,
+            "marker": marker_style,
             "label": label,
         }
         axes[0].plot(t, transverse, **curve_style)

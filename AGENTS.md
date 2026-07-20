@@ -85,6 +85,7 @@ AGENTS.md
       -> docs/instructions/observable_moment_pipeline.typ
       -> docs/instructions/j_moments.typ
       -> docs/instructions/post_analysis/j_modes.typ
+      -> docs/instructions/post_analysis/harmonic_analysis.typ
       -> docs/instructions/post_analysis/mfe_residuals.typ
       -> docs/instructions/bloch_vector_averaging.typ
       -> docs/instructions/plot_spin_components.typ
@@ -117,6 +118,17 @@ result summaries, or wording that should match previous text. Do not use them as
 the primary source for formulas or implementation behavior.
 
 Read relevant theory and instruction files before writing text. 
+
+### `docs/investigations`
+
+This directory contains evidence-based investigations of possible future
+implementation work. These files record benchmarks, tradeoffs, and recommended
+next steps, but they do not define current implementation behavior.
+
+Current investigations:
+
+- `docs/investigations/krylov.md`: assesses precomputed propagators,
+  matrix-exponential actions, and Krylov propagation for the MCWF solver.
 
 ## General Rules
 - For implementation changes, or any task requiring knowledge about implementation, read

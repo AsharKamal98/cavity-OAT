@@ -15,6 +15,7 @@ from common.plotting.utils import (
     palette_curve_color,
     style_axis,
     validated_linestyle,
+    validated_marker,
 )
 from common.utils.phases import phase_boundary_times
 from parser.common import PhaseProtocol
@@ -90,7 +91,8 @@ def plot_mfe_residuals(
     show_components: bool = True,
     colour_family_index: Optional[int] = None,
     shade_index: Optional[int] = None,
-    linestyle: str = "--",
+    linestyle: str | None = "--",
+    marker: str | None = None,
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     label: Optional[str] = None,
@@ -107,6 +109,7 @@ def plot_mfe_residuals(
     if len(residuals) != 2:
         raise ValueError("plot_mfe_residuals currently requires exactly two residual groups.")
     line_style = validated_linestyle(linestyle)
+    marker_style = validated_marker(marker)
     palette = colour_palette(
         colour_family_index=colour_family_index,
         shade_index=shade_index,
@@ -138,6 +141,7 @@ def plot_mfe_residuals(
                 linewidth=1.8,
                 color=palette_curve_color(palette, curve_index),
                 linestyle=line_style,
+                marker=marker_style,
                 label=curve_label(residual_label, label=label),
             )
     axes[0].plot(
@@ -146,6 +150,7 @@ def plot_mfe_residuals(
         linewidth=1.8,
         color=palette_curve_color(palette, len(residual_specs) if show_components else 0),
         linestyle=line_style,
+        marker=marker_style,
         label=curve_label("L2 norm", label=label) if show_components else label,
     )
     if show_components:

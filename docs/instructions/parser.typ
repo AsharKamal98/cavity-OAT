@@ -60,20 +60,50 @@ JMomentSeries(
 Group-resolved fields should be tuples ordered by group. If no group-resolved
 data exist, the corresponding fields should remain `None`.
 
+`BlochVectorSeries` is the reusable Cartesian-vector container defined in
+`parser/bloch_vector.py`:
+
+```python
+BlochVectorSeries(
+    x, y, z,
+    length,     # derived automatically
+    xy_length,  # derived automatically
+)
+```
+
+Every construction should derive
+
+$
+"length" = sqrt(x^2+y^2+z^2),
+quad
+"xy_length" = sqrt(x^2+y^2).
+$
+
+Callers should supply matching one-dimensional x/y/z arrays and should not
+compute either derived field themselves.
+
 `JModeSeries` stores post-analysis combinations separately from raw J moments:
 
 ```python
 JModeSeries(
     t,
-    common=BlochVectorSeries(x, y, z, length),
-    contrast=BlochVectorSeries(x, y, z, length),
-    bright=BlochVectorSeries(x, y, z, length),
-    dark=BlochVectorSeries(x, y, z, length),
+    common=BlochVectorSeries(x, y, z, length, xy_length),
+    contrast=BlochVectorSeries(x, y, z, length, xy_length),
+    bright=BlochVectorSeries(x, y, z, length, xy_length),
+    dark=BlochVectorSeries(x, y, z, length, xy_length),
 )
 ```
 
 Store it as nullable `moments.J_modes`; do not add derived mode fields to
 `JMomentSeries`.
+
+`HarmonicAnalysisSeries` stores solver-independent harmonic analyses for one or
+more curves. Each `HarmonicSignalAnalysis` contains its fitted offset and
+fundamental frequency, observed cycle count, harmonic indices, frequencies,
+amplitudes, RMS oscillation amplitude, phase offsets, and total harmonic
+distortion. The output does not retain the input time grid. Keep this diagnostic
+separate from `JMomentSeries` and `JModeSeries` so it can consume any compatible
+real series.
 
 = Simulation Metadata
 
@@ -171,6 +201,8 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
 = Invariants
 
 - Parser classes should stay as Pydantic containers with explicit typed fields.
+- `BlochVectorSeries` must derive `length` and `xy_length` from x/y/z on every
+  construction so stored values cannot disagree with the Cartesian components.
 - Derived-field class methods should mutate the supplied `JMomentSeries`
   instance in place.
 - Full-system and group-resolved conversions should use the same formulas.

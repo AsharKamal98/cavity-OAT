@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+from matplotlib.markers import MarkerStyle
+
 from common.utils.phases import phase_boundary_times
 from parser.common import PhaseProtocol
 
@@ -19,7 +21,7 @@ GRADIENT_COLOUR_PALETTE = (
     ("#e5e7eb", "#d1d5db", "#9ca3af", "#6b7280", "#4b5563", "#1f2937"),
     ("#fecdd3", "#fda4af", "#fb7185", "#e11d48", "#be123c", "#881337"),
 )
-LINESTYLES = ("-", "--", ":", "-.")
+LINESTYLES = ("-", "--", ":", "-.", "none")
 SECTOR_CURVE_COLORS = (
     "#0072B2",
     "#D55E00",
@@ -82,10 +84,33 @@ def palette_curve_color(palette: Union[tuple[str, ...], str], curve_index: int) 
     return palette[curve_index % len(palette)]
 
 
-def validated_linestyle(linestyle: str = "-") -> str:
+def shade_axes_for_family_phase(axes, family_phase_index: int) -> None:
+    """Shade axes backgrounds using one shared family-phase color."""
+    if family_phase_index < 0:
+        raise ValueError("family_phase_index must be non-negative.")
+    color = PHASE_SHADE_COLORS[family_phase_index % len(PHASE_SHADE_COLORS)]
+    for ax in np.asarray(axes).ravel():
+        ax.set_facecolor(color)
+        ax.patch.set_alpha(0.35)
+
+
+def validated_linestyle(linestyle: str | None = "-") -> str:
+    if linestyle is None:
+        return "none"
     if linestyle not in LINESTYLES:
         raise ValueError(f"linestyle must be one of {LINESTYLES}, got {linestyle!r}.")
     return linestyle
+
+
+def validated_marker(marker: str | None = None) -> str | None:
+    """Return a Matplotlib marker after validating it."""
+    if marker is None:
+        return None
+    try:
+        MarkerStyle(marker)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"Invalid Matplotlib marker {marker!r}.") from error
+    return marker
 
 
 def sector_curve_color(sector_index: int) -> str:
@@ -112,7 +137,13 @@ def get_axes(axes, *, n_axes: int, create_figure, error_message: str):
     return fig, axes
 
 
-def set_bottom_figure_legend(fig, source_ax, *, max_columns: int = 4) -> None:
+def set_bottom_figure_legend(
+    fig,
+    source_ax,
+    *,
+    max_columns: int = 4,
+    row_major: bool = False,
+) -> None:
     """Replace panel legends with one combined legend below the figure grid."""
     for ax in fig.axes:
         if ax.get_legend() is not None:
@@ -122,11 +153,20 @@ def set_bottom_figure_legend(fig, source_ax, *, max_columns: int = 4) -> None:
 
     handles, labels = source_ax.get_legend_handles_labels()
     if labels:
+        column_count = min(len(labels), max_columns)
+        if row_major and len(labels) > column_count:
+            display_order = tuple(
+                index
+                for column_index in range(column_count)
+                for index in range(column_index, len(labels), column_count)
+            )
+            handles = [handles[index] for index in display_order]
+            labels = [labels[index] for index in display_order]
         fig.legend(
             handles,
             labels,
             loc="outside lower center",
-            ncols=min(len(labels), max_columns),
+            ncols=column_count,
         )
 
 

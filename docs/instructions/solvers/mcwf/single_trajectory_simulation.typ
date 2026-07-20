@@ -41,8 +41,9 @@ no-jump step. If it crosses the threshold, the code refines one jump time
 inside that attempted step, applies the phase-local jump operator, records the
 jump, and draws a new threshold.
 
-The current jump-time refinement uses a fixed ten-step bisection inside the
-attempted step.
+The current jump-time refinement uses four bisection iterations inside the
+attempted step. This reduces an attempted interval `step` to `step / 16`, which
+is at most `dt / 16`.
 
 The effective generators, jump operators, and full-`dt` propagators are defined
 in `docs/instructions/solvers/mcwf/simulation_precompute.typ`. Initial
@@ -69,7 +70,7 @@ def _simulate_single_trajectory(..., seed_sequence, precomputed):
                 maybe save snapshot
                 continue
 
-            refine jump time by ten-step bisection
+            refine jump time with four bisection iterations
             propagate to the refined jump time
             renormalize, apply jump, renormalize
             record jump time and draw a new threshold
@@ -103,10 +104,13 @@ _simulate_single_trajectory(
     dt,
     t_eval,
     seed_sequence,
-    shifted_jump_operator=False,
+    shifted_jump_operator=True,
     precomputed,
 ) -> TrajectoryResult
 ```
+
+The shifted jump-operator picture is the default. Pass
+`shifted_jump_operator=False` explicitly to use the unshifted picture.
 
 The ensemble layer should validate public inputs before calling this helper.
 This function may use simple internal assertions for assumptions such as
@@ -142,8 +146,8 @@ not on each `TrajectoryResult`.
   exactly, rather than interpolating snapshots afterward.
 - Saved no-jump `sector_blocks` may be unnormalized; snapshot `norm` stores
   the corresponding block norm for later expectation-value normalization.
-- Refine jump times with the current fixed ten-step bisection rule unless the
-  user explicitly requests a behavior change.
+- Refine jump times with the current fixed four-iteration bisection rule unless
+  the user explicitly requests a behavior change.
 - Resolve at most one explicitly refined jump per attempted outer-loop step;
   if the post-jump remainder would cross the new threshold, leave further
   evolution to the next loop iteration.

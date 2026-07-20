@@ -21,6 +21,19 @@ notebooks = [
   "ipykernel>=6.0",
   "jupyter>=1.0",
 ]
+test = [
+  "pytest>=8.0",
+  "pytest-benchmark>=5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra"]
+strict_markers = true
+markers = [
+  "slow: tests or benchmarks with noticeable runtime",
+  "expensive: high-runtime or high-resource tests requiring permission",
+]
 
 [tool.setuptools.packages.find]
 include = [

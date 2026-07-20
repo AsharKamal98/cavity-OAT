@@ -39,8 +39,14 @@ bold(s)_"dark" = frac(w_2 bold(s)_1 - w_1 bold(s)_2, W).
 $
 
 The dark coefficients $(w_2, -w_1)$ are orthogonal to the bright coefficients
-$(w_1, w_2)$ in two-group coefficient space. For every mode $m$, store
-$L_m(t) = norm(bold(s)_m(t))$.
+$(w_1, w_2)$ in two-group coefficient space. For every mode $m$, the common
+`BlochVectorSeries` container derives
+
+$
+L_m(t) = norm(bold(s)_m(t)),
+quad
+L_("xy",m)(t) = sqrt(s_(m,x)(t)^2 + s_(m,y)(t)^2).
+$
 
 For one group, $bold(s)_"common"=bold(s)_"bright"=bold(s)_1$ and the
 contrast and dark vectors are zero.
@@ -66,10 +72,10 @@ constructs the two vectors internally, and returns all four modes as one
 ```python
 JModeSeries(
     t,
-    common=BlochVectorSeries(x, y, z, length),
-    contrast=BlochVectorSeries(x, y, z, length),
-    bright=BlochVectorSeries(x, y, z, length),
-    dark=BlochVectorSeries(x, y, z, length),
+    common=BlochVectorSeries(x, y, z, length, xy_length),
+    contrast=BlochVectorSeries(x, y, z, length, xy_length),
+    bright=BlochVectorSeries(x, y, z, length, xy_length),
+    dark=BlochVectorSeries(x, y, z, length, xy_length),
 )
 ```
 
@@ -86,6 +92,8 @@ J-moment representation.
 = Invariants
 
 - Mode construction is post-analysis and must remain independent of the solver.
+- Construct each mode container from x/y/z only; `BlochVectorSeries` is
+  authoritative for deriving `length` and `xy_length`.
 - Do not compute modes from `nx_groups`, `ny_groups`, and `nz_groups`, which
   are instantaneous unit directions. Construct inputs as
   $2 bold(J)_g / N_(J,g)$ so vector shrinkage remains visible.

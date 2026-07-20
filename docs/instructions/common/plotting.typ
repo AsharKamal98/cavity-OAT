@@ -32,7 +32,7 @@ This function lives in `common/plotting/j_spin.py`.
   should not inspect a moment class or transform the supplied data.
 - The output should be a `2x2` panel showing x, y, z, and length.
 - The function should support `axes`, `output_path`, `phase_protocol`, `title`,
-  `colour_family_index`, `shade_index`, and `linestyle`.
+  `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
 == `fig, axes = plot_bloch_angles(...)`
@@ -48,8 +48,21 @@ This function lives in `common/plotting/j_spin.py`.
   group-resolved, or derived combinations. The plotting function should not
   inspect a moment class or recompute angles.
 - The function should support `axes`, `output_path`, `phase_protocol`,
-  `colour_family_index`, `shade_index`, and `linestyle`.
+  `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
+
+== `fig, axes = plot_transverse_spin_components(...)`
+
+This function lives in `common/plotting/specific.py`.
+
+- The function should take `t` and matching x, y, z, and full-length curves.
+- With `transverse_definition="magnitude"`, the first panel shows
+  `sqrt(x^2+y^2)`. With `transverse_definition="sum"`, it shows `x+y`.
+- The output should be a `3x1` panel showing the selected transverse quantity,
+  z, and full length.
+- Each supplied curve requires one matching label.
+- The function should support `axes`, `output_path`, `phase_protocol`, `title`,
+  `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
 
 == `fig, axes = plot_mfe_residuals(...)`
 
@@ -68,7 +81,7 @@ This function lives in `common/plotting/mfe_residuals.py`.
   regular logarithmic y-axis when all values are positive; fall back to symlog
   if any L2 value is zero.
 - The function should support `axes`, `output_path`, `label`, `phase_protocol`,
-  `colour_family_index`, `shade_index`, `linestyle`, `symlog`, and
+  `colour_family_index`, `shade_index`, `linestyle`, `marker`, `symlog`, and
   `show_components`.
 - If `phase_protocol` is provided, the function may also print a family-phase-end residual
   summary.
@@ -77,6 +90,38 @@ This function lives in `common/plotting/mfe_residuals.py`.
   through that palette in plotted-curve order.
 - For shared overlay and line-style behavior, use the plotting-workflows
   skill.
+
+== `fig, axes = plot_harmonic_sweep(...)`
+
+This function lives in `common/plotting/harmonic_analysis.py`.
+
+- The function should take one one-dimensional varied-parameter array and one
+  or more matching curves of fundamental frequencies, total harmonic
+  distortions, RMS oscillation amplitudes, and fitted offsets. Extraction from
+  simulation or `HarmonicAnalysisSeries` objects must happen upstream.
+- The output should be a `2x2` panel with fundamental frequency and RMS
+  oscillation amplitude in the top row, followed by fitted offset and THD in
+  the bottom row. All panels share the supplied parameter x-axis.
+- Leave a clear vertical gap between the figure title and the panel titles.
+- When `family_phase_index` is supplied, shade each panel background with the
+  matching shared family-phase color. Keep the outer figure background white.
+- `labels` supplies one label per matching four-metric curve set in every
+  panel; `parameter_label` labels the shared x-axis on the bottom row.
+- The shared figure legend should contain at most three labels per row and
+  preserve row-major call order. With two three-curve calls, the first call's
+  labels occupy row one and the second call's labels occupy row two.
+- Color assignment restarts from the selected palette's first entry on every
+  call, matching the other shared component plotters.
+- Inputs must be non-empty, one-dimensional, and equal length. Parameters,
+  frequencies, RMS amplitudes, and offsets must be finite. THD curves may
+  contain `NaN` for non-oscillating series but must not contain infinities.
+  Preserve the supplied order.
+- The function should support `axes`, `output_path`, `title`,
+  `family_phase_index`, `colour_family_index`, `shade_index`, `linestyle`, and
+  `marker`.
+  It should not accept a phase protocol because the horizontal axis is a model
+  parameter, not time.
+- For shared overlay and palette behavior, use the plotting-workflows skill.
 
 = Shared Plotting Rules
 
@@ -113,6 +158,10 @@ This function lives in `common/plotting/mfe_residuals.py`.
   when appropriate.
 - Multi-panel plots should show shared curve labels once in a figure legend
   centered below the panel grid.
+- Common plotters should accept `marker` independently from `linestyle` and
+  follow Matplotlib marker values directly. For data points without connecting
+  lines, use `linestyle=None` or `linestyle="none"` with a marker such as
+  `marker="."`.
 
 == Skill-Routed Behavior
 
@@ -122,7 +171,7 @@ instead of restating local rules in each file:
 - optional `fig, axes` overlay behavior;
 - shared color-palette selection, including `colour_palette(...)`,
   `colour_family_index`, and `shade_index`;
-- `linestyle` conventions.
+- `linestyle` and `marker` conventions.
 
 
 = Invariants

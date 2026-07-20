@@ -26,6 +26,8 @@ from solvers.mcwf.state_helpers import (
     total_norm2,
 )
 
+JUMP_TIME_BISECTION_STEPS = 4
+
 
 # -----------------------------------------------------------------------------
 # Effective generators and propagation
@@ -37,7 +39,7 @@ def build_phase_jump_operator_for_sector(
     omega: float,
     Gamma: float,
     *,
-    shifted_jump_operator: bool = False,
+    shifted_jump_operator: bool = True,
 ) -> csc_matrix:
     """
     Build the reduced-basis jump operator for one sector and one protocol phase.
@@ -71,7 +73,7 @@ def heff_for_sector(
     delta: float,
     Gamma: float,
     *,
-    shifted_jump_operator: bool = False,
+    shifted_jump_operator: bool = True,
     jump_operator: Optional[csc_matrix] = None,
 ) -> csc_matrix:
     """
@@ -183,7 +185,7 @@ def build_precomputed_trajectory_data(
     sector_coeffs: Mapping[SectorKey, complex],
     dt: float,
     *,
-    shifted_jump_operator: bool = False,
+    shifted_jump_operator: bool = True,
 ) -> Dict[str, Any]:
     if not Ni:
         raise ValueError("Ni must contain at least one group size.")
@@ -283,7 +285,7 @@ def _simulate_single_trajectory(
     dt: float = 1e-3,
     t_eval: Array,
     seed_sequence: np.random.SeedSequence,
-    shifted_jump_operator: bool = False,
+    shifted_jump_operator: bool = True,
     precomputed: Dict[str, Any],
 ) -> TrajectoryResult:
     """
@@ -425,7 +427,7 @@ def _simulate_single_trajectory(
 
             lo, hi = 0.0, step
             pre_blocks = [psi.copy() for psi in psi_blocks]
-            for _ in range(10):
+            for _ in range(JUMP_TIME_BISECTION_STEPS):
                 mid = 0.5 * (lo + hi)
                 total_step_count += 1
                 non_precomputed_step_count += 1

@@ -43,9 +43,9 @@ choices live in `docs/instructions/model_parameters.typ`.
 
   In the current MCWF implementation, a jump is first detected by checking
   whether the non-Hermitian norm crosses the random threshold during one
-  attempted step, and the jump time is then refined by a fixed ten-step
-  bisection in `solvers/mcwf/sim.py`. That reduces the jump-time uncertainty
-  from order `dt` to order `dt / 2^10`. Because the code localizes the crossing
+  attempted step, and the jump time is then refined by four bisection
+  iterations in `solvers/mcwf/sim.py`. That reduces the jump-time uncertainty
+  from order `dt` to order `dt / 16`. Because the code localizes the crossing
   after detection, the coarser collective-decay prefactor `0.1 / (N Gamma)` is
   currently sufficient for the outer attempted step, while the bisection refines
   the actual jump time.

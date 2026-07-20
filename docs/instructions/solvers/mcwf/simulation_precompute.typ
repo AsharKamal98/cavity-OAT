@@ -104,9 +104,13 @@ build_precomputed_trajectory_data(
     integration_phases,
     sector_coeffs,
     dt,
-    shifted_jump_operator=False,
+    shifted_jump_operator=True,
 ) -> dict
 ```
+
+The shifted jump-operator picture is the default. Pass
+`shifted_jump_operator=False` explicitly to construct unshifted jump operators
+and generators.
 
 Homogeneous sector keys should be integers:
 

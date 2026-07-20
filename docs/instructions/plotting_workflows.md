@@ -28,8 +28,8 @@ palette, and line-style behavior, use the plotting-workflows skill.
    panel should also include all group-resolved curves.
 
 7. The function should support `axes`, `output_path`, `label`, `phases`,
-   `colour_family_index`, `shade_index`, and `linestyle` so multiple results
-   can be plotted into the same figure.
+   `colour_family_index`, `shade_index`, `linestyle`, and `marker` so multiple
+   results can be plotted into the same figure.
 
 ## `fig, axes = plot_bloch_angles(...)`
 
@@ -51,7 +51,19 @@ palette, and line-style behavior, use the plotting-workflows skill.
    from the same palette when those fields exist.
 
 6. The function should support `axes`, `output_path`, `label`, `phases`,
-   `colour_family_index`, `shade_index`, and `linestyle`.
+   `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
+
+## `fig, axes = plot_transverse_spin_components(...)`
+
+1. `plot_transverse_spin_components` lives in `common/plotting/specific.py`.
+
+2. It accepts x, y, z, and full-length curves on a shared time grid. The
+   selected transverse quantity is either `sqrt(x^2+y^2)` or `x+y`.
+
+3. The output is a `3x1` panel showing `xy_length`, z, and full length.
+
+4. It follows the shared axes, phase-region, palette, line-style, marker,
+   legend, and output-path conventions.
 
 ## `fig, axes = plot_mfe_residuals(...)`
 
@@ -72,9 +84,42 @@ palette, and line-style behavior, use the plotting-workflows skill.
    order. The L2 norm should use a solid line.
 
 6. The function should support `axes`, `output_path`, `label`, `phases`,
-   `colour_family_index`, `shade_index`, and `linestyle`.
+   `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
    If `phases` are provided, optionally print the same phase-end residual
    summary as the old pipeline.
+
+## `fig, axes = plot_harmonic_sweep(...)`
+
+1. `plot_harmonic_sweep` lives in
+   `common/plotting/harmonic_analysis.py`.
+
+2. It accepts already-extracted parameter values and one or more matching
+   curves of fundamental frequencies, total harmonic distortions, RMS
+   oscillation amplitudes, and fitted offsets. It must not inspect simulation
+   outputs or recompute harmonic analysis.
+
+3. The output is a `2x2` panel with fundamental frequency and RMS oscillation
+   amplitude in the top row, followed by fitted offset and THD in the bottom
+   row. All panels share the parameter x-axis.
+   The figure title must have a clear vertical gap above the panel titles.
+   If `family_phase_index` is supplied, shade all panel backgrounds using that
+   shared phase color without changing the outer figure background.
+
+4. The function supports one `labels` entry per curve pair, plus
+   `parameter_label`, `family_phase_index`, `title`, `axes`,
+   `output_path`, `colour_family_index`, `shade_index`, `linestyle`, and
+   `marker`.
+   Repeated calls with supplied `axes` overlay additional curves and preserve
+   the existing layout. Its figure legend uses at most three columns and
+   preserves row-major call order, so each three-curve call occupies one row.
+   Each call restarts color assignment from the beginning of its selected
+   palette.
+
+5. Each curve must be non-empty, one-dimensional, and match the varied
+   parameter array. Parameters, frequency curves, RMS amplitudes, and offsets
+   must be finite. THD curves may contain `NaN` for non-oscillating series but
+   must not contain infinities. All four metric groups and labels must have
+   equal counts. Their supplied order is preserved.
 
 ## `fig, axes = plot_sector_probabilities(...)`
 

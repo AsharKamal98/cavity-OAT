@@ -59,7 +59,7 @@ class MCWFSolverParameters(BaseModel):
     dN: int = 0
     sector_distribution: str = "binomial"
     dt: float = 1e-3
-    shifted_jump_operator: bool = False
+    shifted_jump_operator: bool = True
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

@@ -5,8 +5,9 @@ from collections.abc import Sequence
 import numpy as np
 
 from common.utils.moments import as_series_tuple
+from parser.bloch_vector import BlochVectorSeries
 from parser.common import Array
-from parser.j_modes import BlochVectorSeries, JModeSeries
+from parser.j_modes import JModeSeries
 
 
 def _bloch_vector_series(vector: Array) -> BlochVectorSeries:
@@ -14,7 +15,6 @@ def _bloch_vector_series(vector: Array) -> BlochVectorSeries:
         x=vector[0],
         y=vector[1],
         z=vector[2],
-        length=np.linalg.norm(vector, axis=0),
     )
 
 

@@ -150,6 +150,10 @@ Shared simulation-level fields such as `Ni`, `omega_i`, `Gamma`,
 `phase_protocol`, `shifted_jump_operator`, `t_eval`, and sector metadata should
 live in `TrajectoryEnsemble.metadata`.
 
+The custom MCWF solver should use the shifted jump-operator picture by default.
+Pass `shifted_jump_operator=False` explicitly when the unshifted picture is
+required.
+
 Detailed initialization conventions live in:
 
 - `docs/instructions/solvers/mcwf/initial_sector_state.typ`
@@ -239,6 +243,10 @@ Current top-level fields are:
 Parser container conventions live in `docs/instructions/parser.typ` and the
 `parser` skill.
 
+Reusable Cartesian vector outputs should use `BlochVectorSeries` from
+`parser/bloch_vector.py`, which derives its full and xy-plane lengths from the
+stored x/y/z components.
+
 ### 4.2 J-Sphere Moments
 
 J-sphere moments are the common post-processing representation used across the
@@ -283,6 +291,7 @@ diagnostics should live in the root-level `post_analysis/` package.
 Current task-specific diagnostic instructions include:
 
 - `docs/instructions/post_analysis/j_modes.typ`
+- `docs/instructions/post_analysis/harmonic_analysis.typ`
 - `docs/instructions/post_analysis/mfe_residuals.typ`
 - `docs/instructions/post_analysis/squeezing.typ`
 
@@ -294,6 +303,11 @@ The shared spin-component plot lives in `common/plotting/j_spin.py`:
 - `plot_spin_components(t, x_components, y_components, z_components, lengths,
   labels=..., ...)`: plots caller-selected vectors.
 
+The transverse spin-component plot lives in `common/plotting/specific.py`:
+- `plot_transverse_spin_components(t, x_components, y_components,
+  z_components, lengths, labels=..., ...)`: plots a selected transverse
+  combination, z, and full length.
+
 The shared angle plot lives in `common/plotting/j_spin.py`:
 - `plot_bloch_angles(t, theta_curves, phi_curves, labels=..., ...)`: plots
   caller-selected angle curves using the selected palette and `linestyle`.
@@ -302,6 +316,12 @@ The shared MFE residual diagnostic plotting function lives in
 `common/plotting/mfe_residuals.py`:
 - `plot_mfe_residuals(moments.mfe_residuals, ...)`: plots stored two-group
   residuals in a single residual panel with the L2 norm.
+
+The shared harmonic-sweep plot lives in
+`common/plotting/harmonic_analysis.py`:
+- `plot_harmonic_sweep(parameter_values, fundamental_frequencies,
+  total_harmonic_distortions, labels=..., ...)`: plots one or more paired
+  frequency and THD curves against an already-extracted model-parameter sweep.
 
 Repo-specific plotting-function contracts live in
 `docs/instructions/plotting_workflows.md`.
