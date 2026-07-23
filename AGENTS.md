@@ -129,6 +129,8 @@ Current investigations:
 
 - `docs/investigations/krylov.md`: assesses precomputed propagators,
   matrix-exponential actions, and Krylov propagation for the MCWF solver.
+- `docs/investigations/dyadic_bisection_propagators.md`: assesses precomputed
+  dyadic propagators for fixed-depth MCWF jump-time localization.
 
 ## General Rules
 - For implementation changes, or any task requiring knowledge about implementation, read

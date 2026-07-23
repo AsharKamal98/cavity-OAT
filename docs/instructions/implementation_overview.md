@@ -331,4 +331,4 @@ when the required data are already present, instead of rerunning older observabl
 
 ## TODOs
 
-Open implementation cleanup notes are tracked in `docs/instructions/TODOs.md`.
+Open implementation cleanup notes are tracked in `docs/TODOs.md`.
