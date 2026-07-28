@@ -17,18 +17,18 @@ def compute_mfe_residuals(
     Compute two-group MFE residuals from averaged J-vector angles.
     """
     if (
-        j_moments.theta_groups is None
-        or j_moments.phi_groups is None
-        or j_moments.N_j_groups is None
+        j_moments.theta is None
+        or j_moments.phi is None
+        or j_moments.N_j is None
     ):
         return None
 
-    group_count = len(j_moments.theta_groups)
+    group_count = len(j_moments.theta)
     if group_count != 2:
         return None
     if (
-        len(j_moments.phi_groups) != group_count
-        or len(j_moments.N_j_groups) != group_count
+        len(j_moments.phi) != group_count
+        or len(j_moments.N_j) != group_count
     ):
         raise ValueError("MFE residuals require matching two-group moment fields.")
     if metadata is None:
@@ -53,9 +53,9 @@ def compute_mfe_residuals(
         dtype=float,
     )
 
-    theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta_groups)
-    phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi_groups)
-    nj_groups = tuple(np.asarray(nj, dtype=float) for nj in j_moments.N_j_groups)
+    theta_groups = tuple(np.asarray(theta, dtype=float) for theta in j_moments.theta)
+    phi_groups = tuple(np.asarray(phi, dtype=float) for phi in j_moments.phi)
+    nj_groups = tuple(np.asarray(nj, dtype=float) for nj in j_moments.N_j)
     omega_groups = tuple(float(omega_g) for omega_g in omega_groups)
 
     weighted_collective_transverse_sum = sum(

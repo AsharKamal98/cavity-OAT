@@ -19,8 +19,12 @@ _compute_snapshot_j_moments(snapshot, ...)
     -> JMomentSnapshot:
     # Compute J moments for one saved snapshot of one trajectory.
     return JMomentSnapshot(
-        t, integration_phase_index, x, y, z, N_e, N_j, jump_rate,
-        x_groups, y_groups, z_groups, N_e_groups, N_j_groups,
+        t, integration_phase_index,
+        x, y, z, N_e, N_j,
+        aggregated=AggregatedJMomentSnapshot(
+            sum(x), sum(y), sum(z), sum(N_e), sum(N_j)
+        ),
+        jump_rate,
     )
 
 compute_trajectory_j_moments(
@@ -50,8 +54,9 @@ compute_mcwf_j_moments(ensemble: TrajectoryEnsemble, ...)
         for traj in ensemble.trajectories
     )
     averaged = compute_average_j_moments(samples)
-    JMomentSeries.attatch_norm_spin_components_from_spin_components(averaged, tol=tol)
-    JMomentSeries.attatch_angles_from_norm_spin_components(averaged, tol=tol)
+    JMomentSeries.attach_norm_spin_components_from_spin_components(averaged, tol=tol)
+    JMomentSeries.attach_angles_from_norm_spin_components(averaged, tol=tol)
+    JMomentSeries.attach_aggregated_from_group_fields(averaged, tol=tol)
     return averaged
   
 compute_average_j_moments(samples: list[JMomentSeries])
@@ -60,8 +65,7 @@ compute_average_j_moments(samples: list[JMomentSeries])
 ```
 
 `_compute_snapshot_j_moments(...)` computes the J moments for one snapshot of
-one trajectory. If the trajectory uses tuple sector keys, it should also return
-group-resolved moment fields. 
+one trajectory and returns group tuples for both scalar and tuple sector keys.
 
 
 `compute_trajectory_j_moments(...)` calls `_compute_snapshot_j_moments(...)` once per saved snapshot.
@@ -71,7 +75,8 @@ per trajectory, then uses `compute_average_j_moments(...)` to average the raw
 moment fields across the shared saved-time grid.
 
 `compute_mcwf_j_moments(...)` uses the `JMomentSeries` class methods to attach
-spin directions and angles from the averaged spin components. The
+group spin directions and angles from the averaged spin components, then
+constructs all aggregated fields from those averaged raw group fields. The
 `JMomentSeries` class methods are covered in `docs/instructions/parser.typ`.
 
 = J-Moment Definitions
@@ -102,13 +107,11 @@ frac(
 ).
 $
 
-Use this rule for $J_x$, $J_y$, $J_z$ and $N_(e)$ with the sector-local
-operators from the precomputed `ops_list` described in
-`docs/instructions/solvers/mcwf/simulation_precompute.typ`. For the full wavefunction
-average active-sector atom number field $N_(J)$, do not construct an operator.
-Use the scalar active-sector atom number for each sector and replace each
-numerator term by
-$N_(J)(alpha) chevron.l psi_(alpha) | psi_(alpha) chevron.r$. For strong-symmetry-preserving dynamics, this weighted sector number is expected
+Apply this rule to the group-resolved fields. For active-sector atom number
+$N_(J,g)$, do not construct an operator. Use the scalar group sector number and
+replace each numerator term by
+$N_(J,g)(alpha) chevron.l psi_(alpha) | psi_(alpha) chevron.r$. For
+strong-symmetry-preserving dynamics, this weighted sector number is expected
 to remain constant in time.
 
 == Jump Rate
@@ -133,9 +136,11 @@ Tiny negative rates caused by floating-point noise should be clipped to zero.
 The jump rate should not be normalized by $N$, $N_(J)$, or the number of
 trajectories.
 
-== Group Fields
+== Group and Aggregated Fields
 
-Group-resolved fields should be returned for each group $g$ (if two or more groups used). For a group-local operator $O_(g,alpha)$,
+Unsuffixed fields are the primary group-resolved representation and should be
+returned for every group $g$, including for $G=1$. For a group-local operator
+$O_(g,alpha)$,
 
 $
 chevron.l O_g(t_(k)) chevron.r =
@@ -149,14 +154,28 @@ $
 Use this rule for $J_(i,g)$ with $i in {x,y,z}$ and for $N_(e,g)$ with the
 group-local operators from `build_sector_ops_for_key(...)`.
 
-The group-resolved active-sector atom number `N_j_groups[g]` should be the
-same sector-weighted average as `N_j`, but using $N_(J,g)(alpha)$ for each
-group.
+The group-resolved active-sector atom number `N_j[g]` should use the same
+sector-weighted average, with $N_(J,g)(alpha)$ for each group.
 
-For homogeneous / single-group results, group fields should be `None`. The current implementation supports homogeneous scalar sector keys and group-resolved tuple sector keys; mixed or malformed sector structures should not be introduced silently.
+For homogeneous or single-group results, every group field should be a
+one-element tuple. The current implementation supports homogeneous scalar
+sector keys and group-resolved tuple sector keys; mixed or malformed sector
+structures should not be introduced silently.
 
-The full-system fields (`Ji`,`N_e`, `N_j` etc.) should still be
-computed by the full-system rules above. Group-resolved fields are additional diagnostic outputs and should not replace the full fields.
+Full-system fields live in the nested `aggregated` container. Additive fields
+are constructed from the group-resolved fields:
+
+$
+q_"aggregated"(t_(k)) = sum_g q_g(t_(k)),
+quad q in {J_x, J_y, J_z, N_e, N_J}.
+$
+
+The snapshot subcontainer stores these sums directly. For an ensemble series,
+average the raw group fields first and then call
+`JMomentSeries.attach_aggregated_from_group_fields(...)`. Do not independently
+evaluate or average full-system operators. Nonlinear fields such as
+`aggregated.nx` and `aggregated.theta` are derived afterward from the summed
+aggregated spin vector.
 
 == Normalized Spin Components
 
@@ -175,8 +194,8 @@ n_i(t_(k)) = frac(J_i(t_(k)), J_("len")(t_(k))).
 $
 
 If $J_("len")(t_(k))$ is below the numerical tolerance, set the normalized
-components to zero. For group-resolved fields, apply the same rule separately
-to each group using $J_(i,g)$ and $J_("len",g)$.
+components to zero. Apply the rule to each group; the shared aggregation method
+applies the same helper to the aggregated spin vector.
 The corresponding `JMomentSeries` class method is documented in
 `docs/instructions/parser.typ`.
 
@@ -195,27 +214,34 @@ $
 phi(t_(k)) = "atan2"(n_y(t_(k)), n_x(t_(k))).
 $
 
-For group-resolved fields, apply the same rule separately to each group's
-normalized components $n_(i,g)$.
+Apply the rule to each group's normalized components $n_(i,g)$; the shared
+aggregation method applies the same helper to the aggregated normalized
+components.
 The corresponding `JMomentSeries` class method is documented in
 `docs/instructions/parser.typ`.
 
 = Output
 
-The snapshot helper should return a `JMomentSnapshot` with scalar fields:
+The snapshot helper should return a `JMomentSnapshot` with tuple-valued group
+fields and scalar aggregated fields:
 
 ```python
 JMomentSnapshot(
-    t, integration_phase_index,
-    x, y, z,
-    N_e,
-    N_j,
-    jump_rate,
-    x_groups=None or tuple[float, ...],
-    y_groups=None or tuple[float, ...],
-    z_groups=None or tuple[float, ...],
-    N_e_groups=None or tuple[float, ...],
-    N_j_groups=None or tuple[float, ...],
+    t=t,
+    integration_phase_index=integration_phase_index,
+    x=tuple[float, ...],
+    y=tuple[float, ...],
+    z=tuple[float, ...],
+    N_e=tuple[float, ...],
+    N_j=tuple[float, ...],
+    aggregated=AggregatedJMomentSnapshot(
+        x=float,
+        y=float,
+        z=float,
+        N_e=float,
+        N_j=float,
+    ),
+    jump_rate=float,
 )
 ```
 
@@ -226,28 +252,30 @@ return `JMomentSeries`:
 JMomentSeries(
     t,
     integration_phase_index=None or array,
-    x=None or array,
-    y=None or array,
-    z=None or array,
-    x_groups=None or tuple[array, ...],
-    y_groups=None or tuple[array, ...],
-    z_groups=None or tuple[array, ...],
-    length=None or array,
-    length_groups=None or tuple[array, ...],
-    nx=None or array,
-    ny=None or array,
-    nz=None or array,
-    nx_groups=None or tuple[array, ...],
-    ny_groups=None or tuple[array, ...],
-    nz_groups=None or tuple[array, ...],
-    N_e=None or array,
-    N_j=None or array,
-    N_e_groups=None or tuple[array, ...],
-    N_j_groups=None or tuple[array, ...],
-    theta=None or array,
-    phi=None or array,
-    theta_groups=None or tuple[array, ...],
-    phi_groups=None or tuple[array, ...],
+    x=None or tuple[array, ...],
+    y=None or tuple[array, ...],
+    z=None or tuple[array, ...],
+    length=None or tuple[array, ...],
+    nx=None or tuple[array, ...],
+    ny=None or tuple[array, ...],
+    nz=None or tuple[array, ...],
+    N_e=None or tuple[array, ...],
+    N_j=None or tuple[array, ...],
+    theta=None or tuple[array, ...],
+    phi=None or tuple[array, ...],
+    aggregated=AggregatedJMomentSeries(
+        x=None or array,
+        y=None or array,
+        z=None or array,
+        length=None or array,
+        nx=None or array,
+        ny=None or array,
+        nz=None or array,
+        N_e=None or array,
+        N_j=None or array,
+        theta=None or array,
+        phi=None or array,
+    ),
     jump_rate=None or array,
 )
 ```
@@ -258,11 +286,14 @@ same fields, but each numeric moment field is averaged across trajectories.
 For averaged outputs, the J-vector length and normalized direction fields
 should be attached inside `compute_mcwf_j_moments(...)` after
 `compute_average_j_moments(...)` returns the raw averaged series. Angle fields
-should then be attached there from those normalized directions. These helpers
-should not compute active-manifold angles, squeezing, or covariance matrices.
+should then be attached there from those normalized directions. Finally,
+construct the complete aggregated subcontainer from the averaged group fields.
+These helpers should not compute squeezing or covariance matrices.
 
-Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
-`Jx_groups`, `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
+Legacy note: older field names included `Jx`, `Jy`, `Jz`, `Jx_groups`,
+`Jy_groups`, `Jz_groups`, `J_len`, `sx`, `sy`, and `sz`. The immediately
+preceding API used a `_groups` suffix for group tuples and unsuffixed names for
+aggregated fields.
 
 
 = Invariants
@@ -270,11 +301,13 @@ Legacy note: the previous field names were `Jx`, `Jy`, `Jz`,
 - `compute_trajectory_j_moments(...)` should return per-trajectory moments only.
 - `compute_average_j_moments(...)` should average moments, not nonlinear derived
   quantities.
+- Aggregate raw group moments only after trajectory averaging; do not average
+  per-trajectory normalized directions or angles.
 - `compute_mcwf_j_moments(...)` should return trajectory-averaged moments and
   should be the preferred input for plots that do not need per-trajectory
   samples.
-- `compute_mcwf_j_moments(...)` should attach `length`, `nx`, `ny`, `nz`,
-  `theta`, and `phi` from the averaged J components, plus group-resolved
-  versions when group fields exist.
+- `compute_mcwf_j_moments(...)` should attach the group `length`, `nx`, `ny`,
+  `nz`, `theta`, and `phi` fields, plus their counterparts in `aggregated`
+  from the aggregated J components.
 - `compute_mcwf_j_moments(...)` should require all internally computed
   samples to share the same `t` and `integration_phase_index` grids.

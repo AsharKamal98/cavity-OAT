@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from parser.common import Array
+
+
+class AggregatedJMomentSnapshot(BaseModel):
+    """Full-system J moments for one saved trajectory snapshot."""
+
+    x: float
+    y: float
+    z: float
+    N_e: float
+    N_j: float
 
 
 class JMomentSnapshot(BaseModel):
@@ -13,17 +23,31 @@ class JMomentSnapshot(BaseModel):
     # Jx_groups/Jy_groups/Jz_groups.
     t: float
     integration_phase_index: int
-    x: float
-    y: float
-    z: float
-    N_e: float
-    N_j: float
+    x: tuple[float, ...]
+    y: tuple[float, ...]
+    z: tuple[float, ...]
+    N_e: tuple[float, ...]
+    N_j: tuple[float, ...]
+    aggregated: AggregatedJMomentSnapshot
     jump_rate: float
-    x_groups: tuple[float, ...] | None = None
-    y_groups: tuple[float, ...] | None = None
-    z_groups: tuple[float, ...] | None = None
-    N_e_groups: tuple[float, ...] | None = None
-    N_j_groups: tuple[float, ...] | None = None
+
+
+class AggregatedJMomentSeries(BaseModel):
+    """Full-system J-moment time series."""
+
+    x: Array | None = None
+    y: Array | None = None
+    z: Array | None = None
+    length: Array | None = None
+    nx: Array | None = None
+    ny: Array | None = None
+    nz: Array | None = None
+    N_e: Array | None = None
+    N_j: Array | None = None
+    theta: Array | None = None
+    phi: Array | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class JMomentSeries(BaseModel):
@@ -34,55 +58,55 @@ class JMomentSeries(BaseModel):
     t: Array
     integration_phase_index: Array | None = None
     # spin components
-    x: Array | None = None
-    y: Array | None = None
-    z: Array | None = None
-    x_groups: tuple[Array, ...] | None = None
-    y_groups: tuple[Array, ...] | None = None
-    z_groups: tuple[Array, ...] | None = None
-    length: Array | None = None
-    length_groups: tuple[Array, ...] | None = None
+    x: tuple[Array, ...] | None = None
+    y: tuple[Array, ...] | None = None
+    z: tuple[Array, ...] | None = None
+    length: tuple[Array, ...] | None = None
     # normalized spin components / directions
-    nx: Array | None = None
-    ny: Array | None = None
-    nz: Array | None = None
-    nx_groups: tuple[Array, ...] | None = None
-    ny_groups: tuple[Array, ...] | None = None
-    nz_groups: tuple[Array, ...] | None = None
+    nx: tuple[Array, ...] | None = None
+    ny: tuple[Array, ...] | None = None
+    nz: tuple[Array, ...] | None = None
     # atom numbers
-    N_e: Array | None = None
-    N_j: Array | None = None
-    N_e_groups: tuple[Array, ...] | None = None
-    N_j_groups: tuple[Array, ...] | None = None
+    N_e: tuple[Array, ...] | None = None
+    N_j: tuple[Array, ...] | None = None
     # angles
-    theta: Array | None = None
-    phi: Array | None = None
-    theta_groups: tuple[Array, ...] | None = None
-    phi_groups: tuple[Array, ...] | None = None
+    theta: tuple[Array, ...] | None = None
+    phi: tuple[Array, ...] | None = None
+    # full-system fields
+    aggregated: AggregatedJMomentSeries = Field(
+        default_factory=AggregatedJMomentSeries
+    )
     # other
     jump_rate: Array | None = None
 
     @classmethod
-    def attatch_additive_full_fields_from_group_fields(
+    def attach_aggregated_from_group_fields(
         cls,
         j_moments: "JMomentSeries",
+        *,
+        tol: float = 1e-12,
     ) -> None:
         """
-        Attach full additive fields by summing their group-resolved values.
+        Attach all aggregated fields from the primary group-resolved fields.
         """
+        from common.utils.moments import (
+            angles_from_norm_spin_components,
+            norm_spin_components_from_spin_components,
+        )
+
         field_names = ("x", "y", "z", "N_e", "N_j")
         group_fields = {
-            field_name: getattr(j_moments, f"{field_name}_groups")
+            field_name: getattr(j_moments, field_name)
             for field_name in field_names
         }
         missing_fields = [
-            f"{field_name}_groups"
+            field_name
             for field_name, groups in group_fields.items()
             if groups is None
         ]
         if missing_fields:
             raise ValueError(
-                "Additive full-field attachment requires "
+                "Additive aggregated-field attachment requires "
                 + ", ".join(missing_fields)
                 + "."
             )
@@ -91,14 +115,43 @@ class JMomentSeries(BaseModel):
         if group_count == 0 or any(
             len(groups) != group_count for groups in group_fields.values()
         ):
-            raise ValueError("All additive group fields must have the same nonzero group count.")
+            raise ValueError(
+                "All additive group fields must have the same nonzero group count."
+            )
 
+        aggregated_fields = {}
         for field_name, groups in group_fields.items():
             group_arrays = [np.asarray(group, dtype=float) for group in groups]
-            setattr(j_moments, field_name, np.sum(np.stack(group_arrays), axis=0))
+            aggregated_fields[field_name] = np.sum(
+                np.stack(group_arrays),
+                axis=0,
+            )
+
+        length, nx, ny, nz = norm_spin_components_from_spin_components(
+            aggregated_fields["x"],
+            aggregated_fields["y"],
+            aggregated_fields["z"],
+            tol=tol,
+        )
+        theta, phi = angles_from_norm_spin_components(
+            nx,
+            ny,
+            nz,
+            valid=length > tol,
+            tol=tol,
+        )
+        j_moments.aggregated = AggregatedJMomentSeries(
+            **aggregated_fields,
+            length=length,
+            nx=nx,
+            ny=ny,
+            nz=nz,
+            theta=theta,
+            phi=phi,
+        )
 
     @classmethod
-    def attatch_norm_spin_components_from_spin_components(
+    def attach_norm_spin_components_from_spin_components(
         cls,
         j_moments: "JMomentSeries",
         *,
@@ -109,51 +162,30 @@ class JMomentSeries(BaseModel):
         """
         from common.utils.moments import norm_spin_components_from_spin_components
 
-        has_full = (
-            j_moments.x is not None
-            and j_moments.y is not None
-            and j_moments.z is not None
-        )
-        has_groups = (
-            j_moments.x_groups is not None
-            and j_moments.y_groups is not None
-            and j_moments.z_groups is not None
-        )
-
-        if not has_full and not has_groups:
-            raise ValueError("Spin-direction attachment requires full spin components or group-resolved spin components.")
-
-        if has_full:
-            (
-                j_moments.length,
-                j_moments.nx,
-                j_moments.ny,
-                j_moments.nz,
-            ) = norm_spin_components_from_spin_components(
-                j_moments.x,
-                j_moments.y,
-                j_moments.z,
-                tol=tol,
+        if (
+            j_moments.x is None
+            or j_moments.y is None
+            or j_moments.z is None
+        ):
+            raise ValueError(
+                "Spin-direction attachment requires group spin components."
             )
-
-        if not has_groups:
-            return
 
         group_results = [
             norm_spin_components_from_spin_components(x_g, y_g, z_g, tol=tol)
             for x_g, y_g, z_g in zip(
-                j_moments.x_groups,
-                j_moments.y_groups,
-                j_moments.z_groups,
+                j_moments.x,
+                j_moments.y,
+                j_moments.z,
             )
         ]
-        j_moments.length_groups = tuple(result[0] for result in group_results)
-        j_moments.nx_groups = tuple(result[1] for result in group_results)
-        j_moments.ny_groups = tuple(result[2] for result in group_results)
-        j_moments.nz_groups = tuple(result[3] for result in group_results)
+        j_moments.length = tuple(result[0] for result in group_results)
+        j_moments.nx = tuple(result[1] for result in group_results)
+        j_moments.ny = tuple(result[2] for result in group_results)
+        j_moments.nz = tuple(result[3] for result in group_results)
 
     @classmethod
-    def attatch_angles_from_norm_spin_components(
+    def attach_angles_from_norm_spin_components(
         cls,
         j_moments: "JMomentSeries",
         *,
@@ -170,24 +202,10 @@ class JMomentSeries(BaseModel):
             or j_moments.ny is None
             or j_moments.nz is None
         ):
-            raise ValueError("Spin angle attachment requires normalized full spin-direction fields.")
-
-        valid = j_moments.length > tol
-        j_moments.theta, j_moments.phi = angles_from_norm_spin_components(
-            j_moments.nx,
-            j_moments.ny,
-            j_moments.nz,
-            valid=valid,
-            tol=tol,
-        )
-
-        if (
-            j_moments.length_groups is None
-            or j_moments.nx_groups is None
-            or j_moments.ny_groups is None
-            or j_moments.nz_groups is None
-        ):
-            return
+            raise ValueError(
+                "Spin angle attachment requires normalized group "
+                "spin-direction fields."
+            )
 
         group_results = [
             angles_from_norm_spin_components(
@@ -198,17 +216,17 @@ class JMomentSeries(BaseModel):
                 tol=tol,
             )
             for length_g, nx_g, ny_g, nz_g in zip(
-                j_moments.length_groups,
-                j_moments.nx_groups,
-                j_moments.ny_groups,
-                j_moments.nz_groups,
+                j_moments.length,
+                j_moments.nx,
+                j_moments.ny,
+                j_moments.nz,
             )
         ]
-        j_moments.theta_groups = tuple(result[0] for result in group_results)
-        j_moments.phi_groups = tuple(result[1] for result in group_results)
+        j_moments.theta = tuple(result[0] for result in group_results)
+        j_moments.phi = tuple(result[1] for result in group_results)
 
     @classmethod
-    def attatch_norm_spin_components_from_angles(
+    def attach_norm_spin_components_from_angles(
         cls,
         j_moments: "JMomentSeries",
     ) -> None:
@@ -217,44 +235,24 @@ class JMomentSeries(BaseModel):
         """
         from common.utils.moments import norm_spin_components_from_angles
 
-        has_full = (
-            j_moments.theta is not None
-            and j_moments.phi is not None
-        )
-        has_groups = (
-            j_moments.theta_groups is not None
-            and j_moments.phi_groups is not None
-        )
-
-        if not has_full and not has_groups:
-            raise ValueError("Normalized spin-component attachment requires full angles or group-resolved angles.")
-
-        if has_full:
-            (
-                j_moments.nx,
-                j_moments.ny,
-                j_moments.nz,
-            ) = norm_spin_components_from_angles(
-                j_moments.theta,
-                j_moments.phi,
+        if j_moments.theta is None or j_moments.phi is None:
+            raise ValueError(
+                "Normalized spin-component attachment requires group angles."
             )
-
-        if not has_groups:
-            return
 
         group_results = [
             norm_spin_components_from_angles(theta_g, phi_g)
             for theta_g, phi_g in zip(
-                j_moments.theta_groups,
-                j_moments.phi_groups,
+                j_moments.theta,
+                j_moments.phi,
             )
         ]
-        j_moments.nx_groups = tuple(result[0] for result in group_results)
-        j_moments.ny_groups = tuple(result[1] for result in group_results)
-        j_moments.nz_groups = tuple(result[2] for result in group_results)
+        j_moments.nx = tuple(result[0] for result in group_results)
+        j_moments.ny = tuple(result[1] for result in group_results)
+        j_moments.nz = tuple(result[2] for result in group_results)
 
     @classmethod
-    def attatch_spin_components_from_norm_spin_components(
+    def attach_spin_components_from_norm_spin_components(
         cls,
         j_moments: "JMomentSeries",
     ) -> None:
@@ -263,49 +261,29 @@ class JMomentSeries(BaseModel):
         """
         from common.utils.moments import spin_components_from_norm_spin_components
 
-        has_full = (
-            j_moments.length is not None
-            and j_moments.nx is not None
-            and j_moments.ny is not None
-            and j_moments.nz is not None
-        )
-        has_groups = (
-            j_moments.length_groups is not None
-            and j_moments.nx_groups is not None
-            and j_moments.ny_groups is not None
-            and j_moments.nz_groups is not None
-        )
+        if (
+            j_moments.length is None
+            or j_moments.nx is None
+            or j_moments.ny is None
+            or j_moments.nz is None
+        ):
+            raise ValueError(
+                "Spin-component attachment requires normalized group "
+                "spin-direction fields."
+            )
 
-        if not has_full and not has_groups:
-            raise ValueError("Spin-component attachment requires full normalized spin-direction fields or group-resolved normalized spin-direction fields.")
-
-        if has_full:
-            (
-                j_moments.x,
-                j_moments.y,
-                j_moments.z,
-            ) = spin_components_from_norm_spin_components(
+        group_results = [
+            spin_components_from_norm_spin_components(length_g, nx_g, ny_g, nz_g)
+            for length_g, nx_g, ny_g, nz_g in zip(
                 j_moments.length,
                 j_moments.nx,
                 j_moments.ny,
                 j_moments.nz,
             )
-
-        if not has_groups:
-            return
-
-        group_results = [
-            spin_components_from_norm_spin_components(length_g, nx_g, ny_g, nz_g)
-            for length_g, nx_g, ny_g, nz_g in zip(
-                j_moments.length_groups,
-                j_moments.nx_groups,
-                j_moments.ny_groups,
-                j_moments.nz_groups,
-            )
         ]
-        j_moments.x_groups = tuple(result[0] for result in group_results)
-        j_moments.y_groups = tuple(result[1] for result in group_results)
-        j_moments.z_groups = tuple(result[2] for result in group_results)
+        j_moments.x = tuple(result[0] for result in group_results)
+        j_moments.y = tuple(result[1] for result in group_results)
+        j_moments.z = tuple(result[2] for result in group_results)
 
     class Config:
         arbitrary_types_allowed = True

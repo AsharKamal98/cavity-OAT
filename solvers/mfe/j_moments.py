@@ -17,7 +17,7 @@ def compute_mfe_j_moments(
     """
     Build observable time series from an MFE result.
     """
-    N_j_groups, theta_groups, phi_groups = angles_from_amplitudes(
+    N_j, theta, phi = angles_from_amplitudes(
         result.D_groups,
         result.E_groups,
         tol=tol,
@@ -28,15 +28,13 @@ def compute_mfe_j_moments(
             result.t,
             result.parameters.phase_protocol,
         ),
-        N_e_groups=tuple(np.abs(E_g) ** 2 for E_g in result.E_groups),
-        N_j_groups=N_j_groups,
-        length_groups=tuple(0.5 * np.asarray(N_j, dtype=float) for N_j in N_j_groups),
-        theta_groups=theta_groups,
-        phi_groups=phi_groups,
+        N_e=tuple(np.abs(E_g) ** 2 for E_g in result.E_groups),
+        N_j=N_j,
+        length=tuple(0.5 * np.asarray(N_j_g, dtype=float) for N_j_g in N_j),
+        theta=theta,
+        phi=phi,
     )
-    JMomentSeries.attatch_norm_spin_components_from_angles(j_moments)
-    JMomentSeries.attatch_spin_components_from_norm_spin_components(j_moments)
-    JMomentSeries.attatch_additive_full_fields_from_group_fields(j_moments)
-    JMomentSeries.attatch_norm_spin_components_from_spin_components(j_moments, tol=tol)
-    JMomentSeries.attatch_angles_from_norm_spin_components(j_moments, tol=tol)
+    JMomentSeries.attach_norm_spin_components_from_angles(j_moments)
+    JMomentSeries.attach_spin_components_from_norm_spin_components(j_moments)
+    JMomentSeries.attach_aggregated_from_group_fields(j_moments, tol=tol)
     return j_moments

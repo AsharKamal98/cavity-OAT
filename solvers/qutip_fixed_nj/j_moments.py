@@ -28,9 +28,9 @@ def compute_qutip_j_moments(
     """
     Convert QuTiP mesolve or mcsolve output into a JMomentSeries.
 
-    Only quantities already present in the QuTiP expectation-value output or in
-    the fixed-sector model metadata are attached here. No derived fields such
-    as angles, normalized directions, or jump-rate series are computed.
+    Group-resolved raw fields are read from the QuTiP expectation-value output.
+    Standard group-derived and aggregated fields are then attached through the
+    shared J-moment methods.
     """
     _ = tol  # Kept for API symmetry with the other moment extractors.
 
@@ -40,30 +40,32 @@ def compute_qutip_j_moments(
     NJi = tuple(int(NJ) for NJ in model.NJi)
     group_count = len(NJi)
 
-    x = _mean_series(result.expect[0])
-    y = _mean_series(result.expect[1])
-    z = _mean_series(result.expect[2])
-    N_e = _mean_series(result.expect[3])
-    N_j = np.full_like(t, float(sum(NJi)), dtype=float)
+    expected_group_fields = 4 * group_count
+    if len(result.expect) < expected_group_fields:
+        raise ValueError(
+            "QuTiP result does not contain the expected group-resolved observables."
+        )
 
-    if group_count == 1:
-        x_groups = (x,)
-        y_groups = (y,)
-        z_groups = (z,)
-        N_e_groups = (N_e,)
-    else:
-        expected_group_fields = 4 * group_count
-        if len(result.expect) < 4 + expected_group_fields:
-            raise ValueError("QuTiP result does not contain the expected group-resolved observables.")
-
-        offset = 4
-        x_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
-        offset += group_count
-        y_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
-        offset += group_count
-        z_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
-        offset += group_count
-        N_e_groups = tuple(_mean_series(result.expect[offset + g]) for g in range(group_count))
+    offset = 0
+    x_groups = tuple(
+        _mean_series(result.expect[offset + g])
+        for g in range(group_count)
+    )
+    offset += group_count
+    y_groups = tuple(
+        _mean_series(result.expect[offset + g])
+        for g in range(group_count)
+    )
+    offset += group_count
+    z_groups = tuple(
+        _mean_series(result.expect[offset + g])
+        for g in range(group_count)
+    )
+    offset += group_count
+    N_e_groups = tuple(
+        _mean_series(result.expect[offset + g])
+        for g in range(group_count)
+    )
 
     N_j_groups = tuple(
         np.full_like(t, float(NJ), dtype=float)
@@ -76,19 +78,15 @@ def compute_qutip_j_moments(
             t,
             model.phase_protocol,
         ),
-        x=x,
-        y=y,
-        z=z,
-        x_groups=x_groups,
-        y_groups=y_groups,
-        z_groups=z_groups,
-        N_e=N_e,
-        N_j=N_j,
-        N_e_groups=N_e_groups,
-        N_j_groups=N_j_groups,
+        x=x_groups,
+        y=y_groups,
+        z=z_groups,
+        N_e=N_e_groups,
+        N_j=N_j_groups,
     )
-    JMomentSeries.attatch_norm_spin_components_from_spin_components(j_moments, tol=tol)
-    JMomentSeries.attatch_angles_from_norm_spin_components(j_moments, tol=tol)
+    JMomentSeries.attach_norm_spin_components_from_spin_components(j_moments, tol=tol)
+    JMomentSeries.attach_angles_from_norm_spin_components(j_moments, tol=tol)
+    JMomentSeries.attach_aggregated_from_group_fields(j_moments, tol=tol)
     return j_moments
 
 

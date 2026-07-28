@@ -6,7 +6,11 @@ import numpy as np
 
 from solvers.mcwf.utils import map_with_optional_pool
 from parser.common import Array, Phase
-from parser.j_moments import JMomentSnapshot, JMomentSeries
+from parser.j_moments import (
+    AggregatedJMomentSnapshot,
+    JMomentSnapshot,
+    JMomentSeries,
+)
 from parser.mcwf import (
     TrajectoryEnsemble,
     TrajectoryEnsembleMetadata,
@@ -15,10 +19,7 @@ from parser.mcwf import (
 )
 from solvers.mcwf.sim import build_phase_jump_operator_for_sector
 from solvers.mcwf.state_helpers import total_norm2
-from solvers.mcwf.operator_helpers import (
-    build_sector_ops_for_key,
-    total_active_atoms_in_sector,
-)
+from solvers.mcwf.operator_helpers import build_sector_ops_for_key
 
 
 # -----------------------------------------------------------------------------
@@ -56,25 +57,22 @@ def _compute_snapshot_j_moments(
         return JMomentSnapshot(
             t=snapshot.time,
             integration_phase_index=snapshot.integration_phase_index,
-            x=0.0,
-            y=0.0,
-            z=0.0,
-            N_e=0.0,
-            N_j=0.0,
+            x=zero_groups,
+            y=zero_groups,
+            z=zero_groups,
+            N_e=zero_groups,
+            N_j=zero_groups,
+            aggregated=AggregatedJMomentSnapshot(
+                x=0.0,
+                y=0.0,
+                z=0.0,
+                N_e=0.0,
+                N_j=0.0,
+            ),
             jump_rate=0.0,
-            x_groups=zero_groups,
-            y_groups=zero_groups,
-            z_groups=zero_groups,
-            N_e_groups=zero_groups,
-            N_j_groups=zero_groups,
         )
 
-    jx_total = 0.0
-    jy_total = 0.0
-    jz_total = 0.0
-    ne_total = 0.0
     jump_rate = 0.0
-    nj_total = 0.0
     omega = integration_phases[snapshot.integration_phase_index].omega
     jx_groups = np.zeros(group_count, dtype=float)
     jy_groups = np.zeros(group_count, dtype=float)
@@ -96,12 +94,6 @@ def _compute_snapshot_j_moments(
         )
         psi_prob = np.abs(psi) ** 2
         psi_norm2 = float(np.vdot(psi, psi).real)
-
-        jx_total += float(np.vdot(psi, ops.J_x.dot(psi)).real)
-        jy_total += float(np.vdot(psi, ops.J_y.dot(psi)).real)
-        jz_total += float(np.vdot(psi, ops.J_z.dot(psi)).real)
-        ne_total += float(np.vdot(psi, ops.N_e.dot(psi)).real)
-        nj_total += total_active_atoms_in_sector(sector_key) * psi_norm2
 
         jump_operator = build_phase_jump_operator_for_sector(
             ops,
@@ -146,20 +138,28 @@ def _compute_snapshot_j_moments(
     if jump_rate < 0.0 and abs(jump_rate) < 1e-10:
         jump_rate = 0.0
 
+    x = tuple(jx_groups / norm2)
+    y = tuple(jy_groups / norm2)
+    z = tuple(jz_groups / norm2)
+    N_e = tuple(ne_groups / norm2)
+    N_j = tuple(nj_groups / norm2)
+
     return JMomentSnapshot(
         t=snapshot.time,
         integration_phase_index=snapshot.integration_phase_index,
-        x=jx_total / norm2,
-        y=jy_total / norm2,
-        z=jz_total / norm2,
-        N_e=ne_total / norm2,
-        N_j=nj_total / norm2,
+        x=x,
+        y=y,
+        z=z,
+        N_e=N_e,
+        N_j=N_j,
+        aggregated=AggregatedJMomentSnapshot(
+            x=sum(x),
+            y=sum(y),
+            z=sum(z),
+            N_e=sum(N_e),
+            N_j=sum(N_j),
+        ),
         jump_rate=jump_rate / norm2,
-        x_groups=tuple(jx_groups / norm2),
-        y_groups=tuple(jy_groups / norm2),
-        z_groups=tuple(jz_groups / norm2),
-        N_e_groups=tuple(ne_groups / norm2),
-        N_j_groups=tuple(nj_groups / norm2),
     )
 
 
@@ -212,16 +212,11 @@ def compute_trajectory_j_moments(
     return JMomentSeries(
         t=series("t"),
         integration_phase_index=series("integration_phase_index", dtype=int),
-        x=series("x"),
-        y=series("y"),
-        z=series("z"),
-        x_groups=group_series("x_groups"),
-        y_groups=group_series("y_groups"),
-        z_groups=group_series("z_groups"),
-        N_e=series("N_e"),
-        N_j=series("N_j"),
-        N_e_groups=group_series("N_e_groups"),
-        N_j_groups=group_series("N_j_groups"),
+        x=group_series("x"),
+        y=group_series("y"),
+        z=group_series("z"),
+        N_e=group_series("N_e"),
+        N_j=group_series("N_j"),
         jump_rate=series("jump_rate"),
     )
 
@@ -296,23 +291,18 @@ def compute_average_j_moments(
             for g in range(group_count)
         )
 
-    x_groups = mean_group_series("x_groups")
-    y_groups = mean_group_series("y_groups")
-    z_groups = mean_group_series("z_groups")
+    x = mean_group_series("x")
+    y = mean_group_series("y")
+    z = mean_group_series("z")
 
     return JMomentSeries(
         t=t_ref,
         integration_phase_index=integration_phase_ref,
-        x=mean_series("x"),
-        y=mean_series("y"),
-        z=mean_series("z"),
-        x_groups=x_groups,
-        y_groups=y_groups,
-        z_groups=z_groups,
-        N_e=mean_series("N_e"),
-        N_j=mean_series("N_j"),
-        N_e_groups=mean_group_series("N_e_groups"),
-        N_j_groups=mean_group_series("N_j_groups"),
+        x=x,
+        y=y,
+        z=z,
+        N_e=mean_group_series("N_e"),
+        N_j=mean_group_series("N_j"),
         jump_rate=mean_series("jump_rate"),
     )
 
@@ -362,9 +352,11 @@ def compute_mcwf_j_moments(
 
     averaged = compute_average_j_moments(moments, tol=tol)
     # normalized spin components
-    JMomentSeries.attatch_norm_spin_components_from_spin_components(averaged, tol=tol)
+    JMomentSeries.attach_norm_spin_components_from_spin_components(averaged, tol=tol)
     # theta, phi
-    JMomentSeries.attatch_angles_from_norm_spin_components(averaged, tol=tol)
+    JMomentSeries.attach_angles_from_norm_spin_components(averaged, tol=tol)
+    # full-system fields
+    JMomentSeries.attach_aggregated_from_group_fields(averaged, tol=tol)
     return averaged
 
 

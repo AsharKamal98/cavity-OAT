@@ -54,12 +54,10 @@ def _solver_args(model) -> dict[str, object]:
 
 def _observable_e_ops(model) -> List[qt.Qobj]:
     """
-    Return the standard observable list for QuTiP benchmarks.
+    Return the group-resolved observable list for QuTiP benchmarks.
     """
-    e_ops = [model.Jx, model.Jy, model.Jz, model.N_e]
-    if hasattr(model, "Jx_groups") and hasattr(model, "N_e_groups"):
-        e_ops.extend(model.Jx_groups)
-        e_ops.extend(model.Jy_groups)
-        e_ops.extend(model.Jz_groups)
-        e_ops.extend(model.N_e_groups)
+    e_ops = list(model.Jx_groups)
+    e_ops.extend(model.Jy_groups)
+    e_ops.extend(model.Jz_groups)
+    e_ops.extend(model.N_e_groups)
     return e_ops

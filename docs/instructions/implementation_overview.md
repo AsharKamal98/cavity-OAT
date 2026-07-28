@@ -233,9 +233,11 @@ Current top-level fields are:
   including `Ni`, independent `omega_i`, completed `omega_groups`, `Gamma`,
   and the supplied `phase_protocol`.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
-  derived J-vector direction fields and angles.
+  derived J-vector direction fields and angles. Unsuffixed physical fields are
+  tuples ordered by group, including for $G=1$; full-system fields live in
+  `moments.J.aggregated`.
 - `moments.J_modes`: an optional `JModeSeries` containing post-analysis common,
-  contrast, drive-bright, and drive-dark two-group vectors.
+  population-weighted contrast, drive-bright, and drive-dark two-group vectors.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
 - `moments.S`: placeholder for future S-moment or spin-direction data.
@@ -262,13 +264,15 @@ moments.J = compute_mfe_j_moments(mfe_result)
 moments.J = compute_qutip_j_moments(qutip_result)
 ```
 
-The shared series may contain spin components, normalized directions, angles,
-atom-number fields, jump rates, and group-resolved counterparts when those
-quantities are available. Derived fields such as spin directions and angles
-should be attached inside the J-moment layer, so plotting and diagnostics can
-consume one common structure independent of whether the data came from MCWF,
-MFE, or QuTiP. Additive full-system fields may be constructed by summing their
-group-resolved counterparts before nonlinear derived fields are attached.
+The shared series may contain group spin components, normalized directions,
+angles, atom-number fields, jump rates, and counterparts in the nested
+`aggregated` container when those quantities are available. Derived fields
+such as spin directions and angles should be attached inside the J-moment
+layer, so plotting and diagnostics can consume one common structure independent
+of whether the data came from MCWF, MFE, or QuTiP. Additive aggregated fields
+should be constructed through
+`JMomentSeries.attach_aggregated_from_group_fields(...)` by summing their group
+counterparts before nonlinear aggregated fields are attached.
 
 Detailed definitions and averaging rules live in
 `docs/instructions/j_moments.typ`.

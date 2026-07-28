@@ -156,24 +156,22 @@ def solve_mfe(parameters, *, t_eval, rtol=1e-9, atol=1e-11) -> MFEResult:
 
 ```python
 def compute_mfe_j_moments(result: MFEResult, *, tol=1e-12) -> JMomentSeries:
-    N_j_groups, theta_groups, phi_groups = angles_from_amplitudes(
+    N_j, theta, phi = angles_from_amplitudes(
         result.D_groups,
         result.E_groups,
     )
     j_moments = JMomentSeries(
         result.t,
         integration_phase_index=integration_phase_indices_at_times(...),
-        N_e_groups=tuple(abs(E_g)**2 for E_g in result.E_groups),
-        N_j_groups=N_j_groups,
-        theta_groups=theta_groups,
-        phi_groups=phi_groups,
+        N_e=tuple(abs(E_g)**2 for E_g in result.E_groups),
+        N_j=N_j,
+        theta=theta,
+        phi=phi,
         ...,
     )
-    JMomentSeries.attatch_norm_spin_components_from_angles(j_moments)
-    JMomentSeries.attatch_spin_components_from_norm_spin_components(j_moments)
-    JMomentSeries.attatch_additive_full_fields_from_group_fields(j_moments)
-    JMomentSeries.attatch_norm_spin_components_from_spin_components(j_moments, tol=tol)
-    JMomentSeries.attatch_angles_from_norm_spin_components(j_moments, tol=tol)
+    JMomentSeries.attach_norm_spin_components_from_angles(j_moments)
+    JMomentSeries.attach_spin_components_from_norm_spin_components(j_moments)
+    JMomentSeries.attach_aggregated_from_group_fields(j_moments, tol=tol)
     return j_moments
 ```
 
@@ -193,8 +191,8 @@ Function flow: `solve_mfe(...)` is the main entry point. It calls
 `amplitudes_from_initial_state(...)` to build the initial solver vector,
 `solve_ivp(...)` to integrate `mfe_rhs(...)`.
 `compute_mfe_j_moments(...)` is the post-processing step that converts an
-`MFEResult` into a `JMomentSeries` containing group-resolved and full-system
-fields.
+`MFEResult` into a `JMomentSeries` containing primary group fields and
+the secondary `aggregated` container.
 `mfe_rhs(...)` receives the current integration `Phase` explicitly.
 
 If a top-level `MomentSeries` container is already in use,
@@ -251,17 +249,19 @@ JMomentSeries(
     nx,
     ny,
     nz,
-    N_e_groups,
-    N_j_groups,
-    theta_groups,
-    phi_groups,
-    x_groups,
-    y_groups,
-    z_groups,
-    length_groups,
-    nx_groups,
-    ny_groups,
-    nz_groups,
+    aggregated=AggregatedJMomentSeries(
+        N_e,
+        N_j,
+        theta,
+        phi,
+        x,
+        y,
+        z,
+        length,
+        nx,
+        ny,
+        nz,
+    ),
 )
 ```
 

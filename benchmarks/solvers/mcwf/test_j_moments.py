@@ -9,7 +9,7 @@ def test_moment_extraction_many_snapshots(benchmark, moment_extraction_ensemble)
     """
     Benchmark serial J-moment extraction on a large saved-time grid.
 
-    Assert that the returned total and group-resolved moment series contain one
+    Assert that the returned aggregated and group moment series contain one
     value for every saved snapshot.
     """
     ensemble = moment_extraction_ensemble
@@ -22,8 +22,8 @@ def test_moment_extraction_many_snapshots(benchmark, moment_extraction_ensemble)
 
     num_snapshots = len(ensemble.metadata.t_eval)
     assert len(moments.t) == num_snapshots
-    assert moments.x_groups is not None
-    assert all(len(group) == num_snapshots for group in moments.x_groups)
+    assert moments.x is not None
+    assert all(len(group) == num_snapshots for group in moments.x)
 
     benchmark.extra_info.update(
         num_trajectories=len(ensemble.trajectories),

@@ -55,7 +55,7 @@ $
 Here $Omega(t_(k))$ and $delta(t_(k))$ are selected from the saved
 `integration_phase_index`, while $omega_(a)$ is read from
 `SimulationMetadata.omega_groups`.
-The group atom-number weights are `moments.J.N_j_groups[a]`, not the fixed
+The group atom-number weights are `moments.J.N_j[a]`, not the fixed
 total group sizes.
 
 The L2 norm used by residual plots is
@@ -100,8 +100,8 @@ MFEResidualSeries(
 
 - MFE residuals should be computed after J moments have been ensemble-averaged
   and after J-vector group angles have been attached.
-- The residual calculation should use `theta_groups`, `phi_groups`, and
-  `N_j_groups` from `moments.J`.
+- The residual calculation should use the primary group fields `theta`, `phi`,
+  and `N_j` from `moments.J`.
 - The residual calculation should use shared protocol metadata from
   `moments.metadata`.
 - The residual calculation should not live in `solvers/mcwf/j_moments.py`

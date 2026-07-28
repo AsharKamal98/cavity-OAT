@@ -26,7 +26,7 @@ For two groups with active populations $N_(J,1)$ and $N_(J,2)$, define
 $
 bold(s)_"common" = frac(N_(J,1) bold(s)_1 + N_(J,2) bold(s)_2, N_(J,1) + N_(J,2)),
 quad
-bold(s)_"contrast" = frac(bold(s)_1 - bold(s)_2, 2).
+bold(s)_"contrast" = frac(N_(J,2) bold(s)_1 - N_(J,1) bold(s)_2, N_(J,1) + N_(J,2)).
 $
 
 For coupling-dependent modes, let $w_g = N_(J,g) omega_g$ and
@@ -58,7 +58,7 @@ def compute_j_modes(t, x_components, y_components, z_components,
                     *, populations, omega_groups) -> JModeSeries:
     require matching x/y/z component series for one or two groups
     common = population-weighted average of the group vectors
-    contrast = half difference of the group vectors
+    contrast = population-weighted relative difference of the group vectors
     bright, dark = coupling-weighted orthogonal combinations
     return JModeSeries(t, common, contrast, bright, dark)
 ```
@@ -94,7 +94,7 @@ J-moment representation.
 - Mode construction is post-analysis and must remain independent of the solver.
 - Construct each mode container from x/y/z only; `BlochVectorSeries` is
   authoritative for deriving `length` and `xy_length`.
-- Do not compute modes from `nx_groups`, `ny_groups`, and `nz_groups`, which
+- Do not compute modes from `nx`, `ny`, and `nz`, which
   are instantaneous unit directions. Construct inputs as
   $2 bold(J)_g / N_(J,g)$ so vector shrinkage remains visible.
 - Do not silently generalize the two-group dark mode to more groups; a

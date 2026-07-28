@@ -9,25 +9,33 @@ palette, and line-style behavior, use the plotting-workflows skill.
 
 1. `plot_spin_components` lives in `common/plotting/j_spin.py`.
 
-2. The function should take a series object directly, for example `moments.J`
-   or another series with matching `x/y/z/length` field names.
+2. The function should take explicit `t`, `x_components`, `y_components`,
+   `z_components`, and `lengths` inputs. Each component input may be one array
+   or a sequence of arrays.
 
-3. The default call plots stored `x`, `y`, `z`, and `length` fields:
+3. The caller chooses the curves and passes one matching label per curve. For
+   example, group-resolved moments can be plotted with:
 
    ```python
-   fig, axes = plot_spin_components(moments.J)
+   fig, axes = plot_spin_components(
+       moments.J.t,
+       moments.J.x,
+       moments.J.y,
+       moments.J.z,
+       moments.J.length,
+       labels=group_labels,
+   )
    ```
 
-4. The function should read `x`, `y`, `z`, `length`, and optional
-   `x_groups`, `y_groups`, `z_groups`, `length_groups`.
+4. The plotting function should not inspect `JMomentSeries` or automatically
+   add group-resolved or aggregated fields. The caller may instead pass
+   `moments.J.aggregated.*` explicitly when plotting the aggregated curve.
 
 5. The output should be a `2x2` panel showing the x, y, z, and length
    components.
 
-6. Each panel should include the full-system curve. If group fields exist, each
-   panel should also include all group-resolved curves.
-
-7. The function should support `axes`, `output_path`, `label`, `phases`,
+6. The function should support `axes`, `output_path`, `labels`,
+   `phase_protocol`, `title`,
    `colour_family_index`, `shade_index`, `linestyle`, and `marker` so multiple
    results can be plotted into the same figure.
 
@@ -35,22 +43,18 @@ palette, and line-style behavior, use the plotting-workflows skill.
 
 1. `plot_bloch_angles` lives in `common/plotting/j_spin.py`.
 
-2. The function should take a series object as input. The input must contain
-   `t`, and may contain full-system `theta`/`phi`, group-resolved
-   `theta_groups`/`phi_groups`, or both.
+2. The function should take explicit `t`, `theta_curves`, and `phi_curves`
+   inputs. Each angle input may be one array or a sequence of arrays, with one
+   matching label per curve.
 
 3. The output should be a `2x1` panel showing `theta` and `phi`.
 
-4. `plot_bloch_angles` should read whatever stored angle fields are available on
-   the input series. Angle construction should happen upstream; the plotting
-   function should not recompute angles from spin components.
+4. The caller chooses whether to pass group-resolved or aggregated angles.
+   The plotting function should not inspect `JMomentSeries` or recompute angles
+   from spin components.
 
-5. If group-resolved `theta_groups` and `phi_groups` exist, plot group angles
-   first using the selected `colour_family_index` / `shade_index` palette and
-   selected `linestyle`. Plot the full-system angles last using the next color
-   from the same palette when those fields exist.
-
-6. The function should support `axes`, `output_path`, `label`, `phases`,
+5. The function should support `axes`, `output_path`, `labels`,
+   `phase_protocol`,
    `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
 
 ## `fig, axes = plot_transverse_spin_components(...)`

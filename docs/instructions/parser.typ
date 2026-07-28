@@ -22,18 +22,18 @@ the repository-specific `JMomentSeries` contract.
 trajectory snapshot:
 
 ```python
+AggregatedJMomentSnapshot(
+    x, y, z,
+    N_e, N_j,
+)
+
 JMomentSnapshot(
     t,
     integration_phase_index,
-    x, y, z,
-    N_e,
-    N_j,
+    x, y, z,                 # tuples ordered by group
+    N_e, N_j,                # tuples ordered by group
+    aggregated=AggregatedJMomentSnapshot(...),
     jump_rate,
-    x_groups=None,
-    y_groups=None,
-    z_groups=None,
-    N_e_groups=None,
-    N_j_groups=None,
 )
 ```
 
@@ -41,24 +41,32 @@ JMomentSnapshot(
 average, or a non-MCWF method converted into the shared J-sphere format:
 
 ```python
+AggregatedJMomentSeries(
+    x=None, y=None, z=None,
+    length=None,
+    nx=None, ny=None, nz=None,
+    N_e=None, N_j=None,
+    theta=None, phi=None,
+)
+
 JMomentSeries(
     t,
     integration_phase_index=None,
-    x=None, y=None, z=None,
-    x_groups=None, y_groups=None, z_groups=None,
-    length=None, length_groups=None,
+    x=None, y=None, z=None,                   # tuples ordered by group
+    length=None,
     nx=None, ny=None, nz=None,
-    nx_groups=None, ny_groups=None, nz_groups=None,
     N_e=None, N_j=None,
-    N_e_groups=None, N_j_groups=None,
     theta=None, phi=None,
-    theta_groups=None, phi_groups=None,
+    aggregated=AggregatedJMomentSeries(...),
     jump_rate=None,
 )
 ```
 
-Group-resolved fields should be tuples ordered by group. If no group-resolved
-data exist, the corresponding fields should remain `None`.
+The unsuffixed physical fields are the primary representation and should be
+tuples ordered by group, including for $G=1$. The nested `aggregated` container
+is the secondary full-system representation. Additive fields are summed over
+groups; nonlinear fields are derived from the aggregated spin vector. Keep
+`t`, `integration_phase_index`, and `jump_rate` on the outer container.
 
 `BlochVectorSeries` is the reusable Cartesian-vector container defined in
 `parser/bloch_vector.py`:
@@ -139,26 +147,31 @@ The `JMomentSeries` class methods should attach missing equivalent
 representations in place:
 
 ```python
-JMomentSeries.attatch_norm_spin_components_from_spin_components(j_moments, tol=...)
+JMomentSeries.attach_norm_spin_components_from_spin_components(j_moments, tol=...)
     -> attach length, nx, ny, nz from x, y, z
 
-JMomentSeries.attatch_angles_from_norm_spin_components(j_moments, tol=...)
+JMomentSeries.attach_angles_from_norm_spin_components(j_moments, tol=...)
     -> attach theta, phi from length, nx, ny, nz
 
-JMomentSeries.attatch_norm_spin_components_from_angles(j_moments)
+JMomentSeries.attach_norm_spin_components_from_angles(j_moments)
     -> attach nx, ny, nz from theta, phi
 
-JMomentSeries.attatch_spin_components_from_norm_spin_components(j_moments)
+JMomentSeries.attach_spin_components_from_norm_spin_components(j_moments)
     -> attach x, y, z from length, nx, ny, nz
 
-JMomentSeries.attatch_additive_full_fields_from_group_fields(j_moments)
-    -> attach x, y, z, N_e, N_j by summing their group-resolved fields
+JMomentSeries.attach_aggregated_from_group_fields(j_moments, tol=...)
+    -> attach aggregated.x, aggregated.y, aggregated.z,
+       aggregated.N_e, aggregated.N_j by summing their group fields
+    -> attach aggregated.length, aggregated.nx, aggregated.ny,
+       aggregated.nz, aggregated.theta, aggregated.phi from the
+       summed spin components
 ```
 
-The same methods should also attach group-resolved fields when the required
-group inputs are present. If neither full-system nor group-resolved inputs are
-available for the requested conversion, the method should raise a clear
-`ValueError`.
+The spin-component and angle conversion methods operate on the primary
+group-resolved fields. `attach_aggregated_from_group_fields(...)` is the sole
+series-level aggregation method and constructs a new complete
+`AggregatedJMomentSeries`. Each method should raise a clear `ValueError` when
+its required group inputs are unavailable.
 
 The conversion helpers used by these class methods live in
 `common/utils/moments.py`.
@@ -189,8 +202,8 @@ components and angles should use the safe fallback behavior implemented by
 Angles alone determine only the normalized direction. To recover spin
 components, the series must also contain a vector length.
 
-For additive observables $q in {x, y, z, N_e, N_J}$, construct the full-system
-field from group-resolved fields as
+For additive observables $q in {x, y, z, N_e, N_J}$, construct the aggregated
+field from the primary group fields as
 
 $
 q(t) = sum_g q_g(t).
@@ -205,10 +218,16 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
   construction so stored values cannot disagree with the Cartesian components.
 - Derived-field class methods should mutate the supplied `JMomentSeries`
   instance in place.
-- Full-system and group-resolved conversions should use the same formulas.
+- Aggregated and group conversions should call the same pure conversion
+  helpers.
 - Only additive fields `x`, `y`, `z`, `N_e`, and `N_j` should be summed across
-  groups; derive full lengths, directions, and angles from the summed spin
-  components.
+  groups; save the sums in `aggregated` and derive aggregated lengths,
+  directions, and angles from `aggregated.x/y/z`.
+- Construct series-level aggregated fields only through
+  `attach_aggregated_from_group_fields(...)`, after raw group fields have been
+  computed or averaged.
+- Unsuffixed fields are always group tuples in public backend outputs, including
+  for $G=1$.
 - J-moment extraction code should call these class methods instead of
   duplicating spin-component, direction, or angle conversion logic.
 - Legacy field names such as `Jx`, `Jy`, `Jz`, `J_len`, and `sx`, `sy`, `sz`

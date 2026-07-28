@@ -51,12 +51,6 @@ def main() -> None:
                 "integration_phase_index grid."
             )
 
-    def mean_series(field_name: str):
-        return np.mean(
-            np.asarray([getattr(sample, field_name) for sample in samples], dtype=float),
-            axis=0,
-        )
-
     def mean_group_series(field_name: str):
         groups_ref = getattr(samples[0], field_name)
         if groups_ref is None:
@@ -73,15 +67,15 @@ def main() -> None:
     combined = JMomentSeries(
         t=t_ref,
         integration_phase_index=integration_phase_ref,
-        x=mean_series("x"),
-        y=mean_series("y"),
-        z=mean_series("z"),
-        x_groups=mean_group_series("x_groups"),
-        y_groups=mean_group_series("y_groups"),
-        z_groups=mean_group_series("z_groups"),
+        x=mean_group_series("x"),
+        y=mean_group_series("y"),
+        z=mean_group_series("z"),
+        N_e=mean_group_series("N_e"),
+        N_j=mean_group_series("N_j"),
     )
-    JMomentSeries.attatch_norm_spin_components_from_spin_components(combined)
-    JMomentSeries.attatch_angles_from_norm_spin_components(combined)
+    JMomentSeries.attach_norm_spin_components_from_spin_components(combined)
+    JMomentSeries.attach_angles_from_norm_spin_components(combined)
+    JMomentSeries.attach_aggregated_from_group_fields(combined)
 
     output_path = output_dir / f"{args.filename}.pkl"
     save_j_moments_artifact(combined, phase_protocol_ref, output_path)

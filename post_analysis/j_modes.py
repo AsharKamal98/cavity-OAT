@@ -73,7 +73,7 @@ def compute_j_modes(
         raise ValueError("Group populations must be non-negative with a positive sum.")
 
     common = (population_1 * vector_1 + population_2 * vector_2) / total_population
-    contrast = 0.5 * (vector_1 - vector_2)
+    contrast = (population_2 * vector_1 - population_1 * vector_2) / total_population
 
     drive_weight_1 = population_1 * float(omega_groups[0])
     drive_weight_2 = population_2 * float(omega_groups[1])

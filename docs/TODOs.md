@@ -11,8 +11,11 @@
 
 2. j-moment computations. 
     Dependent on above.
-    1. x_groups, nx_groups, N_groups etc. -> x, nx, N should become primary fields and are filled even for G=1, while x, nx etc. -> x_avg, nx_avg become secondary average files.
-    2. j-moment computations in mcwf,mfe and qutip should output above.
+    1. DONE. Group fields such as `x`, `nx`, and `N_j` are the primary
+       tuple-valued fields, including for $G=1$; full-system fields live in
+       the nested `aggregated` container.
+    2. DONE. J-moment computations in MCWF, MFE, and QuTiP output the
+       group-first field layout above.
 
 
 ## New stuff
