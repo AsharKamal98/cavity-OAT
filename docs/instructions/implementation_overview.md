@@ -171,6 +171,19 @@ For single-trajectory simulation flow, use:
 
 - `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ`
 
+For MCWF-specific J-moment extraction and trajectory averaging, use:
+
+- `docs/instructions/solvers/mcwf/j_moments.typ`
+
+For MCWF-specific group-local S-moment extraction, use:
+
+- `docs/instructions/solvers/mcwf/s_moments.typ`
+
+For MCWF-specific extraction of group-local squeezing moments from the
+ensemble together with precomputed J and S moments, use:
+
+- `docs/instructions/solvers/mcwf/squeezing_moments.typ`
+
 
 ### 3.2 MFE
 
@@ -240,7 +253,14 @@ Current top-level fields are:
   population-weighted contrast, drive-bright, and drive-dark two-group vectors.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
-- `moments.S`: placeholder for future S-moment or spin-direction data.
+- `moments.squeezing_moments`: an optional tuple containing one
+  `SqueezingMomentSeries` per physical group. MCWF extraction averages the raw
+  dressed fluctuation moments over trajectories.
+- `moments.squeezing`: an optional tuple containing one derived
+  `SqueezingSeries` per physical group, constructed solver-independently from
+  `moments.squeezing_moments`.
+- `moments.S`: an optional `SMomentSeries` containing group-local S-sphere
+  components, normalized directions, and angles.
 
 Parser container conventions live in `docs/instructions/parser.typ` and the
 `parser` skill.
@@ -274,8 +294,10 @@ should be constructed through
 `JMomentSeries.attach_aggregated_from_group_fields(...)` by summing their group
 counterparts before nonlinear aggregated fields are attached.
 
-Detailed definitions and averaging rules live in
-`docs/instructions/j_moments.typ`.
+Shared spin-vector direction and angle conventions live in
+`docs/instructions/common/spin_moment_conventions.typ`. MCWF-specific
+J-moment extraction and averaging rules live in
+`docs/instructions/solvers/mcwf/j_moments.typ`.
 
 Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 
@@ -299,13 +321,17 @@ Current task-specific diagnostic instructions include:
 - `docs/instructions/post_analysis/mfe_residuals.typ`
 - `docs/instructions/post_analysis/squeezing.typ`
 
+The MCWF-specific input-moment extraction used by squeezing is documented
+separately in `docs/instructions/solvers/mcwf/squeezing_moments.typ`.
+
 summarized in
   `docs/instructions/post_analysis/post_analysis.md`
 
 ## 6. Plotting
 The shared spin-component plot lives in `common/plotting/j_spin.py`:
 - `plot_spin_components(t, x_components, y_components, z_components, lengths,
-  labels=..., ...)`: plots caller-selected vectors.
+  labels=..., spin_symbol="J", ...)`: plots caller-selected vectors and uses
+  the supplied spin symbol in the component labels.
 
 The transverse spin-component plot lives in `common/plotting/specific.py`:
 - `plot_transverse_spin_components(t, x_components, y_components,
@@ -313,8 +339,9 @@ The transverse spin-component plot lives in `common/plotting/specific.py`:
   combination, z, and full length.
 
 The shared angle plot lives in `common/plotting/j_spin.py`:
-- `plot_bloch_angles(t, theta_curves, phi_curves, labels=..., ...)`: plots
-  caller-selected angle curves using the selected palette and `linestyle`.
+- `plot_bloch_angles(t, theta_curves, phi_curves, labels=..., title=..., ...)`:
+  plots caller-selected angle curves using the selected palette and
+  `linestyle`.
 
 The shared MFE residual diagnostic plotting function lives in
 `common/plotting/mfe_residuals.py`:
@@ -326,6 +353,12 @@ The shared harmonic-sweep plot lives in
 - `plot_harmonic_sweep(parameter_values, fundamental_frequencies,
   total_harmonic_distortions, labels=..., ...)`: plots one or more paired
   frequency and THD curves against an already-extracted model-parameter sweep.
+
+The shared generalized-squeezing plot lives in
+`common/plotting/squeezing.py`:
+- `plot_squeezing(t, xi2, lambda_min, N_c, excited_fraction_active,
+  labels=..., ...)`: plots one or more squeezing results on the shared `2x2`
+  diagnostic grid.
 
 Repo-specific plotting-function contracts live in
 `docs/instructions/plotting_workflows.md`.

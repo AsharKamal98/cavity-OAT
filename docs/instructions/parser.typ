@@ -11,10 +11,11 @@
 
 This file specifies parser/output-container conventions used by the current
 post-processing pipeline. Use it when editing Pydantic classes in `parser/`,
-especially `parser/j_moments.py` and `parser/moments.py`.
+especially `parser/j_moments.py`, `parser/s_moments.py`, and
+`parser/moments.py`.
 
 General parser-class style rules live in the `parser` skill. This file records
-the repository-specific `JMomentSeries` contract.
+the repository-specific J- and S-moment container contracts.
 
 = J-Moment Containers
 
@@ -68,6 +69,30 @@ is the secondary full-system representation. Additive fields are summed over
 groups; nonlinear fields are derived from the aggregated spin vector. Keep
 `t`, `integration_phase_index`, and `jump_rate` on the outer container.
 
+`SMomentSnapshot` and `SMomentSeries` use the parallel group-resolved
+S-sphere structure:
+
+```python
+SMomentSnapshot(
+    t,
+    integration_phase_index,
+    x, y, z,                 # tuples ordered by group
+)
+
+SMomentSeries(
+    t,
+    integration_phase_index=None,
+    x=None, y=None, z=None,
+    length=None,
+    nx=None, ny=None, nz=None,
+    theta=None, phi=None,
+)
+```
+
+Store the ensemble-averaged series as
+`moments.S: SMomentSeries | None`. Do not add J-specific atom-number,
+jump-rate, or aggregated fields to the S containers.
+
 `BlochVectorSeries` is the reusable Cartesian-vector container defined in
 `parser/bloch_vector.py`:
 
@@ -112,6 +137,49 @@ amplitudes, RMS oscillation amplitude, phase offsets, and total harmonic
 distortion. The output does not retain the input time grid. Keep this diagnostic
 separate from `JMomentSeries` and `JModeSeries` so it can consume any compatible
 real series.
+
+`SqueezingMomentSeries` stores the ensemble-averaged raw moments required to
+compute generalized squeezing for one physical group:
+
+```python
+SqueezingMomentSeries(
+    t,
+    N_group,
+    mean_operators,          # shape (n_t, 4)
+    second_moments,          # shape (n_t, 4, 4)
+    N_c,
+    excited_fraction_active,
+    theta_J, phi_J,
+    theta_S, phi_S,
+)
+```
+
+Store group-local squeezing moments as
+`moments.squeezing_moments: tuple[SqueezingMomentSeries, ...] | None`, ordered
+by physical group. These are moments of dressed fluctuation operators and
+should not be added to `JMomentSeries`.
+
+`SqueezingSeries` stores the derived generalized squeezing result for one
+physical group:
+
+```python
+SqueezingSeries(
+    t,
+    N_group,
+    xi2,
+    xi2_db,
+    lambda_min,
+    covariance_eigvals,     # shape (n_t, 4)
+    N_c,
+    excited_fraction_active,
+    theta_J, phi_J,
+    theta_S, phi_S,
+)
+```
+
+Store derived group results as
+`moments.squeezing: tuple[SqueezingSeries, ...] | None`, with the same group
+ordering as `moments.squeezing_moments`.
 
 = Simulation Metadata
 
@@ -165,6 +233,12 @@ JMomentSeries.attach_aggregated_from_group_fields(j_moments, tol=...)
     -> attach aggregated.length, aggregated.nx, aggregated.ny,
        aggregated.nz, aggregated.theta, aggregated.phi from the
        summed spin components
+
+SMomentSeries.attach_norm_spin_components_from_spin_components(s_moments, tol=...)
+    -> attach group length, nx, ny, nz from x, y, z
+
+SMomentSeries.attach_angles_from_norm_spin_components(s_moments, tol=...)
+    -> attach group theta, phi using the S-sphere positive-z pole convention
 ```
 
 The spin-component and angle conversion methods operate on the primary
@@ -175,6 +249,8 @@ its required group inputs are unavailable.
 
 The conversion helpers used by these class methods live in
 `common/utils/moments.py`.
+Shared mathematical definitions and the J/S pole mapping live in
+`docs/instructions/common/spin_moment_conventions.typ`.
 
 = Conversion Logic
 
@@ -216,8 +292,16 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
 - Parser classes should stay as Pydantic containers with explicit typed fields.
 - `BlochVectorSeries` must derive `length` and `xy_length` from x/y/z on every
   construction so stored values cannot disagree with the Cartesian components.
+- `SqueezingMomentSeries` must validate `(n_t, 4)` operator means,
+  `(n_t, 4, 4)` second moments, and one-dimensional fields matching `t`.
+- `SqueezingSeries` must validate `(n_t, 4)` covariance eigenvalues and
+  one-dimensional result fields matching `t`.
 - Derived-field class methods should mutate the supplied `JMomentSeries`
   instance in place.
+- `SMomentSeries` should attach derived fields only after raw per-trajectory
+  S moments have been averaged.
+- `SMomentSeries` should use the S-sphere $p=+1$ pole convention and should not
+  construct aggregated fields.
 - Aggregated and group conversions should call the same pure conversion
   helpers.
 - Only additive fields `x`, `y`, `z`, `N_e`, and `N_j` should be summed across

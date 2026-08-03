@@ -4,13 +4,16 @@
 #set heading(numbering: "1.")
 
 #align(center)[
-  #text(size: 1.6em, weight: "bold")[J-Moment Extraction]
+  #text(size: 1.6em, weight: "bold")[MCWF J-Moment Extraction]
 ]
 
 = Purpose
 This file specifies how to compute first-order $J$-moments in
 `solvers/mcwf/j_moments.py`. Use this file for tasks related to
-J-moment extraction or when writing diagnostics that consume its outputs.
+MCWF J-moment extraction or when writing diagnostics that consume its outputs.
+
+Shared spin-vector direction and angle conventions are defined in
+`docs/instructions/common/spin_moment_conventions.typ`.
 
 The main function structure should be:
 
@@ -177,47 +180,23 @@ evaluate or average full-system operators. Nonlinear fields such as
 `aggregated.nx` and `aggregated.theta` are derived afterward from the summed
 aggregated spin vector.
 
-== Normalized Spin Components
+== J-Vector Direction and Angles
 
-After the trajectory-averaged fields $J_i(t_(k))$ have been computed, define
-the J-vector length
+Apply `docs/instructions/common/spin_moment_conventions.typ` to the
+trajectory-averaged J-sphere components, using $S_a=J_a$ and the J-sphere pole
+choice $p=-1$.
 
-$
-J_("len")(t_(k)) =
-sqrt(J_x(t_(k))^2 + J_y(t_(k))^2 + J_z(t_(k))^2).
-$
+For each group $g$, compute `length[g]`, `nx[g]`, `ny[g]`, `nz[g]`,
+`theta[g]`, and `phi[g]`, corresponding to
+$J_("len",g)$, $n_(x,g)$, $n_(y,g)$, $n_(z,g)$,
+$theta_(J,g)$, and $phi_(J,g)$. Compute the same six fields in the nested
+`aggregated` container from the already-summed aggregated J vector.
 
-The normalized spin component for $i in {x,y,z}$ is
+Their mathematical definitions, averaging order, pole convention, and
+zero-length behavior are defined in
+`docs/instructions/common/spin_moment_conventions.typ`.
 
-$
-n_i(t_(k)) = frac(J_i(t_(k)), J_("len")(t_(k))).
-$
-
-If $J_("len")(t_(k))$ is below the numerical tolerance, set the normalized
-components to zero. Apply the rule to each group; the shared aggregation method
-applies the same helper to the aggregated spin vector.
-The corresponding `JMomentSeries` class method is documented in
-`docs/instructions/parser.typ`.
-
-== Angles
-
-Angles should be computed from the normalized spin components:
-
-$
-theta(t_(k)) = arccos(-n_z(t_(k))),
-$
-
-The minus sign keeps the same active-manifold convention as the old angle
-pipeline: $theta=0$ points along the south/down pole.
-
-$
-phi(t_(k)) = "atan2"(n_y(t_(k)), n_x(t_(k))).
-$
-
-Apply the rule to each group's normalized components $n_(i,g)$; the shared
-aggregation method applies the same helper to the aggregated normalized
-components.
-The corresponding `JMomentSeries` class method is documented in
+Use the corresponding `JMomentSeries` class methods documented in
 `docs/instructions/parser.typ`.
 
 = Output

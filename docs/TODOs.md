@@ -20,7 +20,8 @@
 
 ## New stuff
 
-1. Add back `post-analysis/squeezing.py` and `common/plotting/squeezing.py`. Exist in legacy.
+1. DONE. Added solver-independent `post_analysis/squeezing.py` and the shared
+   `common/plotting/squeezing.py` diagnostic.
 
 3. Create a purity post-analysis as dephasing diagnostic. 
 

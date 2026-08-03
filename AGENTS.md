@@ -71,6 +71,7 @@ AGENTS.md
       -> docs/instructions/implementation_overview.md
       -> docs/instructions/common/utils.typ
       -> docs/instructions/common/plotting.typ
+      -> docs/instructions/common/spin_moment_conventions.typ
       -> docs/instructions/model_parameters.typ
       -> docs/instructions/parser.typ
       -> docs/instructions/solvers/mcwf/method_parameters.typ
@@ -82,8 +83,10 @@ AGENTS.md
       -> docs/instructions/solvers/mfe/mfe-solver.typ
       -> docs/instructions/solvers/mcwf/ensemble_simulation.typ
       -> docs/instructions/solvers/mcwf/single_trajectory_simulation.typ
+      -> docs/instructions/solvers/mcwf/j_moments.typ
+      -> docs/instructions/solvers/mcwf/s_moments.typ
+      -> docs/instructions/solvers/mcwf/squeezing_moments.typ
       -> docs/instructions/observable_moment_pipeline.typ
-      -> docs/instructions/j_moments.typ
       -> docs/instructions/post_analysis/j_modes.typ
       -> docs/instructions/post_analysis/harmonic_analysis.typ
       -> docs/instructions/post_analysis/mfe_residuals.typ

@@ -38,6 +38,7 @@ def plot_spin_components(
     output_path: Optional[Union[str, Path]] = None,
     phase_protocol: PhaseProtocol | None = None,
     title: str = "Spin components",
+    spin_symbol: str = "J",
 ):
     """
     Plot supplied x/y/z/length time series on a 2x2 grid.
@@ -67,7 +68,12 @@ def plot_spin_components(
         raise ValueError("Each component input requires one curve per label.")
 
     axis_names = ("x", "y", "z", "len")
-    panel_titles = (r"$J_x$", r"$J_y$", r"$J_z$", r"$|J|$")
+    panel_titles = (
+        rf"${spin_symbol}_x$",
+        rf"${spin_symbol}_y$",
+        rf"${spin_symbol}_z$",
+        rf"$|{spin_symbol}|$",
+    )
 
     for ax, components, axis_name, panel_title in zip(
         axes,
@@ -75,7 +81,11 @@ def plot_spin_components(
         axis_names,
         panel_titles,
     ):
-        component_label = r"$|J|$" if axis_name == "len" else rf"$J_{{{axis_name}}}$"
+        component_label = (
+            rf"$|{spin_symbol}|$"
+            if axis_name == "len"
+            else rf"${spin_symbol}_{{{axis_name}}}$"
+        )
         for curve_index, (values, label) in enumerate(zip(components, labels)):
             ax.plot(
                 t,
@@ -116,6 +126,7 @@ def plot_bloch_angles(
     axes=None,
     output_path: Optional[Union[str, Path]] = None,
     phase_protocol: PhaseProtocol | None = None,
+    title: str = "Bloch angles",
 ):
     """
     Plot supplied polar and azimuthal angle time series on a 2x1 grid.
@@ -169,9 +180,9 @@ def plot_bloch_angles(
         (axes[0], r"$\theta$", r"Polar angle $\theta(t)$"),
         (axes[1], r"$\phi$", r"Azimuthal angle $\phi(t)$"),
     )
-    for ax, ylabel, title in angle_specs:
+    for ax, ylabel, panel_title in angle_specs:
         ax.set_ylabel(ylabel)
-        ax.set_title(title, fontsize=11)
+        ax.set_title(panel_title, fontsize=11)
         style_axis(ax)
         format_time_axis(ax)
 
@@ -180,7 +191,7 @@ def plot_bloch_angles(
         fig,
         axes,
         phase_protocol=phase_protocol,
-        title="Bloch angles",
+        title=title,
         output_path=output_path,
     )
 

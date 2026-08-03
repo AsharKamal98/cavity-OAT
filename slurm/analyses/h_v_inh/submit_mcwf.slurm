@@ -17,7 +17,7 @@ set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
-OUTPUT_DIR="slurm/h_v_inh/outputs"
+OUTPUT_DIR="slurm/analyses/h_v_inh/outputs"
 
 NTRAJ="250"
 GAMMA="1.0"

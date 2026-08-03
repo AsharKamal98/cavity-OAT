@@ -17,7 +17,7 @@ set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
-OUTPUT_DIR="slurm/finite_size_effects/outputs"
+OUTPUT_DIR="slurm/analyses/finite_size_effects/outputs"
 
 NTRAJ="250"
 GAMMA="1.0"

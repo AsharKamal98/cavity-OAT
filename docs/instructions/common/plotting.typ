@@ -32,7 +32,11 @@ This function lives in `common/plotting/j_spin.py`.
   should not inspect a moment class or transform the supplied data.
 - The output should be a `2x2` panel showing x, y, z, and length.
 - The function should support `axes`, `output_path`, `phase_protocol`, `title`,
-  `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
+  `spin_symbol`, `colour_family_index`, `shade_index`, `linestyle`, and
+  `marker`.
+- `spin_symbol="J"` should preserve the standard J-component labels.
+  Callers plotting another spin sphere should supply its symbol, for example
+  `spin_symbol="S"`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
 == `fig, axes = plot_bloch_angles(...)`
@@ -47,7 +51,7 @@ This function lives in `common/plotting/j_spin.py`.
 - The caller chooses whether the supplied curves are full-system,
   group-resolved, or derived combinations. The plotting function should not
   inspect a moment class or recompute angles.
-- The function should support `axes`, `output_path`, `phase_protocol`,
+- The function should support `axes`, `output_path`, `phase_protocol`, `title`,
   `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
@@ -121,6 +125,27 @@ This function lives in `common/plotting/harmonic_analysis.py`.
   `marker`.
   It should not accept a phase protocol because the horizontal axis is a model
   parameter, not time.
+- For shared overlay and palette behavior, use the plotting-workflows skill.
+
+== `fig, axes = plot_squeezing(...)`
+
+This function lives in `common/plotting/squeezing.py`.
+
+- The function should take `t` and matching `xi2`, `lambda_min`, `N_c`, and
+  `excited_fraction_active` inputs. Each metric may be one array or a sequence
+  of arrays.
+- Each position across the four metric inputs describes one squeezing result,
+  and the matching `labels` entry identifies that result in every panel.
+- The output should be a `2x2` panel showing generalized squeezing in dB, the
+  smallest covariance eigenvalue, the mean $N_c$ population, and the active
+  excited fraction.
+- Convert positive $xi^2$ values using $10 log_10(xi^2)$ and represent
+  non-positive or invalid values as `NaN`. Mask non-positive covariance
+  eigenvalues before plotting the logarithmic eigenvalue panel.
+- The function should support `axes`, `output_path`, `phase_protocol`, `title`,
+  `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
+- The function should plot already-computed squeezing data and must not inspect
+  solver outputs or recompute covariance matrices.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
 
 = Shared Plotting Rules

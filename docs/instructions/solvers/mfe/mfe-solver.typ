@@ -71,7 +71,8 @@ After taking this phase difference, wrap it back to the principal interval
 $[-pi, pi]$ before storing or plotting it.
 
 The angle convention matches the J-vector convention used by
-`docs/instructions/j_moments.typ`: all atoms in $|d chevron.r$ correspond to
+`docs/instructions/common/spin_moment_conventions.typ`: all atoms in
+$|d chevron.r$ correspond to
 $theta_(J,a)=0$.
 
 The corresponding group-resolved spin components should be
@@ -281,5 +282,6 @@ objects.
   weights are fixed simulation inputs.
 - The per-group norm $abs(D_(a))^2 + abs(E_(a))^2$ should remain constant up to
   solver tolerance. Large drift should be treated as a numerical warning.
-- Phase and angle conventions should match `docs/instructions/j_moments.typ`
-  and `docs/instructions/post_analysis/mfe_residuals.typ`.
+- Phase and angle conventions should match
+  `docs/instructions/common/spin_moment_conventions.typ` and
+  `docs/instructions/post_analysis/mfe_residuals.typ`.

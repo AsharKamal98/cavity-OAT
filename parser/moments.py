@@ -9,6 +9,8 @@ from parser.common import Array, PhaseProtocol
 from parser.j_modes import JModeSeries
 from parser.j_moments import JMomentSeries
 from parser.mfe_residuals import MFEResidualSeries
+from parser.s_moments import SMomentSeries
+from parser.squeezing import SqueezingMomentSeries, SqueezingSeries
 from common.utils.parameters import omega_G_from_weighted_average
 
 
@@ -49,7 +51,9 @@ class MomentSeries(BaseModel):
     J: JMomentSeries | None = None
     J_modes: JModeSeries | None = None
     mfe_residuals: MFEResidualSeries | None = None
-    S: Any | None = None
+    squeezing_moments: tuple[SqueezingMomentSeries, ...] | None = None
+    squeezing: tuple[SqueezingSeries, ...] | None = None
+    S: SMomentSeries | None = None
 
     @root_validator(pre=True)
     def build_t_eval_from_num_snapshots(cls, values: dict[str, Any]) -> dict[str, Any]:

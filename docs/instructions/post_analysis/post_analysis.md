@@ -33,6 +33,14 @@ summaries attached to them.
   least one observed oscillation; otherwise the function returns `None`. The
   interval need not contain an integer number of oscillations.
 
+## `post_analysis/squeezing.py`
+
+- `compute_squeezing(squeezing_moments, *, tol=1e-12)` constructs the
+  covariance matrix, ordered covariance eigenvalues, generalized squeezing,
+  and its dB representation independently for every supplied physical group.
+  It consumes already-averaged `SqueezingMomentSeries` objects and returns a
+  tuple of `SqueezingSeries` objects in the same group order.
+
 ## `post_analysis/theory_benchmarks.py`
 
 - `phase1_ss_angles_for_nj(Nj, Omega, Gamma)` returns the phase-1

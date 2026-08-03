@@ -7,6 +7,7 @@ from post_analysis.harmonic_analysis import (
 from post_analysis.j_modes import compute_j_modes
 from post_analysis.theory_benchmarks import phase1_ss_angles_for_nj
 from post_analysis.mfe_residuals import compute_mfe_residuals
+from post_analysis.squeezing import compute_squeezing
 
 __all__ = [
     "compute_harmonic_analysis",
@@ -14,4 +15,5 @@ __all__ = [
     "compute_j_modes",
     "phase1_ss_angles_for_nj",
     "compute_mfe_residuals",
+    "compute_squeezing",
 ]
