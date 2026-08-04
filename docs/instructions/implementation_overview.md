@@ -120,7 +120,8 @@ Slurm jobs should use the unified command-line entry point
 `slurm/run_solvers/run_mcwf.py`. Pass the physical groups directly through
 `--Ni`: a one-group run omits `--omega-i`, while a two-group run supplies one
 independent coupling through `--omega-i`. The runner must not silently collapse
-multiple supplied groups into one.
+multiple supplied groups into one. An explicit `--dt` is optional; when omitted,
+the runner should use the standard `mcwf_dt_from_scales(...)` result.
 
 When an analysis needs ensemble-wide reference directions, array jobs should
 use `--save-ensemble` and write their complete `TrajectoryEnsemble` chunks to

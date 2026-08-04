@@ -26,7 +26,6 @@ IFS=',' read -r N1 N2 <<< "${NI}"
 SINGLE_NI="$((N1 + N2))"
 dN="0"
 DT="0.01"
-DT_FACTOR="0.01"
 NUM_SNAPSHOTS="500"
 OMEGA_1_LIST=("0.8")
 OMEGA_FACTOR_LIST=("0.1")
@@ -50,7 +49,6 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
       --Ni "${NI}" \
       --dN "${dN}" \
       --dt "${DT}" \
-      --dt-factor "${DT_FACTOR}" \
       --num-snapshots "${NUM_SNAPSHOTS}" \
       --omega-i "${OMEGA_1}" \
       --Omega-factor "${OMEGA_FACTOR}" \
@@ -71,7 +69,6 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
     --Ni "${SINGLE_NI}" \
     --dN "${dN}" \
     --dt "${DT}" \
-    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --Omega-factor "${OMEGA_FACTOR}" \
     --delta-factor "${DELTA_FACTOR}" \

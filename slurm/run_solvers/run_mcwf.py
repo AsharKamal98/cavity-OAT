@@ -44,7 +44,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--Ni", type=_parse_int_list, required=True)
     parser.add_argument("--dN", type=int, required=True)
     parser.add_argument("--dt", type=float, default=None)
-    parser.add_argument("--dt-factor", type=float, required=True)
     parser.add_argument("--num-snapshots", type=int, required=True)
     parser.add_argument(
         "--omega-i",
@@ -95,13 +94,10 @@ def _build_metadata(args: argparse.Namespace) -> SimulationMetadata:
 
 def _resolve_dt(
     requested_dt: float | None,
-    dt_factor: float,
     metadata: SimulationMetadata,
 ) -> float:
     if requested_dt is not None:
         return requested_dt
-    if dt_factor <= 0.0:
-        raise ValueError("dt_factor must be positive.")
 
     integration_phases = metadata.phase_protocol.integration_phases
     max_omega = max(abs(phase.omega) for phase in integration_phases)
@@ -111,7 +107,6 @@ def _resolve_dt(
         max_delta,
         sum(metadata.Ni),
         metadata.Gamma,
-        drive_factor=dt_factor,
     )
 
 
@@ -121,7 +116,7 @@ def _run_mcwf(
 ) -> None:
     label = "single_group" if len(metadata.Ni) == 1 else "two_group"
     output_path = args.output_dir / f"{args.filename}_{args.array_index}.pkl"
-    dt = _resolve_dt(args.dt, args.dt_factor, metadata)
+    dt = _resolve_dt(args.dt, metadata)
 
     print(
         f"Starting {label} MCWF run with "

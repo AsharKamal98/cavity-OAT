@@ -24,7 +24,6 @@ GAMMA="1.0"
 NI_LIST=("10,10" "15,15" "20,20")
 dN="0"
 DT="0.01"
-DT_FACTOR="0.01"
 NUM_SNAPSHOTS="500"
 OMEGA_1="0.8"
 OMEGA_FACTOR="0.1"
@@ -49,7 +48,6 @@ for NI in "${NI_LIST[@]}"; do
     --Ni "${NI}" \
     --dN "${dN}" \
     --dt "${DT}" \
-    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --omega-i "${OMEGA_1}" \
     --Omega-factor "${OMEGA_FACTOR}" \
@@ -69,7 +67,6 @@ for NI in "${NI_LIST[@]}"; do
     --Ni "${SINGLE_NI}" \
     --dN "${dN}" \
     --dt "${DT}" \
-    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --Omega-factor "${OMEGA_FACTOR}" \
     --delta-factor "${DELTA_FACTOR}" \

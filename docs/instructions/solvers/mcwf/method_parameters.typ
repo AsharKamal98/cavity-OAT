@@ -53,3 +53,7 @@ choices live in `docs/instructions/model_parameters.typ`.
   This timestep rule should not be duplicated manually in notebook cells. If a
   debugging workflow deliberately bypasses or changes the rule, that choice
   should be local and explicit.
+
+  The unified Slurm runner accepts an optional explicit `--dt`. When `--dt` is
+  omitted, it must call `mcwf_dt_from_scales(...)` with the standard defaults,
+  matching the notebook workflow.

@@ -17,7 +17,6 @@ NTRAJ="50"
 GAMMA="1.0"
 NI="10,10"
 DN="0"
-DT_FACTOR="0.01"
 NUM_SNAPSHOTS="500"
 OMEGA_1_LIST=("1.0" "0.9" "0.8" "0.7")
 OMEGA_FACTOR="0.1"
@@ -38,7 +37,6 @@ for OMEGA_1 in "${OMEGA_1_LIST[@]}"; do
     --Gamma "${GAMMA}" \
     --Ni "${NI}" \
     --dN "${DN}" \
-    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --omega-i "${OMEGA_1}" \
     --Omega-factor "${OMEGA_FACTOR}" \
