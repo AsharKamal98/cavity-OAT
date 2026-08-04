@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    output_dir = Path(__file__).resolve().parent / "outputs"
+    output_dir = Path(__file__).resolve().parent / "output"
     artifacts = [
         load_j_moments_artifact(output_dir / f"{args.filename}_{array_index}.pkl")
         for array_index in range(args.num_files)

@@ -1,0 +1,50 @@
+#!/bin/bash
+#SBATCH --job-name=mcwf-squeeze-sim
+#SBATCH --array=0-3
+#SBATCH --cpus-per-task=64
+#SBATCH --time=02:30:00
+#SBATCH --output=slurm/logs/%A_%a_%x.out
+#SBATCH --error=slurm/logs/%A_%a_%x.err
+
+set -euo pipefail
+
+source ~/.venvs/cavity-oat_env/bin/activate
+
+OUTPUT_DIR="/scratch-shared/${USER}/cavity-OAT/squeezing_omega1-scan/${SLURM_ARRAY_JOB_ID}"
+mkdir -p "${OUTPUT_DIR}"
+
+NTRAJ="50"
+GAMMA="1.0"
+NI="10,10"
+DN="0"
+DT_FACTOR="0.01"
+NUM_SNAPSHOTS="500"
+OMEGA_1_LIST=("1.0" "0.9" "0.8" "0.7")
+OMEGA_FACTOR="0.1"
+DELTA_FACTOR="0.02"
+T1="100.0"
+T2="100.0"
+T3="100.0"
+
+for OMEGA_1 in "${OMEGA_1_LIST[@]}"; do
+  FILENAME="v1_omega_${OMEGA_1}"
+
+  python slurm/run_solvers/run_mcwf.py \
+    --n-processes "${SLURM_CPUS_PER_TASK}" \
+    --ntraj "${NTRAJ}" \
+    --filename "${FILENAME}" \
+    --output-dir "${OUTPUT_DIR}" \
+    --array-index "${SLURM_ARRAY_TASK_ID}" \
+    --Gamma "${GAMMA}" \
+    --Ni "${NI}" \
+    --dN "${DN}" \
+    --dt-factor "${DT_FACTOR}" \
+    --num-snapshots "${NUM_SNAPSHOTS}" \
+    --omega-i "${OMEGA_1}" \
+    --Omega-factor "${OMEGA_FACTOR}" \
+    --delta-factor "${DELTA_FACTOR}" \
+    --T1 "${T1}" \
+    --T2 "${T2}" \
+    --T3 "${T3}" \
+    --save-ensemble
+done

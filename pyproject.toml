@@ -27,7 +27,7 @@ test = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["pytests"]
 addopts = ["-ra"]
 strict_markers = true
 markers = [

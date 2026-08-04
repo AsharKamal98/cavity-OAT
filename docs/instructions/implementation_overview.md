@@ -116,6 +116,19 @@ The main custom MCWF entry point is:
 run_trajectory_ensemble(...)
 ```
 
+Slurm jobs should use the unified command-line entry point
+`slurm/run_solvers/run_mcwf.py`. Pass the physical groups directly through
+`--Ni`: a one-group run omits `--omega-i`, while a two-group run supplies one
+independent coupling through `--omega-i`. The runner must not silently collapse
+multiple supplied groups into one.
+
+When an analysis needs ensemble-wide reference directions, array jobs should
+use `--save-ensemble` and write their complete `TrajectoryEnsemble` chunks to
+shared scratch storage. A dependent post-analysis job should concatenate the
+chunks, compute moments once from the full ensemble, and save the resulting
+`MomentSeries` in the analysis-local output directory. Do not average
+per-array derived moments for this workflow.
+
 The ensemble function should:
 
 - create trajectory seeds consistently;

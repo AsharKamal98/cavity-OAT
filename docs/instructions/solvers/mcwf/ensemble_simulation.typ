@@ -144,6 +144,13 @@ Each trajectory should already be a complete `TrajectoryResult`; see
 `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ` for its
 fields.
 
+For array simulations that require ensemble-wide derived bases, save each
+complete `TrajectoryEnsemble` temporarily in shared storage. After every array
+job has finished, load the chunks in array-index order, verify their shared
+metadata and saved-time grid, and concatenate their trajectories into one
+`TrajectoryEnsemble`. Compute J, S, and squeezing moments from that combined
+ensemble rather than averaging separately derived array outputs.
+
 = Invariants and Edge Cases
 
 - Build `precomputed` exactly once per `run_trajectory_ensemble(...)` call.
@@ -152,6 +159,8 @@ fields.
 - Each trajectory should receive exactly one child `SeedSequence`.
 - Worker-local precomputed state should be treated as read-only.
 - All trajectories in one ensemble should use the same explicit `t_eval` grid.
+- Concatenated array ensembles must share physical, phase, sector, and time-grid
+  metadata.
 - `n_processes=None` and `n_processes=1` should use the serial path;
   `n_processes=-1` should mean all available CPUs.
 - Runtime diagnostics such as mean total steps and mean non-precomputed steps

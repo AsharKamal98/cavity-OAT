@@ -17,13 +17,14 @@ set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
-OUTPUT_DIR="slurm/analyses/finite_size_effects/outputs"
+OUTPUT_DIR="slurm/analyses/finite_size_effects/output"
 
 NTRAJ="250"
 GAMMA="1.0"
 NI_LIST=("10,10" "15,15" "20,20")
 dN="0"
 DT="0.01"
+DT_FACTOR="0.01"
 NUM_SNAPSHOTS="500"
 OMEGA_1="0.8"
 OMEGA_FACTOR="0.1"
@@ -34,9 +35,11 @@ T3="1000.0"
 
 
 for NI in "${NI_LIST[@]}"; do
+  IFS=',' read -r N1 N2 <<< "${NI}"
+  SINGLE_NI="$((N1 + N2))"
   FILENAME=two_group_Ni_${NI//,/x}
 
-  python slurm/run_solvers/run_mcwf_two_group.py \
+  python slurm/run_solvers/run_mcwf.py \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \
@@ -46,6 +49,7 @@ for NI in "${NI_LIST[@]}"; do
     --Ni "${NI}" \
     --dN "${dN}" \
     --dt "${DT}" \
+    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --omega-i "${OMEGA_1}" \
     --Omega-factor "${OMEGA_FACTOR}" \
@@ -55,16 +59,17 @@ for NI in "${NI_LIST[@]}"; do
     --T3 "${T3}"
 
   FILENAME=single_group_Ni_${NI//,/x}
-  python slurm/run_solvers/run_mcwf_single_group.py \
+  python slurm/run_solvers/run_mcwf.py \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \
     --output-dir "${OUTPUT_DIR}" \
     --array-index "${SLURM_ARRAY_TASK_ID}" \
     --Gamma "${GAMMA}" \
-    --Ni "${NI}" \
+    --Ni "${SINGLE_NI}" \
     --dN "${dN}" \
     --dt "${DT}" \
+    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --Omega-factor "${OMEGA_FACTOR}" \
     --delta-factor "${DELTA_FACTOR}" \

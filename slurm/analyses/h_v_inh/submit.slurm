@@ -17,13 +17,16 @@ set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
-OUTPUT_DIR="slurm/analyses/h_v_inh/outputs"
+OUTPUT_DIR="slurm/analyses/h_v_inh/output"
 
 NTRAJ="250"
 GAMMA="1.0"
 NI="10,10"
+IFS=',' read -r N1 N2 <<< "${NI}"
+SINGLE_NI="$((N1 + N2))"
 dN="0"
 DT="0.01"
+DT_FACTOR="0.01"
 NUM_SNAPSHOTS="500"
 OMEGA_1_LIST=("0.8")
 OMEGA_FACTOR_LIST=("0.1")
@@ -37,7 +40,7 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
   for OMEGA_1 in "${OMEGA_1_LIST[@]}"; do
     FILENAME=two_group_factor_${OMEGA_FACTOR}_omega_${OMEGA_1}
 
-    python slurm/run_solvers/run_mcwf_two_group.py \
+    python slurm/run_solvers/run_mcwf.py \
       --n-processes "${SLURM_CPUS_PER_TASK}" \
       --ntraj "${NTRAJ}" \
       --filename "${FILENAME}" \
@@ -47,6 +50,7 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
       --Ni "${NI}" \
       --dN "${dN}" \
       --dt "${DT}" \
+      --dt-factor "${DT_FACTOR}" \
       --num-snapshots "${NUM_SNAPSHOTS}" \
       --omega-i "${OMEGA_1}" \
       --Omega-factor "${OMEGA_FACTOR}" \
@@ -57,16 +61,17 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
   done
 
   FILENAME=single_group_factor_${OMEGA_FACTOR}
-  python slurm/run_solvers/run_mcwf_single_group.py \
+  python slurm/run_solvers/run_mcwf.py \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \
     --output-dir "${OUTPUT_DIR}" \
     --array-index "${SLURM_ARRAY_TASK_ID}" \
     --Gamma "${GAMMA}" \
-    --Ni "${NI}" \
+    --Ni "${SINGLE_NI}" \
     --dN "${dN}" \
     --dt "${DT}" \
+    --dt-factor "${DT_FACTOR}" \
     --num-snapshots "${NUM_SNAPSHOTS}" \
     --Omega-factor "${OMEGA_FACTOR}" \
     --delta-factor "${DELTA_FACTOR}" \
