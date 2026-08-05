@@ -70,7 +70,7 @@ groups; nonlinear fields are derived from the aggregated spin vector. Keep
 `t`, `integration_phase_index`, and `jump_rate` on the outer container.
 
 `SMomentSnapshot` and `SMomentSeries` use the parallel group-resolved
-S-sphere structure:
+S-sphere structure. `SBasisSeries` stores the effective zero and one states:
 
 ```python
 SMomentSnapshot(
@@ -86,8 +86,16 @@ SMomentSeries(
     length=None,
     nx=None, ny=None, nz=None,
     theta=None, phi=None,
+    basis=None or SBasisSeries(
+        zero_state, one_state,  # tuples ordered by group
+    ),
 )
 ```
+
+Each `zero_state[g]` and `one_state[g]` array has shape `(len(t), 3)` in the
+single-particle $(|u chevron.r, |d chevron.r, |e chevron.r)$ basis. The state
+series must be normalized, mutually orthogonal, and match the `SMomentSeries`
+time grid and group count.
 
 Store the ensemble-averaged series as
 `moments.S: SMomentSeries | None`. Do not add J-specific atom-number,
@@ -302,6 +310,8 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
   S moments have been averaged.
 - `SMomentSeries` should use the S-sphere $p=+1$ pole convention and should not
   construct aggregated fields.
+- `SMomentSeries.basis` should hold the shared effective S-qubit zero and one
+  states used to compute its S moments.
 - Aggregated and group conversions should call the same pure conversion
   helpers.
 - Only additive fields `x`, `y`, `z`, `N_e`, and `N_j` should be summed across

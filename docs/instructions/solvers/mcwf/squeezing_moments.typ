@@ -26,16 +26,12 @@ MCWF sector-block wavefunctions with precomputed `JMomentSeries` and
 
 == Group-Local Dressed Basis
 
-At each saved time, group $g$ uses its group-resolved ensemble-averaged
-$J$ angles $theta_(J,g), phi_(J,g)$ from `JMomentSeries`. Define
-
-$
-|1_g chevron.r
-=
-cos(theta_(J,g)/2)|d chevron.r
-+
-e^(-i phi_(J,g)) sin(theta_(J,g)/2)|e chevron.r.
-$
+At each saved time, group $g$ reuses the effective states
+$|0_g chevron.r$ and $|1_g chevron.r$ stored in
+`SMomentSeries.basis.zero_state` and `SMomentSeries.basis.one_state`. Their
+construction from the ensemble-averaged J angles is defined in
+`docs/instructions/solvers/mcwf/s_moments.typ`; do not reconstruct
+$|1_g chevron.r$ here.
 
 Reuse the group-resolved ensemble-averaged $S$ angles
 $theta_(S,g), phi_(S,g)$ from `SMomentSeries`, as computed according to
@@ -44,7 +40,7 @@ $theta_(S,g), phi_(S,g)$ from `SMomentSeries`, as computed according to
 $
 |c_g chevron.r
 =
-cos(theta_(S,g)/2)|u chevron.r
+cos(theta_(S,g)/2)|0_g chevron.r
 +
 e^(-i phi_(S,g)) sin(theta_(S,g)/2)|1_g chevron.r,
 $
@@ -60,10 +56,12 @@ $
 $
 |s_g chevron.r
 =
--sin(theta_(S,g)/2)|u chevron.r
+-sin(theta_(S,g)/2)|0_g chevron.r
 +
 e^(-i phi_(S,g)) cos(theta_(S,g)/2)|1_g chevron.r.
 $
+
+Construct these once per group and saved time.
 
 == Fluctuation Moments
 
@@ -85,39 +83,101 @@ o_(4,g)^((i)) =
 frac(ket(c_g) bra(s_g) - ket(s_g) bra(c_g), 2i),
 $
 
-and lift them to collective group operators
+Construct the fluctuation operators once per group and saved time. Lift them to collective group operators
 
 $
 O_(a,g) = sum_(i in g) o_(a,g)^((i)).
 $
 
-For every trajectory and saved time, extract
+Then, for every trajectory $r$ and saved time $t_k$, extract normalized moments
 
 $
-mu_(a,g) = chevron.l O_(a,g) chevron.r,
-quad
-M_(a b,g)
+mu_(a,g)^((r))(t_k)
 =
-"Re" chevron.l O_(a,g) psi | O_(b,g) psi chevron.r,
+frac(
+  chevron.l psi_r(t_k)|O_(a,g)|psi_r(t_k) chevron.r,
+  Z_r(t_k)
+),
+quad
+M_(a b,g)^((r))(t_k)
+=
+frac(
+  "Re" chevron.l O_(a,g) psi_r(t_k)
+  | O_(b,g) psi_r(t_k) chevron.r,
+  Z_r(t_k)
+),
 $
 
 and
 
 $
-N_(c,g)
+N_(c,g)^((r))(t_k)
 =
-chevron.l sum_(i in g) |c_g chevron.r_i
-chevron.l c_g|_i chevron.r.
+frac(
+  chevron.l psi_r(t_k) |
+  sum_(i in g) |c_g chevron.r_i chevron.l c_g|_i
+  | psi_r(t_k) chevron.r,
+  Z_r(t_k)
+).
 $
+
+These are raw per-trajectory moments. After normalizing each trajectory by its
+own $Z_r(t_k)$, average equally over the $R$ trajectories:
+
+$
+mu_(a,g)(t_k)
+=
+frac(1, R) sum_(r=1)^R mu_(a,g)^((r))(t_k),
+quad
+M_(a b,g)(t_k)
+=
+frac(1, R) sum_(r=1)^R M_(a b,g)^((r))(t_k),
+$
+
+$
+N_(c,g)(t_k)
+=
+frac(1, R) sum_(r=1)^R N_(c,g)^((r))(t_k).
+$
+
+Store these ensemble averages as `mean_operators`, `second_moments`, and
+`N_c`, respectively, in the group `SqueezingMomentSeries`.
 
 Use the four vectors $O_(a,g)|psi chevron.r$ to obtain $M_(a b,g)$; do not
 construct products $O_(a,g)O_(b,g)$ explicitly.
 
-= Function Flow
+The effective basis and all J/S angles are ensemble-averaged inputs. Therefore
+$|c_g chevron.r$, $|j_g chevron.r$, $|s_g chevron.r$, the four fluctuation
+operators, and the $|c_g chevron.r chevron.l c_g|$ projector are identical for
+all trajectories at a given group and saved time. Construct these shared
+series before starting trajectory workers.
 
-The public entry point is
+= Pseudo-code
+
+Keep the extraction compact and separate shared construction from
+trajectory-dependent expectation values:
 
 ```python
+_build_dressed_state_series(
+    zero_state_groups,
+    one_state_groups,
+    theta_J_groups,
+    phi_J_groups,
+    theta_S_groups,
+    phi_S_groups,
+) -> tuple[Array, Array, Array]
+    # Return shared c, j, and s arrays, each shaped (G, n_t, 3).
+
+_build_fluctuation_operator_series(
+    dressed_state_groups: tuple[Array, Array, Array],
+) -> tuple[Array, Array]
+    # Return shared fluctuation operators shaped (G, n_t, 4, 3, 3)
+    # and N_c projectors shaped (G, n_t, 3, 3).
+
+_trajectory_fluctuation_moments_worker(args) -> tuple[Array, Array, Array]
+    # Apply the shared operators to one trajectory and return raw
+    # mu, M, and N_c arrays.
+
 compute_mcwf_squeezing_moments(
     ensemble: TrajectoryEnsemble,
     j_moments: JMomentSeries,
@@ -126,18 +186,39 @@ compute_mcwf_squeezing_moments(
     tol=1e-12,
     n_processes=None,
 ) -> tuple[SqueezingMomentSeries, ...]
+    _validate_inputs(ensemble, j_moments, s_moments, tol=tol)
+
+    dressed_state_groups = _build_dressed_state_series(
+        s_moments.basis.zero_state,
+        s_moments.basis.one_state,
+        j_moments.theta,
+        j_moments.phi,
+        s_moments.theta,
+        s_moments.phi,
+    )
+    fluctuation_operators, N_c_operators = (
+        _build_fluctuation_operator_series(dressed_state_groups)
+    )
+
+    trajectory_moments = map_with_optional_pool(
+        _trajectory_fluctuation_moments_worker(
+            trajectory,
+            ensemble.metadata.t_eval,
+            fluctuation_operators,
+            N_c_operators,
+            ensemble.metadata.Ni,
+            tol,
+        )
+        for trajectory in ensemble.trajectories
+    )
+    averaged = average raw mu, M, and N_c over trajectory_moments
+    return one SqueezingMomentSeries per group from averaged and input moments
 ```
 
-Its workflow is:
-
-```python
-# 1. Validate the shared t_eval grid and one- or two-group sector structure.
-# 2. Reuse theta_J[g], phi_J[g], N_e[g], and N_j[g] from j_moments.
-# 3. Reuse theta_S[g] and phi_S[g] from s_moments.
-# 4. Extract mu_a,g, M_ab,g, and N_c,g for every trajectory.
-# 5. Average these raw moments over trajectories.
-# 6. Return one SqueezingMomentSeries per group.
-```
+`compute_mcwf_squeezing_moments(...)` builds the shared dressed states and
+single-particle operators before optional multiprocessing. Each worker applies
+those operators to one trajectory. The raw trajectory moments are then
+averaged before constructing one `SqueezingMomentSeries` per group.
 
 The reduced-basis transition rules remain in
 `solvers/mcwf/squeezing_moments.py`. They support scalar single-group sectors
@@ -171,7 +252,8 @@ Store the tuple as `moments.squeezing_moments`.
 - An ensemble-averaged `JMomentSeries` with group-local `theta`, `phi`, `N_e`,
   and `N_j`.
 - An ensemble-averaged `SMomentSeries` on the same time grid with group-local
-  `theta` and `phi`.
+  `theta`, `phi`, and the stored effective `basis.zero_state` and
+  `basis.one_state`.
 - Scalar one-group sectors or two-group tuple sectors.
 
 = Invariants
@@ -181,6 +263,12 @@ Store the tuple as `moments.squeezing_moments`.
 - Average raw moments over trajectories before returning them.
 - Reuse `SMomentSeries.theta` and `SMomentSeries.phi`; do not recompute S
   components or S angles inside squeezing-moment extraction.
+- Reuse `SMomentSeries.basis`; do not reconstruct the effective S basis inside
+  squeezing-moment extraction.
+- Construct dressed states and their single-particle operators once from
+  ensemble-level moment data, before mapping over trajectories.
+- Trajectory workers must apply the shared precomputed operators; they must not
+  reconstruct dressed states or fluctuation operators.
 - Do not construct covariance eigenvalues or squeezing parameters here.
 - Do not compute full-system or cross-group squeezing.
 - Do not add these moments to `JMomentSeries`.
