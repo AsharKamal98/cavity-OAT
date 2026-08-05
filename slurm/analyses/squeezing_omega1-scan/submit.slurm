@@ -1,15 +1,20 @@
 #!/bin/bash
 #SBATCH --job-name=mcwf-squeeze-sim
 #SBATCH --array=0-3
+
 #SBATCH --cpus-per-task=16
 #SBATCH --time=00:05:00
-#SBATCH --output=slurm/logs/%A_%a_%x.out
-#SBATCH --error=slurm/logs/%A_%a_%x.err
+#SBATCH --output=../../logs/%A_%a_%x.out
+#SBATCH --error=../../logs/%A_%a_%x.err
+
+# Submit from this analysis directory with: sbatch submit.slurm
 
 set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
+ANALYSIS_DIR="${SLURM_SUBMIT_DIR}"
+REPO_ROOT="$(cd "${ANALYSIS_DIR}/../../.." && pwd)"
 OUTPUT_DIR="/scratch-shared/${USER}/cavity-OAT/squeezing_omega1-scan/${SLURM_ARRAY_JOB_ID}"
 mkdir -p "${OUTPUT_DIR}"
 
@@ -28,7 +33,7 @@ T3="100.0"
 for OMEGA_1 in "${OMEGA_1_LIST[@]}"; do
   FILENAME="v1_omega_${OMEGA_1}"
 
-  python slurm/run_solvers/run_mcwf.py \
+  python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \

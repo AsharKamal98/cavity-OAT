@@ -12,11 +12,10 @@ from parser.mcwf import (
     TrajectoryResult,
     TrajectorySnapshot,
 )
-from parser.s_moments import SMomentSeries, SMomentSnapshot
+from parser.s_moments import SBasisSeries, SMomentSeries, SMomentSnapshot
 from solvers.mcwf.squeezing_moments import (
     _apply_group_one_body_operator,
     _block_inner_product,
-    _s_bloch_operators,
 )
 from solvers.mcwf.state_helpers import total_norm2
 from solvers.mcwf.utils import map_with_optional_pool
@@ -58,18 +57,87 @@ def _validated_reference_data(
     return t_ref, N_groups, theta_J_groups, phi_J_groups
 
 
+def _build_s_basis(
+    theta_J_groups: Array,
+    phi_J_groups: Array,
+) -> SBasisSeries:
+    """Construct the shared effective S-qubit basis for all groups and times."""
+    if theta_J_groups.shape != phi_J_groups.shape:
+        raise ValueError("J theta and phi arrays must have matching shapes.")
+    if theta_J_groups.ndim != 2:
+        raise ValueError("J-angle arrays must have shape (num_groups, num_times).")
+
+    num_times = theta_J_groups.shape[1]
+    ket_u = np.array([1.0, 0.0, 0.0], dtype=np.complex128)
+    zero_states = tuple(
+        np.broadcast_to(ket_u, (num_times, 3)).copy()
+        for _ in range(theta_J_groups.shape[0])
+    )
+    one_states = tuple(
+        np.column_stack(
+            (
+                np.zeros(num_times, dtype=np.complex128),
+                np.cos(theta_J / 2.0),
+                np.exp(-1j * phi_J) * np.sin(theta_J / 2.0),
+            )
+        )
+        for theta_J, phi_J in zip(theta_J_groups, phi_J_groups)
+    )
+    return SBasisSeries(
+        zero_state=zero_states,
+        one_state=one_states,
+    )
+
+
+def _s_bloch_operators(
+    zero_state: Array,
+    one_state: Array,
+) -> tuple[Array, Array, Array]:
+    """Construct the three S-Bloch operators from one effective basis."""
+    projector_zero = np.outer(zero_state, zero_state.conjugate())
+    projector_one = np.outer(one_state, one_state.conjugate())
+    zero_one = np.outer(zero_state, one_state.conjugate())
+    one_zero = np.outer(one_state, zero_state.conjugate())
+
+    S_x = 0.5 * (one_zero + zero_one)
+    S_y = (one_zero - zero_one) / (2.0j)
+    S_z = 0.5 * (projector_zero - projector_one)
+    return S_x, S_y, S_z
+
+
+def _build_s_bloch_operator_series(
+    basis: SBasisSeries,
+) -> tuple[Array, ...]:
+    """Construct shared S-Bloch operators once per group and saved time."""
+    return tuple(
+        np.asarray(
+            [
+                _s_bloch_operators(zero_state, one_state)
+                for zero_state, one_state in zip(
+                    zero_state_series,
+                    one_state_series,
+                )
+            ],
+            dtype=np.complex128,
+        )
+        for zero_state_series, one_state_series in zip(
+            basis.zero_state,
+            basis.one_state,
+        )
+    )
+
+
 def _compute_snapshot_s_moments(
     snapshot: TrajectorySnapshot,
     *,
-    theta_J: tuple[float, ...],
-    phi_J: tuple[float, ...],
+    s_bloch_operators: tuple[Array, ...],
     N_groups: tuple[int, ...],
     tol: float,
 ) -> SMomentSnapshot:
     """Compute group-local S moments for one saved trajectory snapshot."""
     group_count = len(N_groups)
-    if len(theta_J) != group_count or len(phi_J) != group_count:
-        raise ValueError("Snapshot J angles must match the physical groups.")
+    if len(s_bloch_operators) != group_count:
+        raise ValueError("S-Bloch operators must match the physical groups.")
 
     norm2 = total_norm2(snapshot.sector_blocks)
     if norm2 <= tol:
@@ -84,10 +152,7 @@ def _compute_snapshot_s_moments(
 
     components = np.zeros((3, group_count), dtype=float)
     for group_index in range(group_count):
-        S_x, S_y, S_z = _s_bloch_operators(
-            theta_J[group_index],
-            phi_J[group_index],
-        )
+        S_x, S_y, S_z = s_bloch_operators[group_index]
         for component_index, operator in enumerate((S_x, S_y, S_z)):
             applied = _apply_group_one_body_operator(
                 snapshot.sector_blocks,
@@ -117,7 +182,7 @@ def _compute_snapshot_s_moments(
 def compute_trajectory_s_moments(
     trajectory: TrajectoryResult,
     metadata: TrajectoryEnsembleMetadata,
-    j_moments: JMomentSeries,
+    s_bloch_operators: tuple[Array, ...],
     *,
     tol: float = 1e-12,
 ) -> SMomentSeries:
@@ -125,12 +190,17 @@ def compute_trajectory_s_moments(
     if tol <= 0.0:
         raise ValueError("tol must be positive.")
 
-    (
-        t_ref,
-        N_groups,
-        theta_J_groups,
-        phi_J_groups,
-    ) = _validated_reference_data(metadata, j_moments)
+    t_ref = np.asarray(metadata.t_eval, dtype=float)
+    N_groups = tuple(int(value) for value in metadata.Ni)
+    expected_operator_shape = (t_ref.size, 3, 3, 3)
+    if len(s_bloch_operators) != len(N_groups) or any(
+        np.asarray(operators).shape != expected_operator_shape
+        for operators in s_bloch_operators
+    ):
+        raise ValueError(
+            "Each group S-Bloch operator series must have shape "
+            "(len(t_eval), 3, 3, 3)."
+        )
 
     snapshot_times = np.asarray(
         [snapshot.time for snapshot in trajectory.snapshots],
@@ -149,8 +219,10 @@ def compute_trajectory_s_moments(
     s_moment_snapshots = [
         _compute_snapshot_s_moments(
             snapshot,
-            theta_J=tuple(theta_J_groups[:, time_index]),
-            phi_J=tuple(phi_J_groups[:, time_index]),
+            s_bloch_operators=tuple(
+                operators[time_index]
+                for operators in s_bloch_operators
+            ),
             N_groups=N_groups,
             tol=tol,
         )
@@ -188,22 +260,24 @@ def _compute_trajectory_s_moments_worker(
     args: tuple[
         TrajectoryResult,
         TrajectoryEnsembleMetadata,
-        JMomentSeries,
+        tuple[Array, ...],
         float,
     ],
 ) -> SMomentSeries:
     """Top-level worker for per-trajectory S-moment extraction."""
-    trajectory, metadata, j_moments, tol = args
+    trajectory, metadata, s_bloch_operators, tol = args
     return compute_trajectory_s_moments(
         trajectory,
         metadata,
-        j_moments,
+        s_bloch_operators,
         tol=tol,
     )
 
 
 def compute_average_s_moments(
     samples: list[SMomentSeries],
+    *,
+    basis: SBasisSeries | None = None,
 ) -> SMomentSeries:
     """Average raw per-trajectory S moments on a shared saved-time grid."""
     if not samples:
@@ -264,6 +338,7 @@ def compute_average_s_moments(
         x=mean_group_series("x"),
         y=mean_group_series("y"),
         z=mean_group_series("z"),
+        basis=basis,
     )
 
 
@@ -284,14 +359,21 @@ def compute_mcwf_s_moments(
             "TrajectoryEnsemble.metadata is required to compute S moments."
         )
 
-    _validated_reference_data(ensemble.metadata, j_moments)
+    (
+        _,
+        _,
+        theta_J_groups,
+        phi_J_groups,
+    ) = _validated_reference_data(ensemble.metadata, j_moments)
+    basis = _build_s_basis(theta_J_groups, phi_J_groups)
+    s_bloch_operators = _build_s_bloch_operator_series(basis)
     samples = map_with_optional_pool(
         _compute_trajectory_s_moments_worker,
         [
             (
                 trajectory,
                 ensemble.metadata,
-                j_moments,
+                s_bloch_operators,
                 tol,
             )
             for trajectory in ensemble.trajectories
@@ -300,7 +382,7 @@ def compute_mcwf_s_moments(
         progress_desc="compute_mcwf_s_moments",
     )
 
-    averaged = compute_average_s_moments(samples)
+    averaged = compute_average_s_moments(samples, basis=basis)
     SMomentSeries.attach_norm_spin_components_from_spin_components(
         averaged,
         tol=tol,

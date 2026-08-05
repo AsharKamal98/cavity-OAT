@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from parser.common import Array
 
@@ -14,6 +14,64 @@ class SMomentSnapshot(BaseModel):
     x: tuple[float, ...]
     y: tuple[float, ...]
     z: tuple[float, ...]
+
+
+class SBasisSeries(BaseModel):
+    """Group-resolved effective S-qubit basis on a shared time grid."""
+
+    zero_state: tuple[Array, ...]
+    one_state: tuple[Array, ...]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def validate_states(self) -> "SBasisSeries":
+        """Validate matching normalized three-level basis-state series."""
+        if not self.zero_state or len(self.zero_state) != len(self.one_state):
+            raise ValueError(
+                "S-basis zero_state and one_state must contain the same "
+                "nonzero number of groups."
+            )
+
+        zero_states = tuple(
+            np.asarray(states, dtype=np.complex128)
+            for states in self.zero_state
+        )
+        one_states = tuple(
+            np.asarray(states, dtype=np.complex128)
+            for states in self.one_state
+        )
+        reference_shape = zero_states[0].shape
+        if len(reference_shape) != 2 or reference_shape[1] != 3:
+            raise ValueError(
+                "Each S-basis state series must have shape (num_times, 3)."
+            )
+        if any(
+            zero.shape != reference_shape or one.shape != reference_shape
+            for zero, one in zip(zero_states, one_states)
+        ):
+            raise ValueError(
+                "All S-basis state series must share shape (num_times, 3)."
+            )
+
+        zero_norms = np.linalg.norm(np.asarray(zero_states), axis=-1)
+        one_norms = np.linalg.norm(np.asarray(one_states), axis=-1)
+        overlaps = np.sum(
+            np.asarray(zero_states).conjugate() * np.asarray(one_states),
+            axis=-1,
+        )
+        if not np.allclose(zero_norms, 1.0, atol=1e-12, rtol=0.0):
+            raise ValueError("Every S-basis zero_state must be normalized.")
+        if not np.allclose(one_norms, 1.0, atol=1e-12, rtol=0.0):
+            raise ValueError("Every S-basis one_state must be normalized.")
+        if not np.allclose(overlaps, 0.0, atol=1e-12, rtol=0.0):
+            raise ValueError(
+                "S-basis zero_state and one_state must be orthogonal."
+            )
+
+        self.zero_state = zero_states
+        self.one_state = one_states
+        return self
 
 
 class SMomentSeries(BaseModel):
@@ -30,8 +88,43 @@ class SMomentSeries(BaseModel):
     nz: tuple[Array, ...] | None = None
     theta: tuple[Array, ...] | None = None
     phi: tuple[Array, ...] | None = None
+    basis: SBasisSeries | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def validate_basis(self) -> "SMomentSeries":
+        """Require an attached S basis to match the series time and groups."""
+        if self.basis is None:
+            return self
+
+        num_times = np.asarray(self.t).size
+        if self.basis.zero_state[0].shape[0] != num_times:
+            raise ValueError("S-moment basis state series must match t.")
+
+        group_fields = (
+            self.x,
+            self.y,
+            self.z,
+            self.length,
+            self.nx,
+            self.ny,
+            self.nz,
+            self.theta,
+            self.phi,
+        )
+        populated_group_fields = [
+            field for field in group_fields if field is not None
+        ]
+        if populated_group_fields and any(
+            len(field) != len(self.basis.one_state)
+            for field in populated_group_fields
+        ):
+            raise ValueError(
+                "S-moment basis and group-resolved fields must have matching "
+                "groups."
+            )
+        return self
 
     @classmethod
     def attach_norm_spin_components_from_spin_components(
@@ -105,4 +198,4 @@ class SMomentSeries(BaseModel):
         s_moments.phi = tuple(result[1] for result in group_results)
 
 
-__all__ = ["SMomentSeries", "SMomentSnapshot"]
+__all__ = ["SBasisSeries", "SMomentSeries", "SMomentSnapshot"]

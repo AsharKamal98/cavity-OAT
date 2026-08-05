@@ -16,7 +16,8 @@
 This file specifies how `solvers/mcwf/s_moments.py` should convert saved MCWF
 sector-block wavefunctions and an ensemble-averaged `JMomentSeries` into a
 group-resolved `SMomentSeries`. Store the result as `moments.S`; it supplies
-the S-sphere directions required by later squeezing-moment extraction.
+the effective S basis and S-sphere directions required by later
+squeezing-moment extraction.
 
 Define `SMomentSeries` in `parser/s_moments.py` with spin-vector fields parallel
 to `JMomentSeries`. Shared spin-vector direction and angle conventions are
@@ -31,6 +32,9 @@ At each saved time, group $g$ uses its ensemble-averaged J-sphere angles
 $theta_(J,g), phi_(J,g)$ to define
 
 $
+|0_g chevron.r = |u chevron.r,
+quad
+
 |1_g chevron.r
 =
 cos(theta_(J,g)/2)|d chevron.r
@@ -38,9 +42,14 @@ cos(theta_(J,g)/2)|d chevron.r
 e^(-i phi_(J,g)) sin(theta_(J,g)/2)|e chevron.r.
 $
 
+Construct this shared basis once per group and saved time before processing
+individual trajectories. Store it as `SMomentSeries.basis.zero_state` and
+`SMomentSeries.basis.one_state`; each group entry has shape `(len(t), 3)` in
+the $(|u chevron.r, |d chevron.r, |e chevron.r)$ basis.
+
 The effective S qubit is the group-local subspace spanned by
-$|u chevron.r$ and $|1_g chevron.r$. Population in the orthogonal J-fluctuation
-state lies outside this S sphere.
+$|0_g chevron.r$ and $|1_g chevron.r$. Population in the orthogonal
+J-fluctuation state lies outside this S sphere.
 
 == Single-Particle and Collective Operators
 
@@ -49,17 +58,17 @@ For atom $i$ in group $g$, retain the S-sphere convention
 $
 s_(x,g)^((i))
 =
-frac(ket(1_g) bra(u) + ket(u) bra(1_g), 2),
+frac(ket(1_g) bra(0_g) + ket(0_g) bra(1_g), 2),
 quad
 s_(y,g)^((i))
 =
-frac(ket(1_g) bra(u) - ket(u) bra(1_g), 2i),
+frac(ket(1_g) bra(0_g) - ket(0_g) bra(1_g), 2i),
 $
 
 $
 s_(z,g)^((i))
 =
-frac(ket(u) bra(u) - ket(1_g) bra(1_g), 2).
+frac(ket(0_g) bra(0_g) - ket(1_g) bra(1_g), 2).
 $
 
 Lift these to collective group operators:
@@ -68,6 +77,10 @@ $
 S_(a,g) = sum_(i in g) s_(a,g)^((i)),
 quad a in {x,y,z}.
 $
+
+Construct these three single-particle matrices once per group and saved time
+from the shared basis. Pass the precomputed operator series to the trajectory
+workers; the operators are not trajectory-specific.
 
 == Trajectory and Ensemble Moments
 
@@ -123,7 +136,7 @@ angles from the averaged raw fields. These methods should reuse the helpers in
 Do not construct an aggregated S vector because different groups may use
 different local $|1_g chevron.r$ frames.
 
-= Function Flow
+= Pseudo-code
 
 Keep the extraction lean while returning an output parallel to
 `JMomentSeries`:
@@ -132,7 +145,7 @@ Keep the extraction lean while returning an output parallel to
 compute_trajectory_s_moments(
     trajectory: TrajectoryResult,
     metadata: TrajectoryEnsembleMetadata,
-    j_moments: JMomentSeries,
+    s_bloch_operators: tuple[array, ...],
     *,
     tol=1e-12,
 ) -> SMomentSeries
@@ -140,6 +153,8 @@ compute_trajectory_s_moments(
 
 compute_average_s_moments(
     samples: list[SMomentSeries],
+    *,
+    basis: SBasisSeries | None = None,
 ) -> SMomentSeries
     # Average only raw x, y, and z fields across trajectories.
 
@@ -151,11 +166,16 @@ compute_mcwf_s_moments(
     n_processes=None,
 ) -> SMomentSeries
 
+    basis = build_s_basis(j_moments.theta, j_moments.phi)
+    s_bloch_operators = build_s_bloch_operator_series(basis)
     trajectory_moments = map_with_optional_pool(
-        compute_trajectory_s_moments(...)
+        compute_trajectory_s_moments(..., s_bloch_operators)
         for trajectory in ensemble.trajectories
     )
-    averaged = compute_average_s_moments(trajectory_moments)
+    averaged = compute_average_s_moments(
+        trajectory_moments,
+        basis=basis,
+    )
     SMomentSeries.attach_norm_spin_components_from_spin_components(
         averaged,
         tol=tol,
@@ -167,12 +187,13 @@ compute_mcwf_s_moments(
     return averaged
 ```
 
-`compute_trajectory_s_moments(...)` constructs $|1_g chevron.r$ from the
-supplied ensemble-averaged J angles and returns one raw `SMomentSeries` for
-each trajectory. `compute_average_s_moments(...)` averages those raw
-per-trajectory series. `compute_mcwf_s_moments(...)` coordinates optional
-multiprocessing and then attaches nonlinear direction and angle fields only to
-the single averaged `SMomentSeries`.
+`compute_mcwf_s_moments(...)` constructs the shared basis and S-Bloch operator
+series before coordinating optional multiprocessing. Each
+`compute_trajectory_s_moments(...)` call applies those operators to one
+trajectory and returns raw S moments. `compute_average_s_moments(...)` averages
+the raw series and attaches the shared basis to the single final output;
+nonlinear direction and angle fields are then derived only from that averaged
+output.
 
 Reuse the reduced collective one-body operator application logic currently
 used by `solvers/mcwf/squeezing_moments.py`; do not duplicate its transition
@@ -197,6 +218,10 @@ SMomentSeries(
     nz=None or tuple[array, ...],
     theta=None or tuple[array, ...],
     phi=None or tuple[array, ...],
+    basis=SBasisSeries(
+        zero_state=tuple[array, ...],  # each shape (len(t), 3)
+        one_state=tuple[array, ...],   # each shape (len(t), 3)
+    ),
 )
 ```
 
@@ -219,6 +244,10 @@ All series arrays have shape `(len(t),)`. Store the ensemble-averaged object as
   S-vector length.
 - Preserve $S_z=(N_u-N_1)/2$ and the corresponding S-sphere pole choice
   $p=+1$.
+- Construct one common effective basis and S-operator series from the
+  ensemble-averaged J angles; do not reconstruct them per trajectory.
+- Require stored basis states to be normalized, mutually orthogonal, and
+  aligned with the S-moment time grid and group ordering.
 - Return group tuples even when there is only one physical group.
 - Do not add an `N_u1` field at this stage.
 - Do not compute full-system, cross-group, covariance, or squeezing quantities.

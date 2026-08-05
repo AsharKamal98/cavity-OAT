@@ -326,94 +326,97 @@ def _apply_group_one_body_operator(
 # -----------------------------------------------------------------------------
 
 
-def _dressed_basis_states(
-    theta_J: float,
-    phi_J: float,
-) -> tuple[Array, Array]:
-    """Construct the local dressed states |1> and |j>."""
-    cosine = np.cos(theta_J / 2.0)
-    sine = np.sin(theta_J / 2.0)
-    phase = np.exp(-1j * phi_J)
-
-    dressed_one = np.array(
-        [0.0, cosine, phase * sine],
-        dtype=np.complex128,
-    )
-    dressed_j = np.array(
-        [0.0, -sine, phase * cosine],
-        dtype=np.complex128,
-    )
-    return dressed_one, dressed_j
-
-
-def _s_bloch_operators(theta_J: float, phi_J: float) -> tuple[Array, ...]:
-    """Construct the three dressed S-Bloch operators."""
-    ket_u = np.array([1.0, 0.0, 0.0], dtype=np.complex128)
-    dressed_one, _ = _dressed_basis_states(theta_J, phi_J)
-    projector_u = np.outer(ket_u, ket_u.conjugate())
-    projector_one = np.outer(dressed_one, dressed_one.conjugate())
-
-    S_x = 0.5 * (
-        np.outer(dressed_one, ket_u.conjugate())
-        + np.outer(ket_u, dressed_one.conjugate())
-    )
-    S_y = (
-        np.outer(dressed_one, ket_u.conjugate())
-        - np.outer(ket_u, dressed_one.conjugate())
-    ) / (2.0j)
-    S_z = 0.5 * (projector_u - projector_one)
-    return S_x, S_y, S_z
-
-
-def _mean_and_fluctuation_basis(
-    theta_J: float,
-    phi_J: float,
-    theta_S: float,
-    phi_S: float,
+def _build_dressed_state_series(
+    zero_state_groups: Array,
+    one_state_groups: Array,
+    theta_J_groups: Array,
+    phi_J_groups: Array,
+    theta_S_groups: Array,
+    phi_S_groups: Array,
 ) -> tuple[Array, Array, Array]:
-    """Construct the local dressed states |c>, |j>, and |s>."""
-    ket_u = np.array([1.0, 0.0, 0.0], dtype=np.complex128)
-    dressed_one, dressed_j = _dressed_basis_states(theta_J, phi_J)
-    phase_S = np.exp(-1j * phi_S)
+    """Construct shared |c>, |j>, and |s> series for all groups and times."""
+    state_shape = zero_state_groups.shape
+    if len(state_shape) != 3 or state_shape[-1] != 3:
+        raise ValueError(
+            "S-basis state arrays must have shape (num_groups, num_times, 3)."
+        )
+    if one_state_groups.shape != state_shape:
+        raise ValueError(
+            "S-basis zero and one states must have matching shapes."
+        )
+    angle_shape = state_shape[:-1]
+    if any(
+        angles.shape != angle_shape
+        for angles in (
+            theta_J_groups,
+            phi_J_groups,
+            theta_S_groups,
+            phi_S_groups,
+        )
+    ):
+        raise ValueError(
+            "J and S angle arrays must match the group and time axes of the "
+            "S basis."
+        )
+
+    phase_J = np.exp(-1j * phi_J_groups)
+    dressed_j = np.stack(
+        (
+            np.zeros(angle_shape, dtype=np.complex128),
+            -np.sin(theta_J_groups / 2.0),
+            phase_J * np.cos(theta_J_groups / 2.0),
+        ),
+        axis=-1,
+    )
+    phase_S = np.exp(-1j * phi_S_groups)[..., None]
 
     mean_state = (
-        np.cos(theta_S / 2.0) * ket_u
-        + phase_S * np.sin(theta_S / 2.0) * dressed_one
+        np.cos(theta_S_groups / 2.0)[..., None] * zero_state_groups
+        + phase_S
+        * np.sin(theta_S_groups / 2.0)[..., None]
+        * one_state_groups
     )
     s_state = (
-        -np.sin(theta_S / 2.0) * ket_u
-        + phase_S * np.cos(theta_S / 2.0) * dressed_one
+        -np.sin(theta_S_groups / 2.0)[..., None] * zero_state_groups
+        + phase_S
+        * np.cos(theta_S_groups / 2.0)[..., None]
+        * one_state_groups
     )
 
-    mean_state /= np.linalg.norm(mean_state)
-    dressed_j /= np.linalg.norm(dressed_j)
-    s_state /= np.linalg.norm(s_state)
+    mean_state /= np.linalg.norm(mean_state, axis=-1, keepdims=True)
+    dressed_j /= np.linalg.norm(dressed_j, axis=-1, keepdims=True)
+    s_state /= np.linalg.norm(s_state, axis=-1, keepdims=True)
     return mean_state, dressed_j, s_state
 
 
-def _fluctuation_operators(
-    mean_state: Array,
-    dressed_j: Array,
-    s_state: Array,
-) -> tuple[Array, ...]:
-    """Construct the four local generalized-squeezing quadratures."""
-    O_1 = 0.5 * (
-        np.outer(mean_state, dressed_j.conjugate())
-        + np.outer(dressed_j, mean_state.conjugate())
+def _build_fluctuation_operator_series(
+    dressed_state_groups: tuple[Array, Array, Array],
+) -> tuple[Array, Array]:
+    """Construct shared fluctuation operators and |c><c| projectors."""
+    if len(dressed_state_groups) != 3:
+        raise ValueError("Dressed states must contain |c>, |j>, and |s>.")
+    mean_state, dressed_j, s_state = dressed_state_groups
+    if mean_state.shape != dressed_j.shape or mean_state.shape != s_state.shape:
+        raise ValueError("Dressed-state series must have matching shapes.")
+    if len(mean_state.shape) != 3 or mean_state.shape[-1] != 3:
+        raise ValueError(
+            "Dressed-state arrays must have shape (num_groups, num_times, 3)."
+        )
+
+    c_j = mean_state[..., :, None] * dressed_j.conjugate()[..., None, :]
+    j_c = dressed_j[..., :, None] * mean_state.conjugate()[..., None, :]
+    c_s = mean_state[..., :, None] * s_state.conjugate()[..., None, :]
+    s_c = s_state[..., :, None] * mean_state.conjugate()[..., None, :]
+
+    O_1 = 0.5 * (c_j + j_c)
+    O_2 = (c_j - j_c) / (2.0j)
+    O_3 = 0.5 * (c_s + s_c)
+    O_4 = (c_s - s_c) / (2.0j)
+    fluctuation_operators = np.stack((O_1, O_2, O_3, O_4), axis=2)
+    N_c_operators = (
+        mean_state[..., :, None] * mean_state.conjugate()[..., None, :]
     )
-    O_2 = (
-        np.outer(mean_state, dressed_j.conjugate())
-        - np.outer(dressed_j, mean_state.conjugate())
-    ) / (2.0j)
-    O_3 = 0.5 * (
-        np.outer(mean_state, s_state.conjugate())
-        + np.outer(s_state, mean_state.conjugate())
-    )
-    O_4 = (
-        np.outer(mean_state, s_state.conjugate())
-        - np.outer(s_state, mean_state.conjugate())
-    ) / (2.0j)
-    return O_1, O_2, O_3, O_4
+    return fluctuation_operators, N_c_operators
 
 
 # -----------------------------------------------------------------------------
@@ -447,8 +450,6 @@ def _trajectory_fluctuation_moments_worker(
         Array,
         Array,
         Array,
-        Array,
-        Array,
         tuple[int, ...],
         float,
     ],
@@ -457,10 +458,8 @@ def _trajectory_fluctuation_moments_worker(
     (
         trajectory,
         t_ref,
-        theta_J_groups,
-        phi_J_groups,
-        theta_S_groups,
-        phi_S_groups,
+        fluctuation_operator_groups,
+        N_c_operator_groups,
         N_groups,
         tol,
     ) = args
@@ -484,13 +483,7 @@ def _trajectory_fluctuation_moments_worker(
             continue
 
         for group_index in range(group_count):
-            basis = _mean_and_fluctuation_basis(
-                theta_J_groups[group_index, time_index],
-                phi_J_groups[group_index, time_index],
-                theta_S_groups[group_index, time_index],
-                phi_S_groups[group_index, time_index],
-            )
-            operators = _fluctuation_operators(*basis)
+            operators = fluctuation_operator_groups[group_index, time_index]
             applied = [
                 _apply_group_one_body_operator(
                     snapshot.sector_blocks,
@@ -523,16 +516,11 @@ def _trajectory_fluctuation_moments_worker(
                         / norm2
                     )
 
-            mean_state = basis[0]
-            N_c_operator = np.outer(
-                mean_state,
-                mean_state.conjugate(),
-            )
             N_c_applied = _apply_group_one_body_operator(
                 snapshot.sector_blocks,
                 N_groups,
                 group_index,
-                N_c_operator,
+                N_c_operator_groups[group_index, time_index],
             )
             N_c[group_index, time_index] = float(
                 np.real(
@@ -558,7 +546,17 @@ def _validate_inputs(
     s_moments: SMomentSeries,
     *,
     tol: float,
-) -> tuple[Array, tuple[int, ...], Array, Array, Array, Array, Array]:
+) -> tuple[
+    Array,
+    tuple[int, ...],
+    Array,
+    Array,
+    Array,
+    Array,
+    Array,
+    Array,
+    Array,
+]:
     """Validate and return the shared group-resolved reference data."""
     if not ensemble.trajectories:
         raise ValueError("TrajectoryEnsemble is empty.")
@@ -641,6 +639,25 @@ def _validate_inputs(
     ):
         raise ValueError("Each group S-angle series must match t_eval.")
 
+    if s_moments.basis is None:
+        raise ValueError("Squeezing moments require the effective S basis.")
+    zero_state_groups = np.asarray(
+        s_moments.basis.zero_state,
+        dtype=np.complex128,
+    )
+    one_state_groups = np.asarray(
+        s_moments.basis.one_state,
+        dtype=np.complex128,
+    )
+    expected_basis_shape = (group_count, t_ref.size, 3)
+    if zero_state_groups.shape != expected_basis_shape or (
+        one_state_groups.shape != expected_basis_shape
+    ):
+        raise ValueError(
+            "S-basis state series must have shape "
+            "(num_groups, len(t_eval), 3)."
+        )
+
     excited_fraction_active = np.full(
         (group_count, t_ref.size),
         np.nan,
@@ -661,6 +678,8 @@ def _validate_inputs(
     return (
         t_ref,
         N_groups,
+        zero_state_groups,
+        one_state_groups,
         theta_J_groups,
         phi_J_groups,
         theta_S_groups,
@@ -691,6 +710,8 @@ def compute_mcwf_squeezing_moments(
     (
         t_ref,
         N_groups,
+        zero_state_groups,
+        one_state_groups,
         theta_J_groups,
         phi_J_groups,
         theta_S_groups,
@@ -703,16 +724,27 @@ def compute_mcwf_squeezing_moments(
         tol=tol,
     )
 
+    dressed_state_groups = _build_dressed_state_series(
+        zero_state_groups,
+        one_state_groups,
+        theta_J_groups,
+        phi_J_groups,
+        theta_S_groups,
+        phi_S_groups,
+    )
+    (
+        fluctuation_operator_groups,
+        N_c_operator_groups,
+    ) = _build_fluctuation_operator_series(dressed_state_groups)
+
     fluctuation_samples = map_with_optional_pool(
         _trajectory_fluctuation_moments_worker,
         [
             (
                 trajectory,
                 t_ref,
-                theta_J_groups,
-                phi_J_groups,
-                theta_S_groups,
-                phi_S_groups,
+                fluctuation_operator_groups,
+                N_c_operator_groups,
                 N_groups,
                 tol,
             )

@@ -123,6 +123,12 @@ independent coupling through `--omega-i`. The runner must not silently collapse
 multiple supplied groups into one. An explicit `--dt` is optional; when omitted,
 the runner should use the standard `mcwf_dt_from_scales(...)` result.
 
+Submit each analysis SLURM script from its own directory, for example with
+`cd slurm/analyses/squeezing_omega1-scan && sbatch submit.slurm`. Runtime paths
+should resolve from `SLURM_SUBMIT_DIR`; analysis artifacts should use that
+analysis's local `output` directory, while scheduler logs remain in
+`slurm/logs`.
+
 When an analysis needs ensemble-wide reference directions, array jobs should
 use `--save-ensemble` and write their complete `TrajectoryEnsemble` chunks to
 shared scratch storage. A dependent post-analysis job should concatenate the
@@ -269,12 +275,14 @@ Current top-level fields are:
   residual diagnostics when computed from `moments.J`.
 - `moments.squeezing_moments`: an optional tuple containing one
   `SqueezingMomentSeries` per physical group. MCWF extraction averages the raw
-  dressed fluctuation moments over trajectories.
+  dressed fluctuation moments over trajectories after constructing the shared
+  dressed-state and operator series once from ensemble-level J and S moments.
 - `moments.squeezing`: an optional tuple containing one derived
   `SqueezingSeries` per physical group, constructed solver-independently from
   `moments.squeezing_moments`.
 - `moments.S`: an optional `SMomentSeries` containing group-local S-sphere
-  components, normalized directions, and angles.
+  components, normalized directions, angles, and the effective zero/one basis
+  used to define the S sphere.
 
 Parser container conventions live in `docs/instructions/parser.typ` and the
 `parser` skill.
