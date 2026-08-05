@@ -135,10 +135,12 @@ gives every parameter value its own wall-time allocation and output file.
 
 When an analysis needs ensemble-wide reference directions, array jobs should
 use `--save-ensemble` and write their complete `TrajectoryEnsemble` chunks to
-shared scratch storage. A dependent post-analysis job should concatenate the
-chunks, compute moments once from the full ensemble, and save the resulting
-`MomentSeries` in the analysis-local output directory. Do not average
-per-array derived moments for this workflow.
+shared scratch storage. Prefix each scratch filename with the simulation job
+name and suffix it with the array-task index, so a post-analysis job only needs
+the simulation job name to locate all chunks. A dependent post-analysis job
+should concatenate the chunks, compute moments once from the full ensemble,
+and save the resulting `MomentSeries` in the analysis-local output directory.
+Do not average per-array derived moments for this workflow.
 
 The ensemble function should:
 
