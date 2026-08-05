@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=mcwf-squeeze-analysis
-#SBATCH --cpus-per-task=64
+#SBATCH --job-name=pa
+#SBATCH --cpus-per-task=5
 #SBATCH --mem=16G
-#SBATCH --time=02:30:00
+#SBATCH --time=00:10:00
 #SBATCH --output=slurm/logs/%j_%x.out
 #SBATCH --error=slurm/logs/%j_%x.err
 

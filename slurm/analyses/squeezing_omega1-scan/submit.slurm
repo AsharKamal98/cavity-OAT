@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=mcwf-squeeze-sim
 #SBATCH --array=0-3
-#SBATCH --cpus-per-task=64
-#SBATCH --time=02:30:00
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:05:00
 #SBATCH --output=slurm/logs/%A_%a_%x.out
 #SBATCH --error=slurm/logs/%A_%a_%x.err
 
@@ -13,7 +13,7 @@ source ~/.venvs/cavity-oat_env/bin/activate
 OUTPUT_DIR="/scratch-shared/${USER}/cavity-OAT/squeezing_omega1-scan/${SLURM_ARRAY_JOB_ID}"
 mkdir -p "${OUTPUT_DIR}"
 
-NTRAJ="50"
+NTRAJ="100"
 GAMMA="1.0"
 NI="10,10"
 DN="0"
