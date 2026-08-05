@@ -129,6 +129,10 @@ should resolve from `SLURM_SUBMIT_DIR`; analysis artifacts should use that
 analysis's local `output` directory, while scheduler logs remain in
 `slurm/logs`.
 
+For post-analysis parameter sweeps, use one SLURM array task per parameter
+value instead of processing the full sweep sequentially within one task. This
+gives every parameter value its own wall-time allocation and output file.
+
 When an analysis needs ensemble-wide reference directions, array jobs should
 use `--save-ensemble` and write their complete `TrajectoryEnsemble` chunks to
 shared scratch storage. A dependent post-analysis job should concatenate the
