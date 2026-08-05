@@ -3,8 +3,10 @@
 #SBATCH --array=0-3
 #SBATCH --cpus-per-task=64
 #SBATCH --time=02:30:00
-#SBATCH --output=slurm/logs/%A_%a_%x.out
-#SBATCH --error=slurm/logs/%A_%a_%x.err
+#SBATCH --output=../../logs/%A_%a_%x.out
+#SBATCH --error=../../logs/%A_%a_%x.err
+
+# Submit from this analysis directory with: sbatch submit.slurm
 
 ## TIME GUIDELINE
 ## N1=N2=10, 3 min / processs / trajectory
@@ -17,7 +19,9 @@ set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
-OUTPUT_DIR="slurm/analyses/h_v_inh/output"
+ANALYSIS_DIR="${SLURM_SUBMIT_DIR}"
+REPO_ROOT="$(cd "${ANALYSIS_DIR}/../../.." && pwd)"
+OUTPUT_DIR="${ANALYSIS_DIR}/output"
 
 NTRAJ="250"
 GAMMA="1.0"
@@ -39,7 +43,7 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
   for OMEGA_1 in "${OMEGA_1_LIST[@]}"; do
     FILENAME=two_group_factor_${OMEGA_FACTOR}_omega_${OMEGA_1}
 
-    python slurm/run_solvers/run_mcwf.py \
+    python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
       --n-processes "${SLURM_CPUS_PER_TASK}" \
       --ntraj "${NTRAJ}" \
       --filename "${FILENAME}" \
@@ -59,7 +63,7 @@ for OMEGA_FACTOR in "${OMEGA_FACTOR_LIST[@]}"; do
   done
 
   FILENAME=single_group_factor_${OMEGA_FACTOR}
-  python slurm/run_solvers/run_mcwf.py \
+  python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \

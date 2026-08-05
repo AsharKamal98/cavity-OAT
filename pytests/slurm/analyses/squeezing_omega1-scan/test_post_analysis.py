@@ -109,6 +109,13 @@ def _assert_moments_allclose(actual: MomentSeries, expected: MomentSeries) -> No
             "phi",
         ),
     )
+    assert actual.S.basis is not None
+    assert expected.S.basis is not None
+    _assert_fields_allclose(
+        actual.S.basis,
+        expected.S.basis,
+        ("zero_state", "one_state"),
+    )
 
     assert len(actual.squeezing_moments) == len(expected.squeezing_moments)
     for actual_group, expected_group in zip(

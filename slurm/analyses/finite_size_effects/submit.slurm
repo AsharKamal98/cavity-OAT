@@ -3,8 +3,10 @@
 #SBATCH --array=0-3
 #SBATCH --cpus-per-task=64
 #SBATCH --time=02:30:00
-#SBATCH --output=slurm/logs/%A_%a_%x.out
-#SBATCH --error=slurm/logs/%A_%a_%x.err
+#SBATCH --output=../../logs/%A_%a_%x.out
+#SBATCH --error=../../logs/%A_%a_%x.err
+
+# Submit from this analysis directory with: sbatch submit.slurm
 
 ## TIME GUIDELINE
 ## N1=N2=10, 3 min / processs / trajectory
@@ -17,7 +19,9 @@ set -euo pipefail
 
 source ~/.venvs/cavity-oat_env/bin/activate
 
-OUTPUT_DIR="slurm/analyses/finite_size_effects/output"
+ANALYSIS_DIR="${SLURM_SUBMIT_DIR}"
+REPO_ROOT="$(cd "${ANALYSIS_DIR}/../../.." && pwd)"
+OUTPUT_DIR="${ANALYSIS_DIR}/output"
 
 NTRAJ="250"
 GAMMA="1.0"
@@ -38,7 +42,7 @@ for NI in "${NI_LIST[@]}"; do
   SINGLE_NI="$((N1 + N2))"
   FILENAME=two_group_Ni_${NI//,/x}
 
-  python slurm/run_solvers/run_mcwf.py \
+  python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \
@@ -57,7 +61,7 @@ for NI in "${NI_LIST[@]}"; do
     --T3 "${T3}"
 
   FILENAME=single_group_Ni_${NI//,/x}
-  python slurm/run_solvers/run_mcwf.py \
+  python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
     --n-processes "${SLURM_CPUS_PER_TASK}" \
     --ntraj "${NTRAJ}" \
     --filename "${FILENAME}" \
