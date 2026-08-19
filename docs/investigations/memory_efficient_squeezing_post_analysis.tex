@@ -1,0 +1,197 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[hidelinks]{hyperref}
+
+\title{Memory-Efficient MCWF Squeezing Analysis}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Conclusion}
+
+The current squeezing analysis does not require cross-trajectory products.
+Its only ensemble-wide dependencies are the averaged $J$ direction used to
+define the $S$ basis and the averaged $J$ and $S$ directions used to define
+the squeezing operators.  Consequently, the calculation can be performed
+with one input file in memory at a time using three streaming passes.  A more
+fundamental redesign can eliminate stored trajectories entirely by
+accumulating complete basis-independent first- and second-moment tensors while
+each trajectory is simulated.
+
+\section{Three Streaming Passes}
+
+An ensemble average only requires a running sum,
+\begin{equation}
+  \overline{X}(t_k)
+  = \frac{1}{R}\sum_{r=1}^{R}X^{(r)}(t_k),
+\end{equation}
+not simultaneous access to all trajectories.  The current basis dependencies
+can therefore be respected as follows.
+
+\begin{enumerate}
+  \item Load one ensemble file, compute the raw $J$ moments of its
+  trajectories, add them to running sums, and release the file.  Repeat for
+  every file, then construct the ensemble-averaged $J$ direction and angles.
+
+  \item Reload one file at a time, compute raw $S$ moments using the now-fixed
+  ensemble $J$ angles, accumulate them, and release the file.  After all files
+  have been processed, construct the ensemble-averaged $S$ direction and
+  angles.
+
+  \item Reload one file at a time, compute the raw squeezing moments using the
+  fixed ensemble $J$ and $S$ angles, accumulate them, and release the file.
+  Construct the covariance matrix and squeezing only after the final average
+  has been formed.
+\end{enumerate}
+
+With the present pickle format, one complete array-job file must still be
+loaded at once.  The peak ensemble memory is nevertheless reduced from all
+four files to one file.  The moment-extraction functions would need streaming
+accumulators rather than their current interface, which collects all
+per-trajectory results before averaging.
+
+\section{Basis-Independent Sufficient Moments}
+
+The three-pass method can be avoided by accumulating a complete set of fixed
+basis moments during simulation.  For each physical group $g$, define the nine
+collective matrix-unit operators
+\begin{equation}
+  A_{\mu\nu,g}
+  = \sum_{i\in g} |\mu_i\rangle\langle\nu_i|,
+  \qquad
+  \mu,\nu\in\{u,d,e\}.
+\end{equation}
+Let a single index $p$ enumerate the nine ordered pairs $(\mu,\nu)$.  For each
+trajectory $r$ and saved time $t_k$, compute the individually normalized
+moments
+\begin{align}
+  m_{p,g}^{(r)}(t_k)
+  &=
+  \frac{
+    \langle\psi_r(t_k)|A_{p,g}|\psi_r(t_k)\rangle
+  }{Z_r(t_k)},
+  \\
+  G_{pq,g}^{(r)}(t_k)
+  &=
+  \frac{
+    \langle A_{p,g}\psi_r(t_k)
+    |A_{q,g}\psi_r(t_k)\rangle
+  }{Z_r(t_k)}.
+\end{align}
+Accumulate only
+\begin{equation}
+  \overline{m}_{p,g}
+  = \frac{1}{R}\sum_r m_{p,g}^{(r)},
+  \qquad
+  \overline{G}_{pq,g}
+  = \frac{1}{R}\sum_r G_{pq,g}^{(r)},
+\end{equation}
+and discard the trajectory sector blocks.  The matrix
+$\overline{G}_{pq,g}$ must remain complex; storing only its real part would
+not be sufficient for later basis rotations.
+
+These accumulators can be produced either after each trajectory finishes or
+directly at each saved snapshot.  Computing them at snapshot time avoids even
+retaining all snapshots of one trajectory.  With multiprocessing, a worker
+can return one accumulated tensor, or maintain a worker-local sum and return
+it when its assigned trajectories are complete.
+
+\section{Reconstruction of the Current Analysis}
+
+The ensemble $J$ moments are linear combinations of
+$\overline{m}$.  For example, within one group,
+\begin{align}
+  J_x &= \frac{\overline{m}_{ed}+\overline{m}_{de}}{2},
+  &
+  J_y &= \frac{\overline{m}_{ed}-\overline{m}_{de}}{2i},
+  \\
+  J_z &= \frac{\overline{m}_{ee}-\overline{m}_{dd}}{2},
+  &
+  N_e &= \overline{m}_{ee},
+  \qquad
+  N_J = \overline{m}_{dd}+\overline{m}_{ee}.
+\end{align}
+The normalized $J$ direction and the angles $\theta_J,\phi_J$ are then
+constructed exactly as in the current moment pipeline.
+
+Once the ensemble $J$ angles are known, the effective $S$ basis and its three
+collective spin operators are fixed.  Every such operator is a linear
+combination of the same $A_{p,g}$, so its ensemble expectation value follows
+directly from $\overline{m}$.  These values determine the ensemble $S$
+direction and angles $\theta_S,\phi_S$ without revisiting any trajectory.
+
+The dressed states $|c_g\rangle$, $|j_g\rangle$, and $|s_g\rangle$ can then be
+constructed from the ensemble $J$ and $S$ angles.  Each of the four current
+fluctuation operators has an expansion
+\begin{equation}
+  O_{a,g}=\sum_p c_{ap,g}A_{p,g}.
+\end{equation}
+The required squeezing moments are recovered as
+\begin{align}
+  \mu_{a,g}
+  &= \sum_p c_{ap,g}\,\overline{m}_{p,g},
+  \\
+  M_{ab,g}
+  &= \operatorname{Re}
+  \sum_{p,q}
+  c_{ap,g}^{*}\,\overline{G}_{pq,g}\,c_{bq,g}.
+\end{align}
+The mean population $N_{c,g}$ is another linear combination of
+$\overline{m}_{p,g}$ obtained from the projector
+$|c_g\rangle\langle c_g|$.  The existing solver-independent squeezing code
+can then construct
+\begin{equation}
+  C_{ab,g}=M_{ab,g}-\mu_{a,g}\mu_{b,g},
+\end{equation}
+its minimum eigenvalue, and $\xi_g^2$ without modification to the physical
+definition.
+
+\section{Why the Reconstruction Is Exact}
+
+At a fixed saved time, the coefficients $c_{ap,g}$ are obtained from the
+ensemble-averaged angles and are therefore identical for every trajectory.
+Linearity gives
+\begin{equation}
+  \frac{1}{R}\sum_r
+  c_a^\dagger G_g^{(r)}c_b
+  =
+  c_a^\dagger
+  \left(\frac{1}{R}\sum_r G_g^{(r)}\right)c_b
+  =
+  c_a^\dagger\overline{G}_g c_b.
+\end{equation}
+The same identity holds for every first moment.  Thus rotating the averaged
+fixed-basis tensors after the ensemble angles are known gives the same result
+as rotating and evaluating every stored trajectory afterward, up to ordinary
+floating-point summation order.
+
+Exact equivalence requires the following invariants:
+\begin{itemize}
+  \item normalize each trajectory by its own $Z_r(t_k)$ before accumulation;
+  \item retain the complete complex $9\times9$ matrix
+  $\overline{G}_{pq,g}$;
+  \item derive $J$ and $S$ angles from ensemble-averaged first moments;
+  \item construct covariance matrices and squeezing only after ensemble
+  averaging, rather than averaging per-trajectory squeezing values.
+\end{itemize}
+
+The current analysis is group-local, so one $9\times9$ tensor per group is
+sufficient.  A future cross-group squeezing observable would additionally
+require cross-group blocks
+$\overline{G}_{(p,g)(q,h)}$.  Diagnostics such as the jump rate can be
+accumulated directly during simulation or reconstructed from the corresponding
+fixed-basis correlations.
+
+For two groups and 500 saved times, the fixed-basis averages contain only
+$2\times500\times9$ complex first moments and
+$2\times500\times9\times9$ complex second moments, approximately
+$1.4\,\mathrm{MiB}$ of numerical data.  Their size is independent of the
+number of trajectories, replacing multi-gigabyte temporary trajectory files
+with a small set of ensemble sufficient statistics.
+
+\end{document}

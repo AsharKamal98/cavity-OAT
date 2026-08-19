@@ -43,6 +43,12 @@ Detailed implementation conventions live in:
 Numerical method parameters such as timesteps, saved-time grids, and solver tolerances live in:
   `docs/instructions/solvers/mcwf/method_parameters.typ`
 
+When asked to estimate two-group MCWF runtime as a function of `Ni` and `dN`,
+use the SURFcua baseline and factors in:
+  `docs/instructions/scaling.typ`
+Treat `Ni`-dependent runtime estimates as provisional until the additional
+SURFcua calibration described there is available.
+
 ## 2. Phase Protocol
 
 For the standard protocol, construct the phase protocol first and provide it to
@@ -385,8 +391,9 @@ The shared harmonic-sweep plot lives in
 The shared generalized-squeezing plot lives in
 `common/plotting/squeezing.py`:
 - `plot_squeezing(t, xi2, lambda_min, N_c, excited_fraction_active,
-  labels=..., ...)`: plots one or more squeezing results on the shared `2x2`
-  diagnostic grid.
+  labels=..., covariance_eigvals=..., plot_all_eigenvalues=False, ...)`: plots
+  one or more squeezing results on the shared `2x2` diagnostic grid, with an
+  opt-in view of all four stored covariance eigenvalues.
 
 Repo-specific plotting-function contracts live in
 `docs/instructions/plotting_workflows.md`.

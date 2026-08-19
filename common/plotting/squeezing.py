@@ -68,6 +68,44 @@ def _validated_squeezing_curves(
     return (t, *curve_sets, labels)
 
 
+def _validated_covariance_eigenvalues(
+    covariance_eigvals: Sequence[Array] | Array | None,
+    *,
+    t: Array,
+    num_curves: int,
+    plot_all_eigenvalues: bool,
+) -> tuple[Array, ...] | None:
+    """Return matching four-eigenvalue series when requested."""
+    if covariance_eigvals is None:
+        if plot_all_eigenvalues:
+            raise ValueError(
+                "covariance_eigvals is required when plot_all_eigenvalues=True."
+            )
+        return None
+
+    values = np.asarray(covariance_eigvals, dtype=float)
+    if values.ndim == 2:
+        curves = (values,)
+    elif values.ndim == 3:
+        curves = tuple(values)
+    else:
+        raise ValueError(
+            "covariance_eigvals must have shape (len(t), 4) or "
+            "(num_curves, len(t), 4)."
+        )
+
+    if len(curves) != num_curves:
+        raise ValueError("covariance_eigvals requires one array per label.")
+    for curve in curves:
+        if curve.shape != (t.size, 4):
+            raise ValueError(
+                "Each covariance_eigvals array must have shape (len(t), 4)."
+            )
+        if np.any(np.isinf(curve)):
+            raise ValueError("covariance_eigvals must not contain infinities.")
+    return curves
+
+
 def _xi2_to_db(xi2: Array) -> Array:
     """Convert positive squeezing values to dB and mask invalid values."""
     xi2 = np.asarray(xi2, dtype=float)
@@ -85,6 +123,8 @@ def plot_squeezing(
     excited_fraction_active: Sequence[Array] | Array,
     *,
     labels: Sequence[str],
+    covariance_eigvals: Sequence[Array] | Array | None = None,
+    plot_all_eigenvalues: bool = False,
     colour_family_index: Optional[int] = None,
     shade_index: Optional[int] = None,
     linestyle: str | None = "-",
@@ -109,6 +149,12 @@ def plot_squeezing(
         N_c,
         excited_fraction_active,
         labels,
+    )
+    eigenvalue_curves = _validated_covariance_eigenvalues(
+        covariance_eigvals,
+        t=t,
+        num_curves=len(labels),
+        plot_all_eigenvalues=plot_all_eigenvalues,
     )
     line_style = validated_linestyle(linestyle)
     marker_style = validated_marker(marker)
@@ -147,11 +193,29 @@ def plot_squeezing(
             "label": label,
         }
         axes[0].plot(t, _xi2_to_db(xi2_values), **curve_style)
-        axes[1].plot(
-            t,
-            np.where(lambda_values > 0.0, lambda_values, np.nan),
-            **curve_style,
-        )
+        if plot_all_eigenvalues:
+            assert eigenvalue_curves is not None
+            eigenvalues = eigenvalue_curves[curve_index]
+            for eigenvalue_index in range(eigenvalues.shape[1]):
+                axes[1].plot(
+                    t,
+                    np.where(
+                        eigenvalues[:, eigenvalue_index] > 0.0,
+                        eigenvalues[:, eigenvalue_index],
+                        np.nan,
+                    ),
+                    **{
+                        **curve_style,
+                        "alpha": 1.0 - 0.15 * eigenvalue_index,
+                        "label": "_nolegend_",
+                    },
+                )
+        else:
+            axes[1].plot(
+                t,
+                np.where(lambda_values > 0.0, lambda_values, np.nan),
+                **curve_style,
+            )
         axes[2].plot(t, N_c_values, **curve_style)
         axes[3].plot(t, excited_values, **curve_style)
 
@@ -159,8 +223,16 @@ def plot_squeezing(
         (axes[0], r"$\xi^2$ [dB]", "Generalized squeezing"),
         (
             axes[1],
-            r"$\lambda_{\min}(C)$",
-            "Smallest covariance eigenvalue",
+            (
+                r"$\lambda_i(C)$"
+                if plot_all_eigenvalues
+                else r"$\lambda_{\min}(C)$"
+            ),
+            (
+                "Covariance eigenvalues"
+                if plot_all_eigenvalues
+                else "Smallest covariance eigenvalue"
+            ),
         ),
         (axes[2], r"$\langle N_c\rangle$", "Mean population"),
         (

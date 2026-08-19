@@ -73,6 +73,7 @@ AGENTS.md
       -> docs/instructions/common/plotting.typ
       -> docs/instructions/common/spin_moment_conventions.typ
       -> docs/instructions/model_parameters.typ
+      -> docs/instructions/scaling.typ
       -> docs/instructions/parser.typ
       -> docs/instructions/solvers/mcwf/method_parameters.typ
       -> docs/instructions/solvers/mcwf/initial_sector_state.typ

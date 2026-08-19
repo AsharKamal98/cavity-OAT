@@ -134,6 +134,10 @@ This function lives in `common/plotting/squeezing.py`.
 - The function should take `t` and matching `xi2`, `lambda_min`, `N_c`, and
   `excited_fraction_active` inputs. Each metric may be one array or a sequence
   of arrays.
+- The optional `covariance_eigvals` input accepts one `(len(t), 4)` array per
+  squeezing result. With `plot_all_eigenvalues=True`, plot all four ordered
+  covariance eigenvalues in the eigenvalue panel; otherwise retain the default
+  minimum-eigenvalue curve.
 - Each position across the four metric inputs describes one squeezing result,
   and the matching `labels` entry identifies that result in every panel.
 - The output should be a `2x2` panel showing generalized squeezing in dB, the
@@ -143,7 +147,8 @@ This function lives in `common/plotting/squeezing.py`.
   non-positive or invalid values as `NaN`. Mask non-positive covariance
   eigenvalues before plotting the logarithmic eigenvalue panel.
 - The function should support `axes`, `output_path`, `phase_protocol`, `title`,
-  `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
+  `plot_all_eigenvalues`, `colour_family_index`, `shade_index`, `linestyle`,
+  and `marker`.
 - The function should plot already-computed squeezing data and must not inspect
   solver outputs or recompute covariance matrices.
 - For shared overlay and palette behavior, use the plotting-workflows skill.
