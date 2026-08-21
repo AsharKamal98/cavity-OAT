@@ -13,10 +13,10 @@ from common.utils.parameters import mcwf_dt_from_scales, scaled_N_Gamma
 from common.utils.phases import default_three_phase_protocol
 from parser.mcwf import MCWFSolverParameters
 from parser.moments import MomentSeries, SimulationMetadata
+from post_analysis import compute_j_moments, compute_mean_generator_moments
 from slurm.j_moments_io import save_j_moments_artifact
 from slurm.trajectory_ensemble_io import save_trajectory_ensemble_artifact
 from solvers.mcwf.ensamble_sim import run_trajectory_ensemble
-from solvers.mcwf.j_moments import compute_mcwf_j_moments
 
 
 def _parse_float_list(value: str) -> tuple[float, ...]:
@@ -69,7 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--save-ensemble",
         action="store_true",
-        help="Save the full ensemble instead of computing J moments.",
+        help="Save trajectory-resolved moments instead of computing J moments.",
     )
     return parser.parse_args()
 
@@ -160,9 +160,13 @@ def _run_mcwf(
         return
 
     j_moments_t0 = time.perf_counter()
-    moments.J = compute_mcwf_j_moments(
-        ensemble,
-        n_processes=args.n_processes,
+    moments.generator_moments = ensemble.moments
+    moments.mean_generator_moments = compute_mean_generator_moments(
+        moments.generator_moments,
+    )
+    moments.J = compute_j_moments(
+        moments.mean_generator_moments,
+        metadata=moments.metadata,
     )
     j_moments_time = time.perf_counter() - j_moments_t0
     print(f"{label} J-moments runtime: {j_moments_time:.2f} seconds.")

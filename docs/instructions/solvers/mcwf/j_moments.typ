@@ -12,6 +12,13 @@ This file specifies how to compute first-order $J$-moments in
 `solvers/mcwf/j_moments.py`. Use this file for tasks related to
 MCWF J-moment extraction or when writing diagnostics that consume its outputs.
 
+This is the legacy snapshot-based MCWF converter retained during the staged
+moment-output migration. New MCWF analysis should average complete trajectories
+with `compute_mean_generator_moments(...)` and then call the generic
+`post_analysis.compute_j_moments(...)`. Jump rate is not part of the J-moment
+output contract. The generic converter is specified in
+`docs/instructions/post_analysis/j_moments.typ`.
+
 Shared spin-vector direction and angle conventions are defined in
 `docs/instructions/common/spin_moment_conventions.typ`.
 
@@ -27,7 +34,6 @@ _compute_snapshot_j_moments(snapshot, ...)
         aggregated=AggregatedJMomentSnapshot(
             sum(x), sum(y), sum(z), sum(N_e), sum(N_j)
         ),
-        jump_rate,
     )
 
 compute_trajectory_j_moments(
@@ -41,9 +47,9 @@ compute_trajectory_j_moments(
     j_moment_snapshots = [
         _compute_snapshot_j_moments(
             snapshot,
-            metadata.phase_protocol.integration_phases,
-            metadata.Gamma,
-            ...
+            group_count=len(metadata.Ni),
+            Ni=metadata.Ni,
+            omega_i=metadata.omega_i,
             )
         for snapshot in trajectory.snapshots
     ]
@@ -116,28 +122,6 @@ replace each numerator term by
 $N_(J,g)(alpha) chevron.l psi_(alpha) | psi_(alpha) chevron.r$. For
 strong-symmetry-preserving dynamics, this weighted sector number is expected
 to remain constant in time.
-
-== Jump Rate
-
-The jump-rate field should use the same phase-local jump operator used by the
-MCWF solver. Let $l_(alpha)(t_(k))$ be this unscaled sector jump operator, built
-from the precomputed sector operators in
-`docs/instructions/solvers/mcwf/simulation_precompute.typ` by
-`build_phase_jump_operator_for_sector(...)`. The physical rate is
-
-$
-r(t_(k)) =
-frac(
-  Gamma sum_(alpha)
-    chevron.l l_(alpha)(t_(k)) psi_(alpha)(t_(k)) |
-    l_(alpha)(t_(k)) psi_(alpha)(t_(k)) chevron.r,
-  Z(t_(k))
-).
-$
-
-Tiny negative rates caused by floating-point noise should be clipped to zero.
-The jump rate should not be normalized by $N$, $N_(J)$, or the number of
-trajectories.
 
 == Group and Aggregated Fields
 
@@ -220,7 +204,6 @@ JMomentSnapshot(
         N_e=float,
         N_j=float,
     ),
-    jump_rate=float,
 )
 ```
 
@@ -255,7 +238,6 @@ JMomentSeries(
         theta=None or array,
         phi=None or array,
     ),
-    jump_rate=None or array,
 )
 ```
 

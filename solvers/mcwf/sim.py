@@ -10,21 +10,19 @@ from solvers.mcwf.operator_helpers import (
     build_sector_ops_for_key,
     sector_multiplicity,
     split_sector_key,
-    total_active_atoms_in_sector,
     two_group_sector_multiplicity,
 )
 from parser.common import Array, Phase
+from parser.generator_moments import TrajectoryResolvedMomentSeries
 from common.utils.phases import phase_boundary_times
 from parser.mcwf import (
+    MCWFTrajectoryDiagnostics,
     SectorKey,
     SectorOperators,
     TrajectoryResult,
-    TrajectorySnapshot,
 )
-from solvers.mcwf.state_helpers import (
-    build_initial_sector_state,
-    total_norm2,
-)
+from solvers.mcwf.generator_moments import compute_snapshot_generator_moments
+from solvers.mcwf.state_helpers import build_initial_sector_state
 
 JUMP_TIME_BISECTION_STEPS = 4
 
@@ -114,19 +112,8 @@ def jump_for_sector(jump_operator: csc_matrix, psi: Array) -> Array:
     return jump_operator.dot(psi)
 
 
-def blocks_list_to_dict(sector_list: Sequence[SectorKey], psi_blocks: Sequence[Array]) -> Dict[SectorKey, Array]:
-    return {Nj: psi.copy() for Nj, psi in zip(sector_list, psi_blocks)}
-
-
 def total_norm2_list(psi_blocks: Sequence[Array]) -> float:
     return float(sum(np.vdot(psi, psi).real for psi in psi_blocks))
-
-
-def renormalize_blocks(blocks: Dict[SectorKey, Array]) -> Dict[SectorKey, Array]:
-    nrm = np.sqrt(total_norm2(blocks))
-    if nrm == 0.0:
-        raise RuntimeError("Wavefunction has zero norm.")
-    return {Nj: psi / nrm for Nj, psi in blocks.items()}
 
 
 def renormalize_psi_blocks(psi_blocks: Sequence[Array]) -> List[Array]:
@@ -261,7 +248,6 @@ def build_precomputed_trajectory_data(
 
     return {
         "sector_list": sector_list,  # [Nj_0, Nj_1, ...]
-        "ops_list": ops_list,  # [SectorOperators(Nj_0), SectorOperators(Nj_1), ...]
         "multiplicities": multiplicities,  # {Nj: sector multiplicity}
         "dims": dims,  # {Nj: reduced sector dimension = Nj + 1}
         "integration_phase_jump_operators": integration_phase_jump_operators,
@@ -306,8 +292,8 @@ def _simulate_single_trajectory(
         Base time step used for jump detection and propagation.
     t_eval
         Explicit saved-time grid shared by the ensemble. The simulator saves
-        the state exactly at these times by splitting internal evolution steps
-        when needed.
+        generator moments exactly at these times by splitting internal
+        evolution steps when needed.
     omega_i
         Group couplings. Must have the same length as Ni.
     seed_sequence
@@ -316,7 +302,7 @@ def _simulate_single_trajectory(
     Returns
     -------
     TrajectoryResult
-        Final wavefunction by sector, sector multiplicities, snapshots, and jump log.
+        Per-snapshot generator moments and trajectory-local diagnostics.
     """
     assert len(omega_i) == len(Ni)
     assert precomputed is not None
@@ -327,8 +313,6 @@ def _simulate_single_trajectory(
     rng = np.random.default_rng(seed_sequence)
 
     sector_list = precomputed["sector_list"]
-    multiplicities = precomputed["multiplicities"]
-    dims = precomputed["dims"]
     integration_phase_jump_operators = precomputed[
         "integration_phase_jump_operators"
     ]
@@ -340,6 +324,8 @@ def _simulate_single_trajectory(
     t_eval = np.asarray(t_eval, dtype=float)
     if t_eval.ndim != 1 or t_eval.size < 2:
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
+    if not np.all(np.isfinite(t_eval)):
+        raise ValueError("t_eval must contain only finite values.")
     if np.any(np.diff(t_eval) <= 0.0):
         raise ValueError("t_eval must be strictly increasing.")
     total_time = float(phase_boundary_times(integration_phases)[-1])
@@ -348,19 +334,22 @@ def _simulate_single_trajectory(
     if abs(float(t_eval[-1]) - total_time) > 1e-9:
         raise ValueError("The last t_eval point must match the total protocol time.")
 
-    next_eval_idx = 1
-
     initial_blocks = build_initial_sector_state(N, sector_coeffs)
     psi_blocks = renormalize_psi_blocks([initial_blocks[Nj] for Nj in sector_list])
 
-    snapshots: List[TrajectorySnapshot] = [
-        TrajectorySnapshot(
-            time=0.0,
-            sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-            norm=1.0,
-            integration_phase_index=0,
-        )
-    ]
+    group_count = len(Ni)
+    generator_count = 8 * group_count
+    packed_second_count = generator_count * (generator_count + 1) // 2
+    first_moments = np.empty((t_eval.size, group_count, 8), dtype=float)
+    second_moments = np.empty((t_eval.size, packed_second_count), dtype=float)
+
+    initial_first, initial_second = compute_snapshot_generator_moments(
+        dict(zip(sector_list, psi_blocks)),
+        Ni,
+    )
+    first_moments[0] = initial_first
+    second_moments[0] = initial_second
+    next_eval_idx = 1
 
     jump_times: List[float] = []
     current_time = 0.0
@@ -371,7 +360,7 @@ def _simulate_single_trajectory(
     total_step_count = 0
     non_precomputed_step_count = 0
 
-    def maybe_save_snapshot() -> None:
+    def maybe_save_moments() -> None:
         nonlocal next_eval_idx
         while next_eval_idx < len(t_eval) and current_time >= t_eval[next_eval_idx] - 1e-15:
             if abs(current_time - t_eval[next_eval_idx]) > 1e-9:
@@ -379,14 +368,12 @@ def _simulate_single_trajectory(
                     "Internal MCWF evolution missed a requested t_eval output time. "
                     "This indicates the step-splitting logic failed."
                 )
-            snapshots.append(
-                TrajectorySnapshot(
-                    time=float(t_eval[next_eval_idx]),
-                    sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-                    norm=np.sqrt(total_norm2_list(psi_blocks)),
-                    integration_phase_index=integration_phase_index,
-                )
+            snapshot_first, snapshot_second = compute_snapshot_generator_moments(
+                dict(zip(sector_list, psi_blocks)),
+                Ni,
             )
+            first_moments[next_eval_idx] = snapshot_first
+            second_moments[next_eval_idx] = snapshot_second
             next_eval_idx += 1
 
     for integration_phase_index, integration_phase in enumerate(integration_phases):
@@ -422,7 +409,7 @@ def _simulate_single_trajectory(
             if trial_norm2 > threshold:
                 psi_blocks = trial
                 current_time += step
-                maybe_save_snapshot()
+                maybe_save_moments()
                 continue
 
             lo, hi = 0.0, step
@@ -447,7 +434,7 @@ def _simulate_single_trajectory(
             psi_blocks = apply_jump(psi_blocks, jump_operators_list)
             jump_times.append(current_time)
             threshold = rng.random()
-            maybe_save_snapshot()
+            maybe_save_moments()
 
             remainder = step - tau
             if remainder > 1e-15:
@@ -460,42 +447,24 @@ def _simulate_single_trajectory(
                 else:
                     psi_blocks = trial
                     current_time += remainder
-                    maybe_save_snapshot()
+                    maybe_save_moments()
 
     psi_blocks = renormalize_psi_blocks(psi_blocks)
-    if next_eval_idx < len(t_eval):
-        if abs(current_time - t_eval[next_eval_idx]) > 1e-9:
-            raise RuntimeError(
-                "Final MCWF time does not match the last requested t_eval point."
-            )
-        snapshots.append(
-            TrajectorySnapshot(
-                time=float(t_eval[next_eval_idx]),
-                sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-                norm=1.0,
-                integration_phase_index=max(len(integration_phases) - 1, 0),
-            )
-        )
-        next_eval_idx += 1
+    maybe_save_moments()
 
     if next_eval_idx != len(t_eval):
-        raise RuntimeError("Did not save all requested MCWF t_eval snapshots.")
-
-    if not snapshots or abs(snapshots[-1].time - current_time) > 1e-12:
-        snapshots.append(
-            TrajectorySnapshot(
-                time=current_time,
-                sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-                norm=1.0,
-                integration_phase_index=max(len(integration_phases) - 1, 0),
-            )
-        )
+        raise RuntimeError("Did not save all requested MCWF t_eval moment rows.")
 
     return TrajectoryResult(
-        final_sector_blocks=blocks_list_to_dict(sector_list, psi_blocks),
-        snapshots=snapshots,
-        jump_times=jump_times,
-        jump_count=len(jump_times),
-        total_step_count=total_step_count,
-        non_precomputed_step_count=non_precomputed_step_count,
+        moments=TrajectoryResolvedMomentSeries(
+            t=t_eval.copy(),
+            first_moments=first_moments[np.newaxis, ...],
+            second_moments=second_moments[np.newaxis, ...],
+        ),
+        diagnostics=MCWFTrajectoryDiagnostics(
+            jump_times=jump_times,
+            jump_count=len(jump_times),
+            total_step_count=total_step_count,
+            non_precomputed_step_count=non_precomputed_step_count,
+        ),
     )

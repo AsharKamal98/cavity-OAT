@@ -1,32 +1,32 @@
 import pytest
 
-from solvers.mcwf.j_moments import compute_mcwf_j_moments
+from post_analysis import compute_j_moments, compute_mean_generator_moments
 
 
-@pytest.mark.slow
-@pytest.mark.benchmark(group="mcwf-moment-extraction")
-def test_moment_extraction_many_snapshots(benchmark, moment_extraction_ensemble):
+def _compute_mean_and_j_moments(case):
+    mean_moments = compute_mean_generator_moments(case.moments)
+    return compute_j_moments(mean_moments, metadata=case.metadata)
+
+
+@pytest.mark.benchmark(group="mcwf-moment-post-analysis")
+def test_mean_and_j_moments_many_snapshots(benchmark, moment_analysis_case):
     """
-    Benchmark serial J-moment extraction on a large saved-time grid.
+    Benchmark trajectory averaging and generic J conversion on a large grid.
 
     Assert that the returned aggregated and group moment series contain one
     value for every saved snapshot.
     """
-    ensemble = moment_extraction_ensemble
+    case = moment_analysis_case
 
-    moments = benchmark(
-        compute_mcwf_j_moments,
-        ensemble,
-        n_processes=1,
-    )
+    moments = benchmark(_compute_mean_and_j_moments, case)
 
-    num_snapshots = len(ensemble.metadata.t_eval)
+    num_snapshots = case.moments.t.size
     assert len(moments.t) == num_snapshots
     assert moments.x is not None
     assert all(len(group) == num_snapshots for group in moments.x)
 
     benchmark.extra_info.update(
-        num_trajectories=len(ensemble.trajectories),
+        num_trajectories=case.moments.num_trajectories,
         num_snapshots=num_snapshots,
-        num_sectors=len(ensemble.metadata.sectors),
+        num_groups=case.moments.first_moments.shape[2],
     )

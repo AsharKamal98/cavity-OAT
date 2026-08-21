@@ -3,10 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+import numpy as np
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from scipy.sparse import csc_matrix
 
 from parser.common import Array, PhaseProtocol
+from parser.generator_moments import TrajectoryResolvedMomentSeries
 
 SectorKey = int | tuple[int, int]
 
@@ -34,14 +36,6 @@ class SectorOperators:
 
 
 @dataclass
-class SectorWavefunction:
-    """Wavefunction in one fixed-Nj block on the symmetric |n_e> basis."""
-
-    Nj: int
-    amplitudes: Array  # shape (Nj+1,), basis |n_e>, n_e = 0..Nj
-
-
-@dataclass
 class TrajectorySnapshot:
     time: float
     sector_blocks: dict[SectorKey, Array]
@@ -65,27 +59,68 @@ class MCWFSolverParameters(BaseModel):
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "MCWFSolverParameters":
+        if not self.Ni or sum(self.Ni) <= 0:
+            raise ValueError("Ni must contain at least one atom group.")
+        if any(group_size < 0 for group_size in self.Ni):
+            raise ValueError("Ni must contain non-negative group sizes.")
         if len(self.Ni) != len(self.omega_i):
             raise ValueError("Ni and omega_i must contain the same number of groups.")
-        if self.Gamma <= 0.0:
-            raise ValueError("Gamma must be positive.")
+        if not all(np.isfinite(coupling) for coupling in self.omega_i):
+            raise ValueError("omega_i must contain finite group couplings.")
+        if not np.isfinite(self.Gamma) or self.Gamma <= 0.0:
+            raise ValueError("Gamma must be finite and positive.")
         if self.dN < 0:
             raise ValueError("dN must be non-negative.")
-        if self.dt <= 0.0:
-            raise ValueError("dt must be positive.")
+        if not np.isfinite(self.dt) or self.dt <= 0.0:
+            raise ValueError("dt must be finite and positive.")
         if self.sector_distribution not in {"square", "binomial"}:
             raise ValueError("sector_distribution must be 'square' or 'binomial'.")
         return self
 
 
-@dataclass
-class TrajectoryResult:
-    final_sector_blocks: dict[SectorKey, Array]
-    snapshots: list[TrajectorySnapshot]
-    jump_times: list[float]
+class MCWFTrajectoryDiagnostics(BaseModel):
+    """MCWF-only diagnostics retained by a single-trajectory call."""
+
+    jump_times: Array
     jump_count: int
-    total_step_count: int = 0
-    non_precomputed_step_count: int = 0
+    total_step_count: int
+    non_precomputed_step_count: int
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("jump_times", mode="before")
+    @classmethod
+    def convert_jump_times(cls, value: object) -> Array:
+        return np.asarray(value, dtype=float)
+
+    @model_validator(mode="after")
+    def validate_diagnostics(self) -> "MCWFTrajectoryDiagnostics":
+        if self.jump_times.ndim != 1:
+            raise ValueError("jump_times must be one-dimensional.")
+        if self.jump_count != self.jump_times.size:
+            raise ValueError("jump_count must equal len(jump_times).")
+        if self.total_step_count < 0 or self.non_precomputed_step_count < 0:
+            raise ValueError("MCWF step counts must be non-negative.")
+        if self.non_precomputed_step_count > self.total_step_count:
+            raise ValueError(
+                "non_precomputed_step_count cannot exceed total_step_count."
+            )
+        return self
+
+
+class TrajectoryResult(BaseModel):
+    """Moment output and transient diagnostics for one MCWF trajectory."""
+
+    moments: TrajectoryResolvedMomentSeries
+    diagnostics: MCWFTrajectoryDiagnostics
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def validate_single_trajectory(self) -> "TrajectoryResult":
+        if self.moments.num_trajectories != 1:
+            raise ValueError("TrajectoryResult.moments must contain one trajectory.")
+        return self
 
 
 @dataclass
@@ -103,12 +138,33 @@ class TrajectoryEnsembleMetadata:
 
 @dataclass
 class TrajectoryEnsemble:
-    trajectories: list[TrajectoryResult]
+    moments: TrajectoryResolvedMomentSeries
     seeds: list[tuple[int, ...]]
     metadata: TrajectoryEnsembleMetadata | dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         self.metadata = self._validate_metadata(self.metadata)
+        if len(self.seeds) != self.moments.num_trajectories:
+            raise ValueError(
+                "TrajectoryEnsemble.seeds must contain one seed per trajectory."
+            )
+        if self.metadata is not None and not np.array_equal(
+            np.asarray(self.metadata.t_eval, dtype=float), self.moments.t
+        ):
+            raise ValueError(
+                "TrajectoryEnsemble metadata and moments must use the same t_eval grid."
+            )
+        if self.metadata is not None:
+            group_count = self.moments.first_moments.shape[2]
+            if len(self.metadata.Ni) != group_count:
+                raise ValueError(
+                    "TrajectoryEnsemble metadata.Ni must match the moment group axis."
+                )
+            if len(self.metadata.omega_i) != group_count:
+                raise ValueError(
+                    "TrajectoryEnsemble metadata.omega_i must contain one "
+                    "completed coupling per physical group."
+                )
 
     @staticmethod
     def _validate_metadata(

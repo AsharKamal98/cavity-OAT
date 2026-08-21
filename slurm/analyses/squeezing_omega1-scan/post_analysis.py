@@ -11,14 +11,20 @@ if str(REPO_ROOT) not in sys.path:
 
 import numpy as np
 
+from parser.generator_moments import TrajectoryResolvedMomentSeries
 from parser.mcwf import TrajectoryEnsemble, TrajectoryEnsembleMetadata
 from parser.moments import MomentSeries, SimulationMetadata
-from post_analysis.squeezing import compute_squeezing
+from post_analysis import (
+    build_dressed_basis_transformation,
+    compute_gell_mann_rotation,
+    compute_j_moments,
+    compute_mean_generator_moments,
+    compute_s_moments,
+    compute_squeezing,
+    rotate_generator_moments,
+)
 from slurm.j_moments_io import save_mcwf_moments_artifact
 from slurm.trajectory_ensemble_io import load_trajectory_ensemble_artifact
-from solvers.mcwf.j_moments import compute_mcwf_j_moments
-from solvers.mcwf.s_moments import compute_mcwf_s_moments
-from solvers.mcwf.squeezing_moments import compute_mcwf_squeezing_moments
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,7 +35,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--num-files", type=int, default=4)
-    parser.add_argument("--n-processes", type=int, required=True)
     return parser.parse_args()
 
 
@@ -64,7 +69,8 @@ def _load_combined_ensemble(
     if num_files <= 0:
         raise ValueError("num_files must be positive.")
 
-    trajectories = []
+    first_moment_chunks = []
+    second_moment_chunks = []
     seeds = []
     simulation_metadata_ref = None
     ensemble_metadata_ref = None
@@ -92,9 +98,9 @@ def _load_combined_ensemble(
             raise TypeError(f"{path} does not contain SimulationMetadata.")
         if artifact["array_index"] != array_index:
             raise ValueError(f"{path} has the wrong array index.")
-        if artifact["ntraj"] != len(ensemble.trajectories):
+        if artifact["ntraj"] != ensemble.moments.num_trajectories:
             raise ValueError(f"{path} has inconsistent trajectory counts.")
-        if len(ensemble.seeds) != len(ensemble.trajectories):
+        if len(ensemble.seeds) != ensemble.moments.num_trajectories:
             raise ValueError(f"{path} has inconsistent seed counts.")
         if ensemble.metadata is None:
             raise ValueError(f"{path} has no ensemble metadata.")
@@ -109,7 +115,8 @@ def _load_combined_ensemble(
                 )
             _validate_matching_metadata(ensemble.metadata, ensemble_metadata_ref)
 
-        trajectories.extend(ensemble.trajectories)
+        first_moment_chunks.append(ensemble.moments.first_moments)
+        second_moment_chunks.append(ensemble.moments.second_moments)
         seeds.extend((array_index, *seed) for seed in ensemble.seeds)
 
     if simulation_metadata_ref is None or ensemble_metadata_ref is None:
@@ -117,7 +124,11 @@ def _load_combined_ensemble(
 
     return (
         TrajectoryEnsemble(
-            trajectories=trajectories,
+            moments=TrajectoryResolvedMomentSeries(
+                t=np.asarray(ensemble_metadata_ref.t_eval, dtype=float).copy(),
+                first_moments=np.concatenate(first_moment_chunks, axis=0),
+                second_moments=np.concatenate(second_moment_chunks, axis=0),
+            ),
             seeds=seeds,
             metadata=ensemble_metadata_ref,
         ),
@@ -128,29 +139,35 @@ def _load_combined_ensemble(
 def _compute_moments(
     ensemble: TrajectoryEnsemble,
     simulation_metadata: SimulationMetadata,
-    *,
-    n_processes: int,
 ) -> MomentSeries:
     moments = MomentSeries(
-        t=ensemble.metadata.t_eval,
+        t=ensemble.moments.t,
         metadata=simulation_metadata,
     )
-    moments.J = compute_mcwf_j_moments(
-        ensemble,
-        n_processes=n_processes,
+    moments.generator_moments = ensemble.moments
+    moments.mean_generator_moments = compute_mean_generator_moments(
+        moments.generator_moments,
     )
-    moments.S = compute_mcwf_s_moments(
-        ensemble,
+    moments.J = compute_j_moments(
+        moments.mean_generator_moments,
+        metadata=moments.metadata,
+    )
+    moments.S = compute_s_moments(
+        moments.mean_generator_moments,
         moments.J,
-        n_processes=n_processes,
     )
-    moments.squeezing_moments = compute_mcwf_squeezing_moments(
-        ensemble,
+    transformation = build_dressed_basis_transformation(moments.J, moments.S)
+    rotation = compute_gell_mann_rotation(transformation)
+    mean_dressed_generator_moments = rotate_generator_moments(
+        moments.mean_generator_moments,
+        rotation,
+    )
+    moments.squeezing = compute_squeezing(
+        mean_dressed_generator_moments,
         moments.J,
-        moments.S,
-        n_processes=n_processes,
+        metadata=moments.metadata,
+        include_full_system=False,
     )
-    moments.squeezing = compute_squeezing(moments.squeezing_moments)
     return moments
 
 
@@ -161,21 +178,17 @@ def main() -> None:
         args.filename,
         args.num_files,
     )
-    print(f"Loaded {len(ensemble.trajectories)} trajectories.")
+    print(f"Loaded {ensemble.moments.num_trajectories} trajectories.")
 
     analysis_t0 = time.perf_counter()
-    moments = _compute_moments(
-        ensemble,
-        simulation_metadata,
-        n_processes=args.n_processes,
-    )
+    moments = _compute_moments(ensemble, simulation_metadata)
     print(f"Post-analysis runtime: {time.perf_counter() - analysis_t0:.2f} seconds.")
 
     output_path = args.output_dir / f"{args.filename}.pkl"
     save_mcwf_moments_artifact(
         moments,
         output_path,
-        ntraj=len(ensemble.trajectories),
+        ntraj=ensemble.moments.num_trajectories,
     )
     print(f"Saved MCWF moments to {output_path}")
 

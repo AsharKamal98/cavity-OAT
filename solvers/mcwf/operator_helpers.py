@@ -10,10 +10,6 @@ from scipy.sparse import csc_matrix, diags, eye, kron
 from parser.mcwf import SectorKey, SectorOperators
 
 
-def is_inhomogeneous_sector_key(sector_key: SectorKey) -> bool:
-    return isinstance(sector_key, tuple)
-
-
 def split_sector_key(sector_key: SectorKey) -> Tuple[int, ...]:
     if isinstance(sector_key, tuple):
         return tuple(int(v) for v in sector_key)

@@ -11,16 +11,89 @@
 
 This file specifies parser/output-container conventions used by the current
 post-processing pipeline. Use it when editing Pydantic classes in `parser/`,
-especially `parser/j_moments.py`, `parser/s_moments.py`, and
+especially `parser/generator_moments.py`, `parser/mcwf.py`,
+`parser/j_moments.py`, `parser/s_moments.py`, `parser/squeezing.py`, and
 `parser/moments.py`.
 
 General parser-class style rules live in the `parser` skill. This file records
 the repository-specific J- and S-moment container contracts.
 
+= Raw Trajectory-Resolved Generator-Moment Container
+
+`TrajectoryResolvedMomentSeries` in `parser/generator_moments.py` stores the
+complete SU(3) moment output for one or more individually retained trajectories
+in one caller-selected generator frame:
+
+```python
+TrajectoryResolvedMomentSeries(
+    t,                       # shape (n_t,)
+    first_moments,           # shape (R, n_t, G, 8)
+    second_moments,          # shape (R, n_t, K)
+)
+```
+
+Here $R$ is the explicit trajectory axis and must always be present. A single
+MCWF trajectory and a deterministic solver output use $R=1$; an MCWF ensemble
+uses $R=n_"traj"$. The first moments use one explicit physical-group axis
+followed by the eight Gell--Mann generators. Let $D=8G$. The second moments
+store the packed upper triangle of the real symmetric $D times D$
+anticommutator-moment matrix, so $K=D(D+1)/2$. Its packed axis uses the
+row-major ordering returned by `numpy.triu_indices(D)`.
+
+The container does not encode frame provenance. MCWF simulation output and its
+trajectory mean use the lab frame; `rotate_generator_moments(...)` may return
+the same container type in a dressed frame. Keep those series distinct, and do
+not pass a dressed series into analyses whose generator mapping assumes the lab
+frame. The values are generator moments rather than per-trajectory covariance
+matrices. A selected ensemble mean reuses the class with $R=1$.
+The saved-time grid must be nonempty, finite, and strictly increasing. Both
+moment arrays must be finite and real; construction may discard only an
+imaginary residual that is zero within the parser tolerance.
+
+= Analysis Moment Container
+
+`MomentSeries` should keep the raw generator moments together with derived J,
+S, squeezing, and diagnostic results:
+
+```python
+MomentSeries(
+    t,                                    # shape (n_t,)
+    metadata=None or SimulationMetadata(...),
+    generator_moments=None or TrajectoryResolvedMomentSeries(...),
+    mean_generator_moments=None or TrajectoryResolvedMomentSeries(...),
+    J=None,
+    S=None,
+    squeezing=None,
+    ...,
+)
+```
+
+When `generator_moments` is present, `MomentSeries.t` and
+`generator_moments.t` must have equal shape and agree to the saved-time grid
+tolerance. Its physical-group count must equal `len(metadata.Ni)` when metadata
+is present. These invariants must also be checked when `generator_moments`,
+`mean_generator_moments`, `t`, or `metadata` is assigned after construction.
+
+If no explicit `t` is supplied, `MomentSeries` should first use the time grid
+from `generator_moments`, then from `mean_generator_moments`. Otherwise, the
+existing `metadata` plus `num_snapshots` construction should build the grid.
+Keep `first_moments` and `second_moments` nested inside their generator-moment
+containers; do not copy them into loose top-level `MomentSeries` array fields.
+
+`mean_generator_moments` stores the trajectory mean in the same container
+type, with a required singleton trajectory axis $R=1$. It must match
+`generator_moments` in time, group, generator, and packed-second-moment axes.
+It may also be stored without the raw trajectories when loading an artifact
+that contains only the central ensemble result.
+
+
 = J-Moment Containers
 
-`JMomentSnapshot` stores first-order J-sphere moments for one saved MCWF
-trajectory snapshot:
+`JMomentSnapshot` and `AggregatedJMomentSnapshot` are legacy wavefunction-era
+containers. The current MCWF pipeline does not construct them: it stores
+trajectory-resolved generator moments and constructs `JMomentSeries` only in
+post-analysis. They remain temporarily for old artifacts and deferred benchmark
+migration:
 
 ```python
 AggregatedJMomentSnapshot(
@@ -34,7 +107,6 @@ JMomentSnapshot(
     x, y, z,                 # tuples ordered by group
     N_e, N_j,                # tuples ordered by group
     aggregated=AggregatedJMomentSnapshot(...),
-    jump_rate,
 )
 ```
 
@@ -59,7 +131,6 @@ JMomentSeries(
     N_e=None, N_j=None,
     theta=None, phi=None,
     aggregated=AggregatedJMomentSeries(...),
-    jump_rate=None,
 )
 ```
 
@@ -67,10 +138,12 @@ The unsuffixed physical fields are the primary representation and should be
 tuples ordered by group, including for $G=1$. The nested `aggregated` container
 is the secondary full-system representation. Additive fields are summed over
 groups; nonlinear fields are derived from the aggregated spin vector. Keep
-`t`, `integration_phase_index`, and `jump_rate` on the outer container.
+`t` and `integration_phase_index` on the outer container. Jump rate is not a
+J-moment field.
 
-`SMomentSnapshot` and `SMomentSeries` use the parallel group-resolved
-S-sphere structure. `SBasisSeries` stores the effective zero and one states:
+`SMomentSnapshot` is likewise legacy-only. The current generic post-analysis
+constructs `SMomentSeries`; `SBasisSeries` stores its effective zero and one
+states:
 
 ```python
 SMomentSnapshot(
@@ -98,8 +171,8 @@ series must be normalized, mutually orthogonal, and match the `SMomentSeries`
 time grid and group count.
 
 Store the ensemble-averaged series as
-`moments.S: SMomentSeries | None`. Do not add J-specific atom-number,
-jump-rate, or aggregated fields to the S containers.
+`moments.S: SMomentSeries | None`. Do not add J-specific atom-number or
+aggregated fields to the S containers.
 
 `BlochVectorSeries` is the reusable Cartesian-vector container defined in
 `parser/bloch_vector.py`:
@@ -146,48 +219,40 @@ distortion. The output does not retain the input time grid. Keep this diagnostic
 separate from `JMomentSeries` and `JModeSeries` so it can consume any compatible
 real series.
 
-`SqueezingMomentSeries` stores the ensemble-averaged raw moments required to
-compute generalized squeezing for one physical group:
-
-```python
-SqueezingMomentSeries(
-    t,
-    N_group,
-    mean_operators,          # shape (n_t, 4)
-    second_moments,          # shape (n_t, 4, 4)
-    N_c,
-    excited_fraction_active,
-    theta_J, phi_J,
-    theta_S, phi_S,
-)
-```
-
-Store group-local squeezing moments as
-`moments.squeezing_moments: tuple[SqueezingMomentSeries, ...] | None`, ordered
-by physical group. These are moments of dressed fluctuation operators and
-should not be added to `JMomentSeries`.
-
-`SqueezingSeries` stores the derived generalized squeezing result for one
-physical group:
+`SqueezingSeries` stores the complete generalized squeezing result for either
+one physical group or the full system:
 
 ```python
 SqueezingSeries(
     t,
-    N_group,
+    N_atoms,
+    covariance,              # shape (n_t, 4, 4)
+    covariance_eigvals,      # shape (n_t, 4), ascending
+    lambda_min,
     xi2,
     xi2_db,
-    lambda_min,
-    covariance_eigvals,     # shape (n_t, 4)
     N_c,
     excited_fraction_active,
-    theta_J, phi_J,
-    theta_S, phi_S,
 )
 ```
 
-Store derived group results as
-`moments.squeezing: tuple[SqueezingSeries, ...] | None`, with the same group
-ordering as `moments.squeezing_moments`.
+`SqueezingResult` keeps the mandatory group-resolved series and optional
+full-system series distinct:
+
+```python
+SqueezingResult(
+    group_resolved: tuple[SqueezingSeries, ...],
+    full_system: SqueezingSeries | None = None,
+)
+```
+
+Store this object as `moments.squeezing: SqueezingResult | None`. The group
+tuple follows `metadata.Ni` order and its atom counts must match those group
+sizes. The full-system atom count, when present, is their sum. All series must
+share `MomentSeries.t`. Dressed moments may remain a transient analysis value
+between explicit rotation and squeezing and do not need a separate parser
+container. J and S angles remain in
+their source series rather than being duplicated here.
 
 = Simulation Metadata
 
@@ -298,12 +363,16 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
 = Invariants
 
 - Parser classes should stay as Pydantic containers with explicit typed fields.
+- `TrajectoryResolvedMomentSeries` should require a nonempty finite increasing
+  time grid and finite real first- and second-moment arrays.
 - `BlochVectorSeries` must derive `length` and `xy_length` from x/y/z on every
   construction so stored values cannot disagree with the Cartesian components.
-- `SqueezingMomentSeries` must validate `(n_t, 4)` operator means,
-  `(n_t, 4, 4)` second moments, and one-dimensional fields matching `t`.
-- `SqueezingSeries` must validate `(n_t, 4)` covariance eigenvalues and
-  one-dimensional result fields matching `t`.
+- `SqueezingSeries` must validate an `(n_t, 4, 4)` symmetric covariance,
+  `(n_t, 4)` covariance eigenvalues, and one-dimensional result fields matching
+  `t`.
+- `SqueezingResult` must contain at least one group result on a shared grid;
+  any full-system result must use that grid and the sum of the group atom
+  counts.
 - Derived-field class methods should mutate the supplied `JMomentSeries`
   instance in place.
 - `SMomentSeries` should attach derived fields only after raw per-trajectory

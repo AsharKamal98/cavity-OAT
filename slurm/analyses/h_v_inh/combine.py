@@ -15,7 +15,7 @@ from slurm.j_moments_io import load_j_moments_artifact, save_j_moments_artifact
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Combine array-job J-moment JSON files.")
+    parser = argparse.ArgumentParser(description="Combine array-job J-moment pickle files.")
     parser.add_argument("--filename", type=str, required=True)
     parser.add_argument("--num-files", type=int, default=4)
     return parser.parse_args()

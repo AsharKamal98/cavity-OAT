@@ -47,7 +47,7 @@ sectors $A_s$ is the weighted group lowering operator is
 $
 A_s = omega_1 J_(1,s)^- + omega_2 J_(2,s)^-.
 $
-See `docs/inststructions/paper_inhomogeneous_couplings.typ` for further details about the inhomogeneous jump operator. 
+See `docs/instructions/paper_inhomogeneous_couplings.typ` for further details about the inhomogeneous jump operator.
 
 The phase-resolved jump operator should therefore look like
 the following.
@@ -136,7 +136,6 @@ The returned dictionary should have one shared sector ordering:
 ```python
 precomputed = {
     "sector_list": [...],
-    "ops_list": [...],
     "multiplicities": {...},
     "dims": {...},
     "integration_phase_jump_operators": [[...], ...],
@@ -153,9 +152,6 @@ The keys have the following meanings (details further down):
 
 - `sector_list` is the sorted list of populated sector keys, defines the
   canonical sector ordering used everywhere else in the precomputed dictionary. 
-- `ops_list` contains the `SectorOperators` object for each sector in
-  `sector_list`; each object packages the reduced-basis operators needed for
-  propagation and observables in that sector.    
 - `multiplicities` maps each sector key to its combinatorial multiplicity in the
   full atom ensemble.
 - `dims` maps each sector key (`NJ` in homogeneous case, `(NJ1,NJ2)` in two-group inhomogeneous case) to the reduced Hilbert-space dimension of that
@@ -187,7 +183,7 @@ $
 
 
 
-== Sector Operators (`ops_list`)
+== Transient Sector Operators (`ops_list`)
 
 Detailed construction rules for `build_sector_ops_for_key(...)`,
 `build_sector_ops(...)`, and `build_two_group_sector_ops(...)` are in
@@ -208,14 +204,17 @@ two-entry `Ni` and `omega_i` lists and returns product Dicke-basis operators on
 `|n_e1, n_e2>`.
 
 In both cases, the function returns a `SectorOperators` object for a given sector key. Each object is one element of `ops_list`. In pseudo-code, `ops` means the `SectorOperators` object for the current sector. This object should contain the following fields:
-- `Jp`, `Jm`, `JpJm`, `J_x`, `J_y`, `N_e` --- unweighted sector operators, used for physical observables.
+- `Jp`, `Jm`, `JpJm`, `J_x`, `J_y`, `N_e` --- unweighted sector
+  operators used while constructing the propagation operators.
 
   $
   "inhomogeneous:" quad J^+ = J_1^+ + J_2^+, quad
   N_e = N_(e,1) + N_(e,2).
   $
-- `N_e_groups`, `J_x_groups`, `J_y_groups` --- unweighted group-resolved operators, used for
-    group-resolved observables.
+- `N_e_groups`, `J_x_groups`, `J_y_groups` --- older unweighted
+  group-resolved fields that are not consumed by the current generator-moment
+  output path. Removing them from `SectorOperators` is a separate compatibility
+  cleanup.
 
   $
   "inhomogeneous:" quad J_x^("groups") = (J_(x,1), J_(x,2)), quad
@@ -246,6 +245,12 @@ For homogeneous sectors these fields are aliases of the ordinary unweighted
 operators. For inhomogeneous sectors they contain the weighted group operators.
 This convention keeps the propagation code mostly independent of whether the
 sector key is homogeneous or group-resolved.
+
+`ops_list` is construction-local. After the phase-local jump operators,
+effective generators, propagators, sector multiplicities, and dimensions have
+been built, the returned precompute dictionary should not retain `ops_list`.
+The trajectory hot loop does not consume it, and releasing the reference avoids
+keeping observable-only sparse matrices alive in every ensemble process.
 
 == Sector Multiplicities (`multiplicities`)
 The multiplicity of each sector should count how many atom-label configurations

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from common.utils.phases import default_three_phase_protocol
+from parser.generator_moments import TrajectoryResolvedMomentSeries
 from parser.mcwf import MCWFSolverParameters, TrajectoryEnsemble
 from parser.moments import SimulationMetadata
 from slurm.trajectory_ensemble_io import save_trajectory_ensemble_artifact
@@ -76,15 +77,7 @@ def squeezing_post_analysis_case(
         ntraj=3,
         n_processes=1,
     )
-    tagged_trajectories = [
-        replace(trajectory, total_step_count=100 + index)
-        for index, trajectory in enumerate(simulated.trajectories)
-    ]
-    ensemble = TrajectoryEnsemble(
-        trajectories=tagged_trajectories,
-        seeds=simulated.seeds,
-        metadata=simulated.metadata,
-    )
+    ensemble = simulated
 
     input_dir = tmp_path_factory.mktemp("squeezing-post-analysis")
     filename = "tiny_ensemble"
@@ -93,7 +86,15 @@ def squeezing_post_analysis_case(
     for array_index, chunk_size in enumerate(chunk_sizes):
         chunk_end = chunk_start + chunk_size
         chunk = TrajectoryEnsemble(
-            trajectories=ensemble.trajectories[chunk_start:chunk_end],
+            moments=TrajectoryResolvedMomentSeries(
+                t=ensemble.moments.t.copy(),
+                first_moments=ensemble.moments.first_moments[
+                    chunk_start:chunk_end
+                ].copy(),
+                second_moments=ensemble.moments.second_moments[
+                    chunk_start:chunk_end
+                ].copy(),
+            ),
             seeds=ensemble.seeds[chunk_start:chunk_end],
             metadata=ensemble.metadata,
         )

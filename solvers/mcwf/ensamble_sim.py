@@ -1,32 +1,27 @@
 from __future__ import annotations
-import sys
-from multiprocessing import pool
-from time import time
 
-from solvers.mcwf.sim import (
-    _simulate_single_trajectory,
-    build_precomputed_trajectory_data,
-)
+import multiprocessing as mp
+import sys
+import time
+from typing import Iterable, Optional
+
+import numpy as np
+from tqdm.auto import tqdm
+
 from common.utils.parameters import check_initial_sector_omega_ratio
 from parser.common import Array
+from parser.generator_moments import TrajectoryResolvedMomentSeries
 from parser.mcwf import (
     MCWFSolverParameters,
-    SectorKey,
     TrajectoryEnsemble,
     TrajectoryEnsembleMetadata,
     TrajectoryResult,
 )
+from solvers.mcwf.sim import (
+    _simulate_single_trajectory,
+    build_precomputed_trajectory_data,
+)
 from solvers.mcwf.state_helpers import centered_sector_initial_coeffs
-
-from dataclasses import dataclass
-from math import comb
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
-import numpy as np
-from scipy.sparse import csc_matrix, diags
-from scipy.sparse.linalg import expm_multiply
-import multiprocessing as mp
-import time
-from tqdm.auto import tqdm
 
 
 # -----------------------------------------------------------------------------
@@ -95,6 +90,56 @@ def _simulate_single_trajectory_worker(seed_sequence: np.random.SeedSequence) ->
     )
 
 
+def _collect_trajectory_moments(
+    results: Iterable[TrajectoryResult],
+    *,
+    ntraj: int,
+    t_eval: Array,
+    num_groups: int,
+) -> tuple[TrajectoryResolvedMomentSeries, int, int]:
+    """Stack single-trajectory moments and consume transient diagnostics."""
+    generator_count = 8 * num_groups
+    packed_count = generator_count * (generator_count + 1) // 2
+    first_moments = np.empty((ntraj, t_eval.size, num_groups, 8), dtype=float)
+    second_moments = np.empty((ntraj, t_eval.size, packed_count), dtype=float)
+    total_step_count = 0
+    non_precomputed_step_count = 0
+    result_count = 0
+
+    for trajectory_index, result in enumerate(results):
+        if trajectory_index >= ntraj:
+            raise RuntimeError("Received more trajectory results than requested.")
+
+        moments = result.moments
+        if not np.array_equal(moments.t, t_eval):
+            raise RuntimeError("A trajectory returned a different saved-time grid.")
+        if moments.first_moments.shape[2] != num_groups:
+            raise RuntimeError("A trajectory returned a different physical-group count.")
+
+        first_moments[trajectory_index] = moments.first_moments[0]
+        second_moments[trajectory_index] = moments.second_moments[0]
+        total_step_count += result.diagnostics.total_step_count
+        non_precomputed_step_count += (
+            result.diagnostics.non_precomputed_step_count
+        )
+        result_count += 1
+
+    if result_count != ntraj:
+        raise RuntimeError(
+            f"Received {result_count} trajectory results for ntraj={ntraj}."
+        )
+
+    return (
+        TrajectoryResolvedMomentSeries(
+            t=np.asarray(t_eval, dtype=float).copy(),
+            first_moments=first_moments,
+            second_moments=second_moments,
+        ),
+        total_step_count,
+        non_precomputed_step_count,
+    )
+
+
 def run_trajectory_ensemble(
     parameters: MCWFSolverParameters,
     *,
@@ -139,9 +184,17 @@ def run_trajectory_ensemble(
     # Basic input validation
     if ntraj <= 0:
         raise ValueError("ntraj must be positive.")
+    if n_processes is not None and n_processes != -1 and n_processes <= 0:
+        raise ValueError(
+            "n_processes must be None, 1, -1, or a positive integer."
+        )
+    if chunksize <= 0:
+        raise ValueError("chunksize must be positive.")
     t_eval = np.asarray(t_eval, dtype=float)
     if t_eval.ndim != 1 or t_eval.size < 2:
         raise ValueError("t_eval must be a one-dimensional array with at least two points.")
+    if not np.all(np.isfinite(t_eval)):
+        raise ValueError("t_eval must contain only finite values.")
     if np.any(np.diff(t_eval) <= 0.0):
         raise ValueError("t_eval must be strictly increasing.")
     phase_protocol = parameters.phase_protocol
@@ -206,107 +259,6 @@ def run_trajectory_ensemble(
     if verbose:
         print(f"Precompute: {t1 - t0:.2f} seconds.")
 
-    # -------------------------------------------------------------------------
-    # Serial fallback
-    # -------------------------------------------------------------------------
-    # Useful for debugging, profiling, and checking exact reproducibility.
-    if n_processes in (None, 1) or ntraj == 1:
-        trajectories: List[TrajectoryResult] = []
-
-        for child_seed_sequence in tqdm(seed_sequences, desc="simulate trajectories"):
-            result = _simulate_single_trajectory(
-                Ni=Ni,
-                Gamma=parameters.Gamma,
-                integration_phases=integration_phases,
-                sector_coeffs=sector_coeffs,
-                dt=parameters.dt,
-                t_eval=t_eval,
-                seed_sequence=child_seed_sequence,
-                shifted_jump_operator=parameters.shifted_jump_operator,
-                precomputed=precomputed,
-                omega_i=omega_i,
-            )
-            trajectories.append(result)
-
-        total_steps = sum(traj.total_step_count for traj in trajectories)
-        non_precomputed_steps = sum(traj.non_precomputed_step_count for traj in trajectories)
-        avg_total_steps = total_steps / len(trajectories)
-        avg_non_precomputed_steps = non_precomputed_steps / len(trajectories)
-        print(
-            "Simulation step summary (avg per trajectory): "
-            f"total steps={avg_total_steps:.2f}, "
-            f"steps without precompute={avg_non_precomputed_steps:.2f}"
-        )
-        metadata = TrajectoryEnsembleMetadata(
-            Ni=tuple(Ni),
-            omega_i=tuple(omega_i),
-            Gamma=parameters.Gamma,
-            phase_protocol=phase_protocol,
-            shifted_jump_operator=parameters.shifted_jump_operator,
-            t_eval=t_eval.copy(),
-            sectors=list(precomputed["sector_list"]),
-            sector_multiplicities=dict(precomputed["multiplicities"]),
-            sector_dimensions=dict(precomputed["dims"]),
-        )
-        return TrajectoryEnsemble(
-            trajectories=trajectories,
-            seeds=seed_keys,
-            metadata=metadata,
-        )
-
-    # -------------------------------------------------------------------------
-    # Parallel execution
-    # -------------------------------------------------------------------------
-    if n_processes == -1:
-        n_processes = mp.cpu_count()
-
-    if n_processes <= 0:
-        raise ValueError("n_processes must be None, 1, -1, or a positive integer.")
-
-    t0 = time.perf_counter()
-    # Use Python's default multiprocessing context
-    ctx = mp.get_context()
-    with ctx.Pool(
-        processes=n_processes,
-        # initializer runs once per worker process
-        initializer=_init_trajectory_worker,
-        initargs=(
-            Ni,
-            parameters.Gamma,
-            integration_phases,
-            sector_coeffs,
-            parameters.dt,
-            t_eval,
-            parameters.shifted_jump_operator,
-            precomputed,
-            omega_i,
-        ),
-    ) as pool:
-        t1 = time.perf_counter()
-        if verbose:
-            print(f"Pool startup: {n_processes} processes in {t1 - t0:.2f} seconds.")
-
-        trajectories = list(
-            tqdm(
-                pool.imap(
-                    _simulate_single_trajectory_worker,
-                    seed_sequences,
-                    chunksize=chunksize,
-                ),
-                total=len(seed_sequences),
-                desc="simulate trajectories",
-            )
-        )
-
-    total_steps = sum(traj.total_step_count for traj in trajectories)
-    non_precomputed_steps = sum(traj.non_precomputed_step_count for traj in trajectories)
-    avg_total_steps = total_steps / len(trajectories)
-    avg_non_precomputed_steps = non_precomputed_steps / len(trajectories)
-    print(
-        "Simulation step summary (avg per trajectory): "
-        f"total steps={avg_total_steps:.2f}, "
-        f"steps without precompute={avg_non_precomputed_steps:.2f}"
-    )
     metadata = TrajectoryEnsembleMetadata(
         Ni=tuple(Ni),
         omega_i=tuple(omega_i),
@@ -318,8 +270,94 @@ def run_trajectory_ensemble(
         sector_multiplicities=dict(precomputed["multiplicities"]),
         sector_dimensions=dict(precomputed["dims"]),
     )
+
+    # -------------------------------------------------------------------------
+    # Serial fallback
+    # -------------------------------------------------------------------------
+    # Useful for debugging, profiling, and checking exact reproducibility.
+    if n_processes in (None, 1) or ntraj == 1:
+        trajectory_results = (
+            _simulate_single_trajectory(
+                Ni=Ni,
+                Gamma=parameters.Gamma,
+                integration_phases=integration_phases,
+                sector_coeffs=sector_coeffs,
+                dt=parameters.dt,
+                t_eval=t_eval,
+                seed_sequence=child_seed_sequence,
+                shifted_jump_operator=parameters.shifted_jump_operator,
+                precomputed=precomputed,
+                omega_i=omega_i,
+            )
+            for child_seed_sequence in tqdm(
+                seed_sequences, desc="simulate trajectories"
+            )
+        )
+        moments, total_steps, non_precomputed_steps = _collect_trajectory_moments(
+            trajectory_results,
+            ntraj=ntraj,
+            t_eval=t_eval,
+            num_groups=len(Ni),
+        )
+    else:
+        # ---------------------------------------------------------------------
+        # Parallel execution
+        # ---------------------------------------------------------------------
+        if n_processes == -1:
+            n_processes = mp.cpu_count()
+
+        t0 = time.perf_counter()
+        # Use Python's default multiprocessing context.
+        ctx = mp.get_context()
+        with ctx.Pool(
+            processes=n_processes,
+            # Initializer runs once per worker process.
+            initializer=_init_trajectory_worker,
+            initargs=(
+                Ni,
+                parameters.Gamma,
+                integration_phases,
+                sector_coeffs,
+                parameters.dt,
+                t_eval,
+                parameters.shifted_jump_operator,
+                precomputed,
+                omega_i,
+            ),
+        ) as worker_pool:
+            t1 = time.perf_counter()
+            if verbose:
+                print(
+                    f"Pool startup: {n_processes} processes in {t1 - t0:.2f} seconds."
+                )
+
+            trajectory_results = tqdm(
+                worker_pool.imap(
+                    _simulate_single_trajectory_worker,
+                    seed_sequences,
+                    chunksize=chunksize,
+                ),
+                total=len(seed_sequences),
+                desc="simulate trajectories",
+            )
+            moments, total_steps, non_precomputed_steps = (
+                _collect_trajectory_moments(
+                    trajectory_results,
+                    ntraj=ntraj,
+                    t_eval=t_eval,
+                    num_groups=len(Ni),
+                )
+            )
+
+    avg_total_steps = total_steps / ntraj
+    avg_non_precomputed_steps = non_precomputed_steps / ntraj
+    print(
+        "Simulation step summary (avg per trajectory): "
+        f"total steps={avg_total_steps:.2f}, "
+        f"steps without precompute={avg_non_precomputed_steps:.2f}"
+    )
     return TrajectoryEnsemble(
-        trajectories=trajectories,
+        moments=moments,
         seeds=seed_keys,
         metadata=metadata,
     )

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=mcwf-squeeze-analysis
 #SBATCH --array=0-3
-#SBATCH --cpus-per-task=5
+#SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 
 #SBATCH --time=00:10:00
@@ -33,5 +33,4 @@ python "${ANALYSIS_DIR}/post_analysis.py" \
   --filename "${SIMULATION_JOB_NAME}_omega_${OMEGA_1}" \
   --input-dir "${INPUT_DIR}" \
   --output-dir "${OUTPUT_DIR}" \
-  --num-files "${NUM_FILES}" \
-  --n-processes "${SLURM_CPUS_PER_TASK}"
+  --num-files "${NUM_FILES}"

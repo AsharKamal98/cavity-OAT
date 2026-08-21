@@ -19,6 +19,15 @@ group-resolved `SMomentSeries`. Store the result as `moments.S`; it supplies
 the effective S basis and S-sphere directions required by later
 squeezing-moment extraction.
 
+This is the legacy wavefunction-based converter retained during the staged
+moment-output migration. New MCWF analysis should call
+`post_analysis.compute_s_moments(mean_generator_moments, j_moments)`, which
+constructs the same shared S basis and obtains the raw S components by a linear
+transformation of the averaged first generator moments. The legacy and generic
+implementations intentionally duplicate their small basis-construction helper
+until the legacy converter is removed. The generic converter is specified in
+`docs/instructions/post_analysis/s_moments.typ`.
+
 Define `SMomentSeries` in `parser/s_moments.py` with spin-vector fields parallel
 to `JMomentSeries`. Shared spin-vector direction and angle conventions are
 defined in

@@ -27,8 +27,8 @@ cal(E) = {T_1, dots.c, T_(n_"traj")}.
 $
 
 All trajectories should share the same completed model inputs, precomputed
-sector data, and saved-time grid so that later moment extraction can average
-snapshots by index without interpolation.
+sector data, and saved-time grid so that post-analysis can combine or average
+their stored moment rows by index without interpolation.
 
 The ensemble runner is responsible for:
 
@@ -37,6 +37,10 @@ The ensemble runner is responsible for:
 - creating reproducible child seeds;
 - dispatching `_simulate_single_trajectory(...)` serially or with
   multiprocessing;
+- copying each singleton trajectory moment result into its corresponding row
+  of the ensemble moment arrays without averaging;
+- consuming single-trajectory diagnostics for optional runtime summaries and
+  then discarding them;
 - returning a `TrajectoryEnsemble` with shared metadata.
 
 = Method in Pseudo-Code
@@ -52,19 +56,32 @@ def run_trajectory_ensemble(parameters, *, t_eval, ntraj, seed=None,
     precomputed = build_precomputed_trajectory_data(...)
     seed_sequences = np.random.SeedSequence(seed).spawn(ntraj)
 
+    allocate first_moments with shape (ntraj, n_t, G, 8)
+    allocate second_moments with shape (ntraj, n_t, K)
+
     if serial:
-        trajectories = [
+        results = (
             _simulate_single_trajectory(..., seed_sequence=child,
                                         precomputed=precomputed)
             for child in seed_sequences
-        ]
+        )
     else:
         initialize worker-local state once
-        trajectories = pool.imap(_simulate_single_trajectory_worker,
-                                 seed_sequences, chunksize=chunksize)
+        results = pool.imap(_simulate_single_trajectory_worker,
+                            seed_sequences, chunksize=chunksize)
+
+    for r, result in enumerate(results):
+        verify result.moments uses the shared t_eval and has R=1
+        first_moments[r] = result.moments.first_moments[0]
+        second_moments[r] = result.moments.second_moments[0]
+        accumulate optional step-count summary from result.diagnostics
 
     return TrajectoryEnsemble(
-        trajectories=trajectories,
+        moments=TrajectoryResolvedMomentSeries(
+            t=t_eval,
+            first_moments=first_moments,
+            second_moments=second_moments,
+        ),
         seeds=[tuple(child.spawn_key) for child in seed_sequences],
         metadata=metadata,
     )
@@ -129,27 +146,37 @@ The returned object should be:
 
 ```python
 TrajectoryEnsemble(
-    trajectories=trajectories,
+    moments=TrajectoryResolvedMomentSeries(
+        t=...,                       # shape (n_t,)
+        first_moments=...,           # shape (ntraj, n_t, G, 8)
+        second_moments=...,          # shape (ntraj, n_t, K)
+    ),
     seeds=seed_keys,
     metadata=metadata,
 )
 ```
 
-`TrajectoryEnsemble.trajectories` should preserve submission order.
+The first axis of `TrajectoryEnsemble.moments` should preserve submission
+order. `TrajectoryEnsemble.seeds[r]` must identify the same trajectory as
+moment row `r`.
 `TrajectoryEnsemble.metadata` should store shared simulation metadata such as
 `Ni`, completed `omega_i`, `Gamma`, `phase_protocol`, `shifted_jump_operator`,
 `t_eval`, sector keys, sector multiplicities, and sector dimensions.
 
-Each trajectory should already be a complete `TrajectoryResult`; see
+Each private single-trajectory call should return a complete
+`TrajectoryResult`; see
 `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ` for its
-fields.
+fields. The ensemble should retain only its moment arrays. Jump times, jump
+counts, and step counts are MCWF runtime diagnostics and should not be returned
+by the parent ensemble.
 
 For array simulations that require ensemble-wide derived bases, save each
 complete `TrajectoryEnsemble` temporarily in shared storage. After every array
 job has finished, load the chunks in array-index order, verify their shared
-metadata and saved-time grid, and concatenate their trajectories into one
-`TrajectoryEnsemble`. Compute J, S, and squeezing moments from that combined
-ensemble rather than averaging separately derived array outputs.
+metadata and saved-time grid, and concatenate their moment arrays along the
+trajectory axis into one `TrajectoryEnsemble`. Compute J, S, and squeezing
+moments from that combined ensemble rather than averaging separately derived
+array outputs.
 
 = Invariants and Edge Cases
 
@@ -157,8 +184,16 @@ ensemble rather than averaging separately derived array outputs.
 - Serial and multiprocessing paths should produce the same seed semantics,
   trajectory ordering, and output structure.
 - Each trajectory should receive exactly one child `SeedSequence`.
+- The trajectory axis must never be averaged inside the ensemble runner.
+- Single-trajectory results must be copied into their ensemble rows as they are
+  received so their diagnostics need not remain resident in the parent.
+- `TrajectoryEnsemble.seeds` and the first moment axis must have equal length.
 - Worker-local precomputed state should be treated as read-only.
 - All trajectories in one ensemble should use the same explicit `t_eval` grid.
+- `t_eval` should contain only finite values, and `chunksize` should be positive
+  even when the serial path is selected.
+- The physical-group axis of returned moments should match both `metadata.Ni`
+  and the completed coupling list in `metadata.omega_i`.
 - Concatenated array ensembles must share physical, phase, sector, and time-grid
   metadata.
 - `n_processes=None` and `n_processes=1` should use the serial path;

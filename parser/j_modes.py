@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from parser.bloch_vector import BlochVectorSeries
 from parser.common import Array
@@ -15,5 +15,4 @@ class JModeSeries(BaseModel):
     bright: BlochVectorSeries
     dark: BlochVectorSeries
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

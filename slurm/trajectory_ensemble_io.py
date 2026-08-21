@@ -18,7 +18,7 @@ def save_trajectory_ensemble_artifact(
     """Save one array job's complete MCWF ensemble."""
     if ensemble.metadata is None:
         raise ValueError("TrajectoryEnsemble.metadata is required.")
-    if not ensemble.trajectories:
+    if ensemble.moments.num_trajectories == 0:
         raise ValueError("Cannot save an empty TrajectoryEnsemble.")
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -28,7 +28,7 @@ def save_trajectory_ensemble_artifact(
                 "ensemble": ensemble,
                 "simulation_metadata": simulation_metadata,
                 "array_index": array_index,
-                "ntraj": len(ensemble.trajectories),
+                "ntraj": ensemble.moments.num_trajectories,
             },
             fh,
         )

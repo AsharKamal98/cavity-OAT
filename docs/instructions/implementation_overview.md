@@ -109,10 +109,48 @@ parameters = <Method>SolverParameters(
 mcwf_ensemble = run_trajectory_ensemble(parameters, ...)
 mfe_result = solve_mfe(parameters, ...)
 qutip_result = simulate_fixed_nj_mc_trajectory(parameters, ...) or simulate_fixed_nj_me_trajectory(parameters, ...)
+
+# retain shared raw moment output before constructing derived observables
+moments.generator_moments = mcwf_ensemble.moments
+
+# form the central ensemble moments before J, S, and squeezing analysis
+moments.mean_generator_moments = compute_mean_generator_moments(
+    moments.generator_moments
+)
+
+# derive solver-independent J moments from the central generator moments
+moments.J = compute_j_moments(
+    moments.mean_generator_moments,
+    metadata=moments.metadata,
+)
+
+# derive group-local S moments in the J-angle-defined frame
+moments.S = compute_s_moments(
+    moments.mean_generator_moments,
+    moments.J,
+)
+
+# rotate both averaged generator-moment orders into the dressed frame
+U = build_dressed_basis_transformation(moments.J, moments.S)
+R = compute_gell_mann_rotation(U)
+mean_dressed_generator_moments = rotate_generator_moments(
+    moments.mean_generator_moments,
+    R,
+)
+
+# compute group-resolved squeezing and, when requested, the full system
+moments.squeezing = compute_squeezing(
+    mean_dressed_generator_moments,
+    moments.J,
+    metadata=moments.metadata,
+    include_full_system=False,
+)
 ```
 
 The backend choice changes how the raw physical evolution is computed, but the
-analysis flow after that should be shared as much as possible.
+analysis flow after that should be shared as much as possible. Resampling for
+error bars should select complete rows from `generator_moments`, recompute the
+mean generator moments, and then repeat the full derived analysis.
 
 ### 3.1 MCWF
 
@@ -153,8 +191,10 @@ The ensemble function should:
 - create trajectory seeds consistently;
 - build reusable precomputed data once;
 - run single trajectories serially or with multiprocessing;
-- return a `TrajectoryEnsemble` containing the individual trajectory results
-  and shared simulation metadata.
+- stack the raw trajectory moments without averaging and discard the
+  single-trajectory diagnostics after any runtime summary;
+- return a `TrajectoryEnsemble` containing one trajectory-resolved moment
+  series and shared simulation metadata.
 
 High-level data flow should look like:
 
@@ -174,8 +214,13 @@ def run_trajectory_ensemble(
 ) -> TrajectoryEnsemble:
     sector_coeffs = centered_sector_initial_coeffs(...)
     precomputed = build_precomputed_trajectory_data(...)
-    trajectories = [_simulate_single_trajectory(..., precomputed) for _ in range(ntraj)]
-    return TrajectoryEnsemble(trajectories=trajectories, metadata=metadata)
+    trajectory_results = (
+        _simulate_single_trajectory(..., precomputed) for _ in range(ntraj)
+    )
+    moments, total_steps, non_precomputed_steps = _collect_trajectory_moments(
+        trajectory_results, ntraj=ntraj, t_eval=t_eval, num_groups=len(parameters.Ni)
+    )
+    return TrajectoryEnsemble(moments=moments, seeds=seed_keys, metadata=metadata)
 ```
 
 Shared simulation-level fields such as `Ni`, `omega_i`, `Gamma`,
@@ -195,6 +240,10 @@ For precomputation rules, use:
 - `docs/instructions/solvers/mcwf/simulation_precompute.typ`
 - `docs/instructions/solvers/mcwf/sector_operators.typ`
 
+The precompute builder may construct aligned `SectorOperators` objects
+transiently, but its returned worker state should retain only the matrices and
+metadata consumed by trajectory propagation.
+
 For ensemble-level simulation flow, use:
 
 - `docs/instructions/solvers/mcwf/ensemble_simulation.typ` 
@@ -203,16 +252,16 @@ For single-trajectory simulation flow, use:
 
 - `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ`
 
-For MCWF-specific J-moment extraction and trajectory averaging, use:
+For the legacy MCWF-specific J-moment extraction and trajectory averaging, use:
 
 - `docs/instructions/solvers/mcwf/j_moments.typ`
 
-For MCWF-specific group-local S-moment extraction, use:
+For the legacy MCWF-specific group-local S-moment extraction, use:
 
 - `docs/instructions/solvers/mcwf/s_moments.typ`
 
-For MCWF-specific extraction of group-local squeezing moments from the
-ensemble together with precomputed J and S moments, use:
+The previous wavefunction-specific squeezing-moment extraction remains only as
+staged legacy context in:
 
 - `docs/instructions/solvers/mcwf/squeezing_moments.typ`
 
@@ -241,9 +290,11 @@ shared `JMomentSeries` representation as the other methods.
 
 ## 4. Moment Series
 
-The primary post-processing pipeline should be moment-first. Outputs from MCWF,
-MFE, and QuTiP should all be converted into shared moment containers before
-diagnostics or plotting.
+The primary post-processing pipeline should be moment-first. MCWF output should
+be averaged as trajectory-resolved generator moments and converted into shared
+observable containers before diagnostics or plotting. MFE and QuTiP retain
+their method-specific converters into the same downstream observable
+containers.
 
 For parser output-container conventions, use:
 
@@ -258,7 +309,7 @@ The notebook-level container is `MomentSeries`, defined in
 post-processing steps are run:
 
 ```python
-raw_result = run_backend(...)
+raw_result = run_trajectory_ensemble(...)
 moments = MomentSeries(
     num_snapshots=num_snapshots,
     metadata=SimulationMetadata(
@@ -268,7 +319,30 @@ moments = MomentSeries(
         phase_protocol=raw_result.metadata.phase_protocol,
     ),
 )
-moments.J = compute_method_j_moments(raw_result)
+moments.generator_moments = raw_result.moments
+moments.mean_generator_moments = compute_mean_generator_moments(
+    moments.generator_moments
+)
+moments.J = compute_j_moments(
+    moments.mean_generator_moments,
+    metadata=moments.metadata,
+)
+moments.S = compute_s_moments(
+    moments.mean_generator_moments,
+    moments.J,
+)
+U = build_dressed_basis_transformation(moments.J, moments.S)
+R = compute_gell_mann_rotation(U)
+mean_dressed_generator_moments = rotate_generator_moments(
+    moments.mean_generator_moments,
+    R,
+)
+moments.squeezing = compute_squeezing(
+    mean_dressed_generator_moments,
+    moments.J,
+    metadata=moments.metadata,
+    include_full_system=False,
+)
 ```
 
 Current top-level fields are:
@@ -277,6 +351,11 @@ Current top-level fields are:
 - `moments.metadata`: validated physical model and standard-protocol context,
   including `Ni`, independent `omega_i`, completed `omega_groups`, `Gamma`,
   and the supplied `phase_protocol`.
+- `moments.generator_moments`: trajectory-resolved first and symmetric second
+  SU(3) generator moments, with complete trajectories retained along axis zero.
+  Its shared saved-time grid and stored real moment arrays must be finite.
+- `moments.mean_generator_moments`: the selected trajectory average of the
+  same generator moments, retaining a singleton trajectory axis.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles. Unsuffixed physical fields are
   tuples ordered by group, including for $G=1$; full-system fields live in
@@ -285,13 +364,10 @@ Current top-level fields are:
   population-weighted contrast, drive-bright, and drive-dark two-group vectors.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
-- `moments.squeezing_moments`: an optional tuple containing one
-  `SqueezingMomentSeries` per physical group. MCWF extraction averages the raw
-  dressed fluctuation moments over trajectories after constructing the shared
-  dressed-state and operator series once from ensemble-level J and S moments.
-- `moments.squeezing`: an optional tuple containing one derived
-  `SqueezingSeries` per physical group, constructed solver-independently from
-  `moments.squeezing_moments`.
+- `moments.squeezing`: an optional `SqueezingResult`. Its `group_resolved`
+  tuple contains one covariance and generalized-squeezing series per physical
+  group. Its `full_system` field is present only when the caller requests
+  squeezing for the unweighted sum of all group fluctuation operators.
 - `moments.S`: an optional `SMomentSeries` containing group-local S-sphere
   components, normalized directions, angles, and the effective zero/one basis
   used to define the S sphere.
@@ -307,20 +383,26 @@ stored x/y/z components.
 
 J-sphere moments are the common post-processing representation used across the
 simulation backends. The solvers should stay responsible for producing raw
-dynamics, while method-specific converters turn those outputs into a shared
-`JMomentSeries`.
+dynamics, while post-analysis converters turn those outputs into a shared
+`JMomentSeries`. MCWF uses the solver-independent generator-moment converter;
+MFE and QuTiP keep their method-specific converters because they do not need
+the generator-moment path for S moments or squeezing.
 
-Use the method-specific converters as the main entry points:
+Use these converter entry points:
 
 ```python
-moments.J = compute_mcwf_j_moments(ensemble, n_processes=n_processes)
+moments.J = compute_j_moments(
+    moments.mean_generator_moments,
+    metadata=moments.metadata,
+)
 moments.J = compute_mfe_j_moments(mfe_result)
 moments.J = compute_qutip_j_moments(qutip_result)
 ```
 
 The shared series may contain group spin components, normalized directions,
-angles, atom-number fields, jump rates, and counterparts in the nested
-`aggregated` container when those quantities are available. Derived fields
+angles, atom-number fields, and counterparts in the nested `aggregated`
+container when those quantities are available. Jump rate is not part of the
+J-moment output contract. Derived fields
 such as spin directions and angles should be attached inside the J-moment
 layer, so plotting and diagnostics can consume one common structure independent
 of whether the data came from MCWF, MFE, or QuTiP. Additive aggregated fields
@@ -329,9 +411,12 @@ should be constructed through
 counterparts before nonlinear aggregated fields are attached.
 
 Shared spin-vector direction and angle conventions live in
-`docs/instructions/common/spin_moment_conventions.typ`. MCWF-specific
-J-moment extraction and averaging rules live in
-`docs/instructions/solvers/mcwf/j_moments.typ`.
+`docs/instructions/common/spin_moment_conventions.typ`. The generic conversion
+from averaged generator moments is defined in
+`docs/instructions/post_analysis/j_moments.typ` and summarized in
+`docs/instructions/post_analysis/post_analysis.md`. The legacy snapshot-based
+MCWF converter remains documented in
+`docs/instructions/solvers/mcwf/j_moments.typ` during this staged migration.
 
 Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 
@@ -340,6 +425,78 @@ Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 QuTiP-to-J-moment conversion is defined in  
 
 - `docs/instructions/solvers/qutip/....typ` (planned)
+
+### 4.3 S-Sphere Moments
+
+For generator-moment workflows, construct group-local S moments directly from
+the averaged first generator moments and the corresponding group-resolved J
+angles:
+
+```python
+moments.S = compute_s_moments(
+    moments.mean_generator_moments,
+    moments.J,
+)
+```
+
+The converter uses one shared J-angle-defined S frame per group and saved time,
+then delegates lengths, normalized directions, and S angles to the
+`SMomentSeries` class methods. Symmetric second generator moments remain the
+input for later covariance and squeezing analysis. The generic converter is
+defined in `docs/instructions/post_analysis/s_moments.typ` and summarized in
+`docs/instructions/post_analysis/post_analysis.md`; the staged legacy
+wavefunction path remains documented in
+`docs/instructions/solvers/mcwf/s_moments.typ`.
+
+### 4.4 Dressed Generator Moments
+
+Construct the dressed basis from the group-resolved J and S angles, convert it
+to the real adjoint rotation of the normalized Gell--Mann generators, and
+rotate both first and symmetric second moments:
+
+```python
+U = build_dressed_basis_transformation(moments.J, moments.S)
+R = compute_gell_mann_rotation(U)
+mean_dressed_generator_moments = rotate_generator_moments(
+    moments.mean_generator_moments,
+    R,
+)
+```
+
+The rotation preserves the input trajectory axis and all cross-group
+second-moment blocks. `U` and `R` are transient derived arrays rather than
+fields of `MomentSeries`; the rotated result reuses
+`TrajectoryResolvedMomentSeries`. Basis construction is defined in
+`docs/instructions/post_analysis/dressed_basis.typ`, and generator/moment
+rotation is defined in
+`docs/instructions/post_analysis/generator_rotation.typ`. Both are summarized
+in `docs/instructions/post_analysis/post_analysis.md`. Keep the lab and dressed
+series distinct: the fixed generator mappings in `compute_j_moments(...)` and
+`compute_s_moments(...)` require the lab-frame series.
+
+### 4.5 Generalized Squeezing
+
+Compute squeezing from the averaged dressed generator moments and the shared J
+series:
+
+```python
+moments.squeezing = compute_squeezing(
+    mean_dressed_generator_moments,
+    moments.J,
+    metadata=moments.metadata,
+    include_full_system=False,
+)
+```
+
+The caller must construct `mean_dressed_generator_moments` explicitly as in
+Section 4.4; `compute_squeezing(...)` does not infer or apply a basis rotation.
+It forms the full `4G x 4G` covariance of `(T1, T2, T4, T5)` and always
+computes the diagonal `4 x 4` block for every physical group. With
+`include_full_system=True`, it additionally sums every group-pair covariance
+block and computes squeezing for the unweighted sum of corresponding group
+fluctuation operators. This option must not change the group-resolved results.
+The detailed contract is in
+`docs/instructions/post_analysis/squeezing.typ`.
 
 
 ## 5. Diagnostics
@@ -355,11 +512,8 @@ Current task-specific diagnostic instructions include:
 - `docs/instructions/post_analysis/mfe_residuals.typ`
 - `docs/instructions/post_analysis/squeezing.typ`
 
-The MCWF-specific input-moment extraction used by squeezing is documented
-separately in `docs/instructions/solvers/mcwf/squeezing_moments.typ`.
-
-summarized in
-  `docs/instructions/post_analysis/post_analysis.md`
+The public post-analysis entry points are summarized in
+`docs/instructions/post_analysis/post_analysis.md`.
 
 ## 6. Plotting
 The shared spin-component plot lives in `common/plotting/j_spin.py`:

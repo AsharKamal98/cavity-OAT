@@ -30,6 +30,13 @@ def save_mcwf_moments_artifact(
         raise ValueError("MCWF moment artifacts require simulation metadata.")
     if ntraj <= 0:
         raise ValueError("ntraj must be positive.")
+    if (
+        moments.generator_moments is not None
+        and moments.generator_moments.num_trajectories != ntraj
+    ):
+        raise ValueError(
+            "ntraj must match moments.generator_moments.num_trajectories."
+        )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("wb") as fh:

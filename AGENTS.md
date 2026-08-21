@@ -88,6 +88,10 @@ AGENTS.md
       -> docs/instructions/solvers/mcwf/s_moments.typ
       -> docs/instructions/solvers/mcwf/squeezing_moments.typ
       -> docs/instructions/observable_moment_pipeline.typ
+      -> docs/instructions/post_analysis/j_moments.typ
+      -> docs/instructions/post_analysis/s_moments.typ
+      -> docs/instructions/post_analysis/dressed_basis.typ
+      -> docs/instructions/post_analysis/generator_rotation.typ
       -> docs/instructions/post_analysis/j_modes.typ
       -> docs/instructions/post_analysis/harmonic_analysis.typ
       -> docs/instructions/post_analysis/mfe_residuals.typ

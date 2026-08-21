@@ -18,7 +18,7 @@ precomputed sector data from `run_trajectory_ensemble(...)`. Ensemble seeding
 and multiprocessing are defined in
 `docs/instructions/solvers/mcwf/ensemble_simulation.typ`.
 
-= Method
+= Theory
 
 For one trajectory, the sector-block wavefunction evolves between jumps under
 the precomputed non-Hermitian generators:
@@ -41,14 +41,48 @@ no-jump step. If it crosses the threshold, the code refines one jump time
 inside that attempted step, applies the phase-local jump operator, records the
 jump, and draws a new threshold.
 
-The current jump-time refinement uses four bisection iterations inside the
-attempted step. This reduces an attempted interval `step` to `step / 16`, which
-is at most `dt / 16`.
+Use the normalized single-particle Gell--Mann generators
 
-The effective generators, jump operators, and full-`dt` propagators are defined
-in `docs/instructions/solvers/mcwf/simulation_precompute.typ`. Initial
-sector-block conventions are defined in
-`docs/instructions/solvers/mcwf/initial_sector_state.typ`.
+$
+g_a = lambda_a / 2,
+quad a in {1, dots.c, 8}.
+$
+
+For physical group $q$, define the corresponding collective generator by
+
+$
+hat(G)_(q,a) = sum_(i in q) g_a^((i)).
+$
+
+For a one-group run, omit the group label and write $hat(G)_a$. At each saved
+time, the normalized first-order moment for trajectory $r$ is
+
+$
+mu_(q,a)^((r))(t)
+=
+frac(
+  ⟨psi_r(t) | hat(G)_(q,a) | psi_r(t)⟩,
+  ⟨psi_r(t) | psi_r(t)⟩
+).
+$
+
+The normalized symmetric second-order moment is
+
+$
+M_(q a, h b)^((r))(t)
+=
+frac(
+  ⟨psi_r(t) |
+  {hat(G)_(q,a), hat(G)_(h,b)}
+  | psi_r(t)⟩,
+  2 ⟨psi_r(t) | psi_r(t)⟩
+).
+$
+
+Here $q,h$ run over all physical groups and $a,b in {1, dots.c, 8}$. Together,
+the complete first- and second-order moment sets contain enough information to
+compute the observables in the post-analysis pipeline without retaining the
+wavefunction.
 
 = Method in Pseudo-Code
 
@@ -56,7 +90,7 @@ sector-block conventions are defined in
 def _simulate_single_trajectory(..., seed_sequence, precomputed):
     rng = np.random.default_rng(seed_sequence)
     psi_blocks = build initial sector blocks in precomputed sector order
-    save snapshot at t = 0
+    compute and save one raw generator-moment row at t = 0
 
     threshold = rng.random()
     for each nonzero-duration integration_phase:
@@ -67,22 +101,30 @@ def _simulate_single_trajectory(..., seed_sequence, precomputed):
 
             if total_norm2_list(trial) > threshold:
                 accept no-jump step
-                maybe save snapshot
+                maybe compute and save a generator-moment row
                 continue
 
             refine jump time with four bisection iterations
             propagate to the refined jump time
             renormalize, apply jump, renormalize
             record jump time and draw a new threshold
-            maybe save snapshot
+            maybe compute and save a generator-moment row
 
             attempt the post-jump remainder only if it does not already cross
             the new threshold
 
-    renormalize final state
-    ensure every requested t_eval snapshot was saved
-    return TrajectoryResult(...)
+    ensure every requested t_eval moment row was saved
+    return TrajectoryResult(moments=..., diagnostics=...)
 ```
+
+The current jump-time refinement uses four bisection iterations inside the
+attempted step. This reduces an attempted interval `step` to `step / 16`, which
+is at most `dt / 16`.
+
+The effective generators, jump operators, and full-`dt` propagators are defined
+in `docs/instructions/solvers/mcwf/simulation_precompute.typ`. Initial
+sector-block conventions are defined in
+`docs/instructions/solvers/mcwf/initial_sector_state.typ`.
 
 `_simulate_single_trajectory(...)` should keep the trajectory physics local to
 one child seed. It should reuse the supplied precomputed objects and should not
@@ -122,12 +164,17 @@ The returned object should be:
 
 ```python
 TrajectoryResult(
-    final_sector_blocks=...,
-    snapshots=...,
-    jump_times=...,
-    jump_count=len(jump_times),
-    total_step_count=...,
-    non_precomputed_step_count=...,
+    moments=TrajectoryResolvedMomentSeries(
+        t=...,                       # shape (n_t,)
+        first_moments=...,           # shape (1, n_t, G, 8)
+        second_moments=...,          # shape (1, n_t, K), K=(8G)(8G+1)/2
+    ),
+    diagnostics=MCWFTrajectoryDiagnostics(
+        jump_times=...,
+        jump_count=len(jump_times),
+        total_step_count=...,
+        non_precomputed_step_count=...,
+    ),
 )
 ```
 
@@ -138,14 +185,16 @@ not on each `TrajectoryResult`.
 = Invariants and Edge Cases
 
 - The sector order in `precomputed["sector_list"]` should define the order of
-  `psi_blocks`, phase-local operator lists, snapshots, and final output blocks.
-- Save exactly one snapshot per requested `t_eval` point, with the first
-  snapshot at `t=0`.
-- Each snapshot stores the corresponding `integration_phase_index`.
+  `psi_blocks` and phase-local operator lists throughout propagation.
+- Save exactly one raw moment row per requested `t_eval` point, with the first
+  row at `t=0`.
+- Retain the explicit trajectory axis in `TrajectoryResolvedMomentSeries`; it
+  has length one for this single-trajectory function.
 - Split steps so the solver lands on phase boundaries and saved-time points
-  exactly, rather than interpolating snapshots afterward.
-- Saved no-jump `sector_blocks` may be unnormalized; snapshot `norm` stores
-  the corresponding block norm for later expectation-value normalization.
+  exactly, rather than interpolating moments afterward.
+- Normalize every saved first and second moment by the complete sector-block
+  norm at that saved time.
+- Do not retain saved sector-block wavefunctions in `TrajectoryResult`.
 - Refine jump times with the current fixed four-iteration bisection rule unless
   the user explicitly requests a behavior change.
 - Resolve at most one explicitly refined jump per attempted outer-loop step;
@@ -153,5 +202,6 @@ not on each `TrajectoryResult`.
   evolution to the next loop iteration.
 - Track `total_step_count` and `non_precomputed_step_count` as runtime
   diagnostics only; they must not affect trajectory physics.
-- If all requested `t_eval` snapshots are not saved by the end, raise an error
-  instead of returning a partially aligned trajectory.
+- Require `jump_count` to equal the number of stored `jump_times`.
+- If all requested `t_eval` moment rows are not saved by the end, raise an
+  error instead of returning a partially aligned trajectory.

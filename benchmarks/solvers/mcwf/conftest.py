@@ -4,19 +4,11 @@ from typing import Any, Mapping
 import numpy as np
 import pytest
 
-from common.utils.phases import (
-    default_three_phase_protocol,
-    integration_phase_indices_at_times,
-)
+from common.utils.phases import default_three_phase_protocol
 from parser.common import Phase, PhaseProtocol
-from parser.mcwf import (
-    MCWFSolverParameters,
-    SectorKey,
-    TrajectoryEnsemble,
-    TrajectoryEnsembleMetadata,
-    TrajectoryResult,
-    TrajectorySnapshot,
-)
+from parser.generator_moments import TrajectoryResolvedMomentSeries
+from parser.mcwf import MCWFSolverParameters, SectorKey
+from parser.moments import SimulationMetadata
 from solvers.mcwf.sim import build_precomputed_trajectory_data
 from solvers.mcwf.state_helpers import (
     build_initial_sector_state,
@@ -57,6 +49,12 @@ class EnsembleBenchmarkCase:
     seed: int
     n_processes: int
     chunksize: int
+
+
+@dataclass(frozen=True)
+class MomentAnalysisBenchmarkCase:
+    moments: TrajectoryResolvedMomentSeries
+    metadata: SimulationMetadata
 
 
 @pytest.fixture(scope="session")
@@ -240,54 +238,39 @@ def multiprocessing_ensemble_case(
 
 
 @pytest.fixture(scope="session")
-def moment_extraction_ensemble(
+def moment_analysis_case(
     phase_protocol: PhaseProtocol,
-) -> TrajectoryEnsemble:
+) -> MomentAnalysisBenchmarkCase:
     Ni = (8, 8)
-    omega_i = (0.9, 1.1)
-    Gamma = 0.2
-    sector_coeffs = centered_sector_initial_coeffs(list(Ni), dN=1)
-    precomputed = build_precomputed_trajectory_data(
-        Ni=Ni,
-        omega_i=omega_i,
-        Gamma=Gamma,
-        integration_phases=phase_protocol.integration_phases,
-        sector_coeffs=sector_coeffs,
-        dt=0.005,
-        shifted_jump_operator=False,
-    )
-    sector_blocks = build_initial_sector_state(sum(Ni), sector_coeffs)
     t_eval = np.linspace(0.0, phase_protocol.total_duration, 5001)
-    phase_indices = integration_phase_indices_at_times(t_eval, phase_protocol)
-    snapshots = [
-        TrajectorySnapshot(
-            time=float(time),
-            sector_blocks=sector_blocks,
-            norm=1.0,
-            integration_phase_index=int(phase_index),
-        )
-        for time, phase_index in zip(t_eval, phase_indices)
-    ]
-    trajectory = TrajectoryResult(
-        final_sector_blocks=sector_blocks,
-        snapshots=snapshots,
-        jump_times=[],
-        jump_count=0,
-    )
     num_trajectories = 4
-    metadata = TrajectoryEnsembleMetadata(
-        Ni=Ni,
-        omega_i=omega_i,
-        Gamma=Gamma,
-        phase_protocol=phase_protocol,
-        shifted_jump_operator=False,
-        t_eval=t_eval,
-        sectors=list(precomputed["sector_list"]),
-        sector_multiplicities=dict(precomputed["multiplicities"]),
-        sector_dimensions=dict(precomputed["dims"]),
+    num_groups = len(Ni)
+    generator_count = 8 * num_groups
+    packed_count = generator_count * (generator_count + 1) // 2
+    first_moments = np.zeros(
+        (num_trajectories, t_eval.size, num_groups, 8),
+        dtype=float,
     )
-    return TrajectoryEnsemble(
-        trajectories=[trajectory for _ in range(num_trajectories)],
-        seeds=[(index,) for index in range(num_trajectories)],
-        metadata=metadata,
+    time_profile = np.linspace(-0.25, 0.25, t_eval.size)
+    for trajectory_index in range(num_trajectories):
+        first_moments[trajectory_index, :, :, 5] = (
+            time_profile[:, np.newaxis] + 0.01 * trajectory_index
+        )
+    second_moments = np.zeros(
+        (num_trajectories, t_eval.size, packed_count),
+        dtype=float,
+    )
+
+    return MomentAnalysisBenchmarkCase(
+        moments=TrajectoryResolvedMomentSeries(
+            t=t_eval,
+            first_moments=first_moments,
+            second_moments=second_moments,
+        ),
+        metadata=SimulationMetadata(
+            Ni=Ni,
+            omega_i=(0.9,),
+            Gamma=0.2,
+            phase_protocol=phase_protocol,
+        ),
     )

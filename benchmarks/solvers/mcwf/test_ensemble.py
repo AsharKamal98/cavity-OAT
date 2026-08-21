@@ -5,10 +5,26 @@ from solvers.mcwf.ensamble_sim import run_trajectory_ensemble
 
 
 def _assert_complete_ensemble(result, case):
-    assert len(result.trajectories) == case.ntraj
+    num_groups = len(case.parameters.Ni)
+    generator_count = 8 * num_groups
+    packed_count = generator_count * (generator_count + 1) // 2
+
+    assert result.moments.num_trajectories == case.ntraj
     assert len(result.seeds) == case.ntraj
     assert result.metadata is not None
+    np.testing.assert_allclose(result.moments.t, case.t_eval)
     np.testing.assert_allclose(result.metadata.t_eval, case.t_eval)
+    assert result.moments.first_moments.shape == (
+        case.ntraj,
+        case.t_eval.size,
+        num_groups,
+        8,
+    )
+    assert result.moments.second_moments.shape == (
+        case.ntraj,
+        case.t_eval.size,
+        packed_count,
+    )
 
 
 def _add_ensemble_metadata(benchmark, result, case):
@@ -17,12 +33,7 @@ def _add_ensemble_metadata(benchmark, result, case):
         num_trajectories=case.ntraj,
         num_processes=case.n_processes,
         chunksize=case.chunksize,
-        mean_jump_count=float(
-            np.mean([trajectory.jump_count for trajectory in result.trajectories])
-        ),
-        mean_total_step_count=float(
-            np.mean([trajectory.total_step_count for trajectory in result.trajectories])
-        ),
+        num_saved_times=result.moments.t.size,
     )
 
 

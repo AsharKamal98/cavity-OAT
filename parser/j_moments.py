@@ -29,7 +29,6 @@ class JMomentSnapshot(BaseModel):
     N_e: tuple[float, ...]
     N_j: tuple[float, ...]
     aggregated: AggregatedJMomentSnapshot
-    jump_rate: float
 
 
 class AggregatedJMomentSeries(BaseModel):
@@ -76,8 +75,6 @@ class JMomentSeries(BaseModel):
     aggregated: AggregatedJMomentSeries = Field(
         default_factory=AggregatedJMomentSeries
     )
-    # other
-    jump_rate: Array | None = None
 
     @classmethod
     def attach_aggregated_from_group_fields(
@@ -285,5 +282,4 @@ class JMomentSeries(BaseModel):
         j_moments.y = tuple(result[1] for result in group_results)
         j_moments.z = tuple(result[2] for result in group_results)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

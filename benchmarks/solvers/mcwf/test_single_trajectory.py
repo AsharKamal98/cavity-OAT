@@ -1,7 +1,29 @@
 import numpy as np
 import pytest
 
-from solvers.mcwf.sim import _simulate_single_trajectory, total_norm2_list
+from solvers.mcwf.sim import _simulate_single_trajectory
+
+
+def _assert_complete_moment_output(result, case):
+    num_groups = len(case.Ni)
+    generator_count = 8 * num_groups
+    packed_count = generator_count * (generator_count + 1) // 2
+
+    assert result.moments.num_trajectories == 1
+    np.testing.assert_allclose(result.moments.t, case.t_eval)
+    assert result.moments.first_moments.shape == (
+        1,
+        case.t_eval.size,
+        num_groups,
+        8,
+    )
+    assert result.moments.second_moments.shape == (
+        1,
+        case.t_eval.size,
+        packed_count,
+    )
+    assert np.all(np.isfinite(result.moments.first_moments))
+    assert np.all(np.isfinite(result.moments.second_moments))
 
 
 @pytest.mark.benchmark(group="mcwf-single-trajectory")
@@ -13,8 +35,8 @@ def test_no_jump_trajectory(
     """
     Benchmark a fixed-seed trajectory dominated by precomputed full steps.
 
-    Assert that no jump or partial-step fallback occurs and the final state is
-    normalized.
+    Assert that no jump or partial-step fallback occurs and every requested
+    moment row is returned.
     """
     case = no_jump_trajectory_case
 
@@ -32,21 +54,19 @@ def test_no_jump_trajectory(
         precomputed=no_jump_trajectory_precomputed,
     )
 
-    np.testing.assert_allclose(
-        [snapshot.time for snapshot in result.snapshots],
-        case.t_eval,
-    )
-    assert result.jump_count == 0
-    assert result.non_precomputed_step_count == 0
-    assert np.isclose(total_norm2_list(result.final_sector_blocks.values()), 1.0)
+    _assert_complete_moment_output(result, case)
+    assert result.diagnostics.jump_count == 0
+    assert result.diagnostics.non_precomputed_step_count == 0
 
     benchmark.extra_info.update(
         atom_groups=case.Ni,
         num_sectors=len(case.sector_coeffs),
         num_saved_times=len(case.t_eval),
-        jump_count=result.jump_count,
-        total_step_count=result.total_step_count,
-        non_precomputed_step_count=result.non_precomputed_step_count,
+        jump_count=result.diagnostics.jump_count,
+        total_step_count=result.diagnostics.total_step_count,
+        non_precomputed_step_count=(
+            result.diagnostics.non_precomputed_step_count
+        ),
     )
 
 
@@ -60,7 +80,7 @@ def test_jump_heavy_trajectory(
     Benchmark a fixed-seed trajectory with repeated jump localization.
 
     Assert that repeated jumps and partial-step propagations occur in the
-    explicitly unshifted picture and the final state remains normalized.
+    explicitly unshifted picture and every requested moment row is returned.
     """
     case = jump_heavy_trajectory_case
 
@@ -78,19 +98,17 @@ def test_jump_heavy_trajectory(
         precomputed=jump_heavy_trajectory_precomputed,
     )
 
-    np.testing.assert_allclose(
-        [snapshot.time for snapshot in result.snapshots],
-        case.t_eval,
-    )
-    assert result.jump_count >= 20
-    assert result.non_precomputed_step_count > 0
-    assert np.isclose(total_norm2_list(result.final_sector_blocks.values()), 1.0)
+    _assert_complete_moment_output(result, case)
+    assert result.diagnostics.jump_count >= 20
+    assert result.diagnostics.non_precomputed_step_count > 0
 
     benchmark.extra_info.update(
         atom_groups=case.Ni,
         num_sectors=len(case.sector_coeffs),
         num_saved_times=len(case.t_eval),
-        jump_count=result.jump_count,
-        total_step_count=result.total_step_count,
-        non_precomputed_step_count=result.non_precomputed_step_count,
+        jump_count=result.diagnostics.jump_count,
+        total_step_count=result.diagnostics.total_step_count,
+        non_precomputed_step_count=(
+            result.diagnostics.non_precomputed_step_count
+        ),
     )
