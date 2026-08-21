@@ -2,7 +2,7 @@
 #SBATCH --job-name=mcwf-squeeze-analysis
 #SBATCH --array=0-3
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=16G
+#SBATCH --mem=4G
 
 #SBATCH --time=00:10:00
 #SBATCH --output=../../logs/%A_%a_%x.out
