@@ -10,7 +10,7 @@
 
 This file describes `_simulate_single_trajectory(...)` in the custom MCWF
 solver, currently implemented in `solvers/mcwf/sim.py`. Use it when editing
-trajectory-local evolution, jump handling, snapshot saving, or the
+trajectory-local evolution, jump handling, moment saving, or the
 `TrajectoryResult` output contract.
 
 The single-trajectory layer should consume already-validated inputs and
@@ -80,9 +80,9 @@ frac(
 $
 
 Here $q,h$ run over all physical groups and $a,b in {1, dots.c, 8}$. Together,
-the complete first- and second-order moment sets contain enough information to
-compute the observables in the post-analysis pipeline without retaining the
-wavefunction.
+the complete first- and second-order moment sets are the stored inputs used to
+compute observables, covariance matrices, J and S angles, and squeezing in
+post-analysis.
 
 = Method in Pseudo-Code
 
@@ -194,7 +194,6 @@ not on each `TrajectoryResult`.
   exactly, rather than interpolating moments afterward.
 - Normalize every saved first and second moment by the complete sector-block
   norm at that saved time.
-- Do not retain saved sector-block wavefunctions in `TrajectoryResult`.
 - Refine jump times with the current fixed four-iteration bisection rule unless
   the user explicitly requests a behavior change.
 - Resolve at most one explicitly refined jump per attempted outer-loop step;

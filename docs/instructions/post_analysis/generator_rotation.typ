@@ -12,7 +12,7 @@
 This file specifies `compute_gell_mann_rotation(...)` and
 `rotate_generator_moments(...)` in
 `post_analysis/generator_rotation.py`. They convert stored lab-basis SU(3)
-moments into the dressed basis without revisiting trajectory wavefunctions.
+moments into the dressed basis by transforming the moment arrays directly.
 The generator normalization and packed storage convention are defined in
 `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ`.
 

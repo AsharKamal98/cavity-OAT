@@ -22,7 +22,7 @@ Most runs follow this order:
 1. Define model and method parameters.
 2. Define the phase protocol.
 3. Run the chosen simulation backend.
-4. Convert simulation output into moment series.
+4. Attach the simulator's stored moments to the shared moment series.
 5. Build derived diagnostics.
 6. Plot or export results.
 
@@ -178,13 +178,14 @@ value instead of processing the full sweep sequentially within one task. This
 gives every parameter value its own wall-time allocation and output file.
 
 When an analysis needs ensemble-wide reference directions, array jobs should
-use `--save-ensemble` and write their complete `TrajectoryEnsemble` chunks to
+use `--save-ensemble` and write their trajectory-resolved moment chunks to
 shared scratch storage. Prefix each scratch filename with the simulation job
 name and suffix it with the array-task index, so a post-analysis job only needs
 the simulation job name to locate all chunks. A dependent post-analysis job
-should concatenate the chunks, compute moments once from the full ensemble,
-and save the resulting `MomentSeries` in the analysis-local output directory.
-Do not average per-array derived moments for this workflow.
+should concatenate the first- and second-moment arrays along the trajectory
+axis, run the generic analysis once, and save the resulting `MomentSeries` in
+the analysis-local output directory. Do not average per-array derived moments
+for this workflow.
 
 The ensemble function should:
 
@@ -252,16 +253,7 @@ For single-trajectory simulation flow, use:
 
 - `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ`
 
-For the legacy MCWF-specific J-moment extraction and trajectory averaging, use:
-
-- `docs/instructions/solvers/mcwf/j_moments.typ`
-
-For the legacy MCWF-specific group-local S-moment extraction, use:
-
-- `docs/instructions/solvers/mcwf/s_moments.typ`
-
-The previous wavefunction-specific squeezing-moment extraction remains only as
-staged legacy context in:
+For how MCWF moment output enters dressed-frame squeezing post-analysis, use:
 
 - `docs/instructions/solvers/mcwf/squeezing_moments.typ`
 
@@ -414,17 +406,13 @@ Shared spin-vector direction and angle conventions live in
 `docs/instructions/common/spin_moment_conventions.typ`. The generic conversion
 from averaged generator moments is defined in
 `docs/instructions/post_analysis/j_moments.typ` and summarized in
-`docs/instructions/post_analysis/post_analysis.md`. The legacy snapshot-based
-MCWF converter remains documented in
-`docs/instructions/solvers/mcwf/j_moments.typ` during this staged migration.
+`docs/instructions/post_analysis/post_analysis.md`.
 
 Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 
 - `docs/instructions/solvers/mfe/mfe-solver.typ`
 
-QuTiP-to-J-moment conversion is defined in  
-
-- `docs/instructions/solvers/qutip/....typ` (planned)
+A task-specific QuTiP-to-J-moment instruction has not yet been added.
 
 ### 4.3 S-Sphere Moments
 
@@ -444,9 +432,7 @@ then delegates lengths, normalized directions, and S angles to the
 `SMomentSeries` class methods. Symmetric second generator moments remain the
 input for later covariance and squeezing analysis. The generic converter is
 defined in `docs/instructions/post_analysis/s_moments.typ` and summarized in
-`docs/instructions/post_analysis/post_analysis.md`; the staged legacy
-wavefunction path remains documented in
-`docs/instructions/solvers/mcwf/s_moments.typ`.
+`docs/instructions/post_analysis/post_analysis.md`.
 
 ### 4.4 Dressed Generator Moments
 
@@ -501,9 +487,10 @@ The detailed contract is in
 
 ## 5. Diagnostics
 
-Diagnostics should consume already-computed moment series unless they genuinely
-need lower-level saved simulation data. Reusable post-simulation physics
-diagnostics should live in the root-level `post_analysis/` package.
+Diagnostics should consume already-computed moment series. If a new diagnostic
+requires additional simulation data, extend the stored moment contract
+explicitly. Reusable post-simulation physics diagnostics should live in the
+root-level `post_analysis/` package.
 
 Current task-specific diagnostic instructions include:
 

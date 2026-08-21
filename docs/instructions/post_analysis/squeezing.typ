@@ -15,8 +15,8 @@
 moments into generalized squeezing. It always computes one result per physical
 group and optionally computes the squeezing of the unweighted sum of all group
 fluctuation operators. It consumes dressed generator moments, J moments, and
-shared simulation metadata; it never reads wavefunctions or performs the basis
-rotation itself.
+shared simulation metadata. The caller supplies the explicitly rotated dressed
+moments.
 
 = Theory
 

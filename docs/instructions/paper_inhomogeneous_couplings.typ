@@ -14,10 +14,12 @@ Inhomogeneous coupling should be implemented as a two-group extension of the exi
 ```
 sector_coeffs -> build_precomputed_trajectory_data(...)
               -> simulate_single_trajectory(...)
-              -> TrajectoryResult / TrajectoryEnsemble
+              -> TrajectoryResult.moments
+              -> TrajectoryEnsemble.moments
 ```
 
-Only the sector keys, sector operators, Hamiltonian pieces, and jump operator should change.
+Only the sector keys, sector operators, Hamiltonian pieces, jump operator, and
+group count of the stored moment arrays should change.
 
 = User-Facing Inputs
 
@@ -174,23 +176,40 @@ int key        -> homogeneous sector path
 (int, int) key -> inhomogeneous two-group sector path
 ```
 
-The simulation result should continue to store snapshots as sector blocks:
+At every requested time, the simulation result should store group-resolved
+first generator moments and the packed symmetric second generator moments:
 
 ```
-snapshot.sector_blocks[(Nj1, Nj2)] = psi_Nj1_Nj2
+TrajectoryResolvedMomentSeries(
+    t=t_eval,
+    first_moments=...,   # shape (R, len(t_eval), 2, 8)
+    second_moments=...,  # shape (R, len(t_eval), 136)
+)
 ```
+
+The packed second-moment array represents the upper triangle of the full
+$16 times 16$ group-major generator matrix. It therefore includes both
+within-group and cross-group entries. A single-trajectory result retains the
+same explicit trajectory axis with $R=1$.
 
 The homogeneous limit should be recoverable numerically when the weights are equal or when one group is empty, although using two explicit groups can still be slower than the scalar homogeneous path.
 
 = Diagnostics and Observables
 
-Group-resolved diagnostics should compute observables from saved sector blocks where possible. Add only the minimum extra support needed to compute:
+Post-analysis should first select or resample complete trajectory rows and
+average their stored first and symmetric second generator moments. The generic
+J conversion then supplies:
 
 $
 J_(x,1),J_(y,1),J_(z,1),N_(e,1), quad J_(x,2),J_(y,2),J_(z,2),N_(e,2).
 $
 
-Angle and Bloch-vector averages across sectors should follow `docs/instructions/bloch_vector_averaging.typ`. For trajectory ensembles, first average the required moments over trajectories on the shared time grid, then apply the Bloch-vector averaging rule to that already-averaged data. In particular, do not average angles directly. Average the appropriate normalized components or moments first, then construct $theta$ and $phi$.
+Use `compute_mean_generator_moments(...)` followed by
+`compute_j_moments(...)`. Construct group directions and angles from the
+resulting averaged group vectors, and construct aggregated angles from the sum
+of those averaged group vectors. The shared convention is specified in
+`docs/instructions/common/spin_moment_conventions.typ`; angles are not averaged
+directly.
 
 = Mean-Field Residual Diagnostic
 
@@ -208,7 +227,11 @@ The residual equation and definitions are given in `docs/theory/notes_inhomogene
     $|"Re" R_2|$, and $|"Im" R_2|$ in a $2 times 2$
     grid.
 
-For multiple group-resolved sectors, residuals should be evaluated per $(N_(J,1),N_(J,2))$ sector before any probability-weighted aggregation. Do not first average nonlinear inputs globally and then plug those averages into the residual equation.
+Compute residuals from the selected averaged `JMomentSeries` using
+`post_analysis.compute_mfe_residuals(...)`. The J angles and active-population
+fields supplied to the residual calculation must come from the same selected
+mean generator moments. The detailed data flow and equations are specified in
+`docs/instructions/post_analysis/mfe_residuals.typ`.
 
 = Plotting Helpers
 
@@ -221,4 +244,6 @@ The group-angle plot should show:
 - $phi_1(t)$, $phi_2(t)$, and the correctly averaged
     $phi_("avg")(t)$.
 
-The average angle convention should follow `docs/instructions/bloch_vector_averaging.typ`.
+Use `moments.J.aggregated.theta` and `moments.J.aggregated.phi` for the
+full-system curves. Their construction follows
+`docs/instructions/common/spin_moment_conventions.typ`.

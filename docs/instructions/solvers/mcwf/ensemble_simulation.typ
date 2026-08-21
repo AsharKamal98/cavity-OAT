@@ -137,7 +137,7 @@ Precompute contents and sector-operator conventions live in:
 - `docs/instructions/solvers/mcwf/simulation_precompute.typ`
 - `docs/instructions/solvers/mcwf/sector_operators.typ`
 
-Single-trajectory propagation and snapshot saving live in
+Single-trajectory propagation and moment saving live in
 `docs/instructions/solvers/mcwf/single_trajectory_simulation.typ`.
 
 = Output
@@ -171,12 +171,12 @@ counts, and step counts are MCWF runtime diagnostics and should not be returned
 by the parent ensemble.
 
 For array simulations that require ensemble-wide derived bases, save each
-complete `TrajectoryEnsemble` temporarily in shared storage. After every array
-job has finished, load the chunks in array-index order, verify their shared
-metadata and saved-time grid, and concatenate their moment arrays along the
-trajectory axis into one `TrajectoryEnsemble`. Compute J, S, and squeezing
-moments from that combined ensemble rather than averaging separately derived
-array outputs.
+`TrajectoryEnsemble` moment chunk temporarily in shared storage. After every
+array job has finished, load the chunks in array-index order, verify their
+shared metadata and saved-time grid, and concatenate their moment arrays along
+the trajectory axis into one `TrajectoryEnsemble`. Compute J, S, and squeezing
+from that combined ensemble rather than averaging separately derived array
+outputs.
 
 = Invariants and Edge Cases
 

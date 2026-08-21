@@ -166,7 +166,7 @@ def _compute_moments(
         mean_dressed_generator_moments,
         moments.J,
         metadata=moments.metadata,
-        include_full_system=False,
+        include_full_system=True,
     )
     return moments
 

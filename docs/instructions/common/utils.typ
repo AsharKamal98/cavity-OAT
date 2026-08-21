@@ -17,7 +17,7 @@ helpers that should be available outside a specific simulation backend such as
 
 Detailed physics conventions may live in more specific instruction files, such
 as `docs/instructions/model_parameters.typ` or
-`docs/instructions/bloch_vector_averaging.typ`.
+`docs/instructions/common/spin_moment_conventions.typ`.
 
 = Helper Summary
 
@@ -67,8 +67,8 @@ parameter-validation helpers.
 
 == `common/utils/moments.py`
 
-This file contains shared moment/vector conversion helpers used by the new
-pipeline.
+This file contains shared moment/vector conversion helpers used by
+post-analysis.
 
 === Spin-Conversion Helpers
 

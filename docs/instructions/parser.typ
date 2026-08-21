@@ -89,29 +89,8 @@ that contains only the central ensemble result.
 
 = J-Moment Containers
 
-`JMomentSnapshot` and `AggregatedJMomentSnapshot` are legacy wavefunction-era
-containers. The current MCWF pipeline does not construct them: it stores
-trajectory-resolved generator moments and constructs `JMomentSeries` only in
-post-analysis. They remain temporarily for old artifacts and deferred benchmark
-migration:
-
-```python
-AggregatedJMomentSnapshot(
-    x, y, z,
-    N_e, N_j,
-)
-
-JMomentSnapshot(
-    t,
-    integration_phase_index,
-    x, y, z,                 # tuples ordered by group
-    N_e, N_j,                # tuples ordered by group
-    aggregated=AggregatedJMomentSnapshot(...),
-)
-```
-
-`JMomentSeries` stores one time series, either for one trajectory, an ensemble
-average, or a non-MCWF method converted into the shared J-sphere format:
+`JMomentSeries` stores one selected trajectory average or a deterministic
+method output converted into the shared J-sphere format:
 
 ```python
 AggregatedJMomentSeries(
@@ -141,17 +120,10 @@ groups; nonlinear fields are derived from the aggregated spin vector. Keep
 `t` and `integration_phase_index` on the outer container. Jump rate is not a
 J-moment field.
 
-`SMomentSnapshot` is likewise legacy-only. The current generic post-analysis
-constructs `SMomentSeries`; `SBasisSeries` stores its effective zero and one
-states:
+The generic post-analysis constructs `SMomentSeries`; `SBasisSeries` stores its
+effective zero and one states:
 
 ```python
-SMomentSnapshot(
-    t,
-    integration_phase_index,
-    x, y, z,                 # tuples ordered by group
-)
-
 SMomentSeries(
     t,
     integration_phase_index=None,
@@ -375,8 +347,8 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
   counts.
 - Derived-field class methods should mutate the supplied `JMomentSeries`
   instance in place.
-- `SMomentSeries` should attach derived fields only after raw per-trajectory
-  S moments have been averaged.
+- `SMomentSeries` should attach derived fields only after the selected mean
+  first generator moments have been converted into raw S components.
 - `SMomentSeries` should use the S-sphere $p=+1$ pole convention and should not
   construct aggregated fields.
 - `SMomentSeries.basis` should hold the shared effective S-qubit zero and one
@@ -393,5 +365,3 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
   for $G=1$.
 - J-moment extraction code should call these class methods instead of
   duplicating spin-component, direction, or angle conversion logic.
-- Legacy field names such as `Jx`, `Jy`, `Jz`, `J_len`, and `sx`, `sy`, `sz`
-  should not be reintroduced.

@@ -16,9 +16,8 @@ This file specifies `compute_s_moments(...)` in
 generator moments into the group-local `SMomentSeries` defined by the
 corresponding group-resolved J angles.
 
-The effective S-qubit and pole conventions are inherited from the legacy MCWF
-description in `docs/instructions/solvers/mcwf/s_moments.typ`. Shared
-spin-vector conversions are defined in
+The effective S-qubit, generator mapping, and pole conventions are specified
+below. Shared spin-vector conversions are defined in
 `docs/instructions/common/spin_moment_conventions.typ`, and the output classes
 are documented in `docs/instructions/parser.typ`.
 

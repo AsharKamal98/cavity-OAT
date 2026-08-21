@@ -49,11 +49,10 @@ $n_e = 0, ..., N_(J)$.
 
 The returned `SectorOperators` object should include:
 
-- `Jp`, `Jm`, `JpJm`, `J_x`, `J_y`, `J_z`, and `N_e`;
+- `Jp`, `Jm`, `JpJm`, `J_x`, and `N_e` for propagation construction;
 - `J_drive = J_x`;
 - `A_weighted = Jm`;
-- `AdagA_weighted = JpJm`;
-- single-group fields such as `J_x_groups=(J_x,)` and `N_e_groups=(N_e,)`.
+- `AdagA_weighted = JpJm`.
 
 = Two-Group Sector Operators
 
@@ -61,21 +60,12 @@ For an inhomogeneous tuple sector key $(N_(J,1), N_(J,2))$,
 `build_two_group_sector_ops(...)` should construct product Dicke-basis
 operators on `|n_e1, n_e2>`.
 
-The unweighted full-system observables should be:
+The unweighted collective operators used during construction are:
 
 ```python
 Jp = J1p + J2p
 Jm = J1m + J2m
 N_e = N_e1 + N_e2
-```
-
-The unweighted group-resolved fields should include:
-
-```python
-J_x_groups = (J1_x, J2_x)
-J_y_groups = (J1_y, J2_y)
-J_z_groups = (J1_z, J2_z)
-N_e_groups = (N_e1, N_e2)
 ```
 
 The drive and jump operators used for propagation should be:
@@ -102,11 +92,12 @@ The generic fields should be used by downstream code:
 ops.A_weighted
 ops.AdagA_weighted
 ops.J_drive
+ops.N_e
 ```
 
-Code that computes physical observables should use the unweighted operators
-`J_x`, `J_y`, `J_z`, and `N_e`. Code that computes group-resolved diagnostics
-should use the corresponding `*_groups` fields.
+The generator moments saved at requested times are computed by
+`solvers/mcwf/generator_moments.py` in the full three-level group basis. They
+are not fields of `SectorOperators`.
 
 = Caching
 
@@ -123,6 +114,6 @@ build_two_group_sector_ops(Nj1, Nj2, omega_1, omega_2, N1, N2)
 constructs the sparse Kronecker-product operators, while later calls with the
 same arguments return the already-built `SectorOperators` object.
 
-This cache avoids repeated sparse-matrix construction during post-processing and
-diagnostics. The cache is process-local, so multiprocessing workers build and
-hold their own cached operator objects.
+This cache avoids repeated sparse-matrix construction while preparing
+propagation data. The cache is process-local, so multiprocessing workers build
+and hold their own cached operator objects.

@@ -14,8 +14,7 @@ related to residual diagnostics or plots that consume `moments.mfe_residuals`.
 
 The MFE residual diagnostic consumes averaged J moments from
 `parser/j_moments.py`, for example series produced by the MCWF, MFE, or QuTiP
-J-moment pipelines. It should not recompute J moments or old observable-series
-fields.
+J-moment pipelines. It should not recompute J moments.
 
 The main function structure should be:
 

@@ -63,9 +63,9 @@ summaries attached to them.
 
 ## `post_analysis/mfe_residuals.py`
 
-- `compute_mfe_residuals(j_moments, *, parameters, tol=1e-12)` computes the
+- `compute_mfe_residuals(j_moments, *, metadata, tol=1e-12)` computes the
   two-group complex MFE residual series from already-averaged J moments and
-  shared moment parameters. It returns an `MFEResidualSeries` when the input
+  shared simulation metadata. It returns an `MFEResidualSeries` when the input
   contains compatible two-group fields, otherwise `None`.
 
 ## `post_analysis/j_modes.py`

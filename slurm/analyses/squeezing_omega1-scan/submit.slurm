@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=v1
+#SBATCH --job-name=v4
 #SBATCH --array=0-3
 
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=64
 #SBATCH --time=00:05:00
 #SBATCH --output=../../logs/%A_%a_%x.out
 #SBATCH --error=../../logs/%A_%a_%x.err
@@ -19,17 +19,17 @@ REPO_ROOT="$(cd "${ANALYSIS_DIR}/../../.." && pwd)"
 OUTPUT_DIR="/scratch-shared/${USER}/cavity-OAT/squeezing_omega1-scan"
 mkdir -p "${OUTPUT_DIR}"
 
-NTRAJ="100"
+NTRAJ="250"
 GAMMA="1.0"
-NI="10,10"
-DN="0"
+NI="25,25"
+DN="2"
 NUM_SNAPSHOTS="500"
 OMEGA_1_LIST=("1.0" "0.9" "0.8" "0.7")
 OMEGA_FACTOR="0.1"
 DELTA_FACTOR="0.02"
-T1="100.0"
+T1="10.0"
 T2="100.0"
-T3="100.0"
+T3="10.0"
 
 for OMEGA_1 in "${OMEGA_1_LIST[@]}"; do
   FILENAME="${SLURM_JOB_NAME}_omega_${OMEGA_1}"

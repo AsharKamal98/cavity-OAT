@@ -43,7 +43,7 @@ $
 A_s = J_s^-.
 $
 In inhomogeneous
-sectors $A_s$ is the weighted group lowering operator is
+sectors $A_s$ is the weighted group lowering operator
 $
 A_s = omega_1 J_(1,s)^- + omega_2 J_(2,s)^-.
 $
@@ -211,16 +211,6 @@ In both cases, the function returns a `SectorOperators` object for a given secto
   "inhomogeneous:" quad J^+ = J_1^+ + J_2^+, quad
   N_e = N_(e,1) + N_(e,2).
   $
-- `N_e_groups`, `J_x_groups`, `J_y_groups` --- older unweighted
-  group-resolved fields that are not consumed by the current generator-moment
-  output path. Removing them from `SectorOperators` is a separate compatibility
-  cleanup.
-
-  $
-  "inhomogeneous:" quad J_x^("groups") = (J_(x,1), J_(x,2)), quad
-  N_e^("groups") = (N_(e,1), N_(e,2)).
-  $
-
 - `J_drive`, `A_weighted`, `AdagA_weighted` --- drive/jump operators, used for propagation.
 
   $
@@ -250,7 +240,7 @@ sector key is homogeneous or group-resolved.
 effective generators, propagators, sector multiplicities, and dimensions have
 been built, the returned precompute dictionary should not retain `ops_list`.
 The trajectory hot loop does not consume it, and releasing the reference avoids
-keeping observable-only sparse matrices alive in every ensemble process.
+keeping construction-only sparse matrices alive in every ensemble process.
 
 == Sector Multiplicities (`multiplicities`)
 The multiplicity of each sector should count how many atom-label configurations

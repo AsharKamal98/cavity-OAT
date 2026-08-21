@@ -84,8 +84,6 @@ AGENTS.md
       -> docs/instructions/solvers/mfe/mfe-solver.typ
       -> docs/instructions/solvers/mcwf/ensemble_simulation.typ
       -> docs/instructions/solvers/mcwf/single_trajectory_simulation.typ
-      -> docs/instructions/solvers/mcwf/j_moments.typ
-      -> docs/instructions/solvers/mcwf/s_moments.typ
       -> docs/instructions/solvers/mcwf/squeezing_moments.typ
       -> docs/instructions/observable_moment_pipeline.typ
       -> docs/instructions/post_analysis/j_moments.typ

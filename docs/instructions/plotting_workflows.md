@@ -77,8 +77,8 @@ palette, and line-style behavior, use the plotting-workflows skill.
 2. The function should take `moments.mfe_residuals` as input.
 
 3. The function should only plot already-computed residuals from
-   `moments.mfe_residuals.residuals_groups`. It should not recompute MFE residuals or
-   call old observable extraction.
+   `moments.mfe_residuals.residuals_groups`. It should not recompute MFE
+   residuals.
 
 4. The output should be a single panel showing `Re R_1`, `Im R_1`,
    `Re R_2`, `Im R_2`, and the L2 norm `sqrt(|R_1|^2 + |R_2|^2)`.
@@ -89,8 +89,7 @@ palette, and line-style behavior, use the plotting-workflows skill.
 
 6. The function should support `axes`, `output_path`, `label`, `phases`,
    `colour_family_index`, `shade_index`, `linestyle`, and `marker`.
-   If `phases` are provided, optionally print the same phase-end residual
-   summary as the old pipeline.
+   If `phases` are provided, optionally print the phase-end residual summary.
 
 ## `fig, axes = plot_harmonic_sweep(...)`
 
@@ -124,42 +123,3 @@ palette, and line-style behavior, use the plotting-workflows skill.
    must be finite. THD curves may contain `NaN` for non-oscillating series but
    must not contain infinities. All four metric groups and labels must have
    equal counts. Their supplied order is preserved.
-
-## `fig, axes = plot_sector_probabilities(...)`
-
-1. This plot should show the normalized represented-sector probabilities
-   `p_alpha(t_k)`, not raw sector amplitudes. For each represented sector
-   `alpha`, define
-
-   ```python
-   w_alpha(t_k) = ||psi_alpha(t_k)||^2
-   p_alpha(t_k) = w_alpha(t_k) / sum_beta w_beta(t_k)
-   ```
-
-2. `plot_sector_probabilities` may compute the normalized sector probabilities
-   directly from `TrajectoryResult` or `TrajectoryEnsemble` snapshot data,
-   using `TrajectoryEnsemble.trajectories[i].snapshots[k].sector_blocks`,
-   which has the form
-   ```python
-   sector_blocks = {alpha: psi_alpha(t_k)}
-   ```
-
-3. The default output should be a single panel with one curve per represented
-   sector, plotting `p_alpha(t_k)`. For homogeneous runs, the labels should use `N_J`. For
-   two-group inhomogeneous runs, the labels should use the tuple key
-   `(N_(J,1), N_(J,2))`.
-
-4. This plot should be used to monitor how the relative weights/probabilities of the
-   represented sectors change in time. It is a sector-ratio diagnostic, not a
-   direct test for leakage into sectors that were not included in the
-   simulation basis.
-
-5. `plot_sector_probabilities` should live in
-   `legacy/plotting_diagnostics.py`.
-
-6. The function should support `linestyle`, for example `"-"` for solid,
-   `"--"` for dashed, or `"-."` for dash-dot overlay comparisons.
-
-
-Legacy note: the previous J-moment field names were `Jx`, `Jy`, `Jz`,
-`Jx_groups`, `Jy_groups`, `Jz_groups`, `J_len`, and `sx`, `sy`, `sz`.
