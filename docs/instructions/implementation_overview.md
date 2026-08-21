@@ -174,18 +174,23 @@ analysis's local `output` directory, while scheduler logs remain in
 `slurm/logs`.
 
 For post-analysis parameter sweeps, use one SLURM array task per parameter
-value instead of processing the full sweep sequentially within one task. This
-gives every parameter value its own wall-time allocation and output file.
+value instead of processing the full sweep sequentially within one task. Each
+task should run the complete requested trajectory ensemble using its internal
+multiprocessing and write one trajectory-resolved moment artifact for that
+parameter value. This gives every parameter value its own wall-time allocation,
+precomputation, and output file without a separate combination step.
 
-When an analysis needs ensemble-wide reference directions, array jobs should
-use `--save-ensemble` and write their trajectory-resolved moment chunks to
-shared scratch storage. Prefix each scratch filename with the simulation job
-name and suffix it with the array-task index, so a post-analysis job only needs
-the simulation job name to locate all chunks. A dependent post-analysis job
-should concatenate the first- and second-moment arrays along the trajectory
-axis, run the generic analysis once, and save the resulting `MomentSeries` in
-the analysis-local output directory. Do not average per-array derived moments
-for this workflow.
+An analysis-local notebook may load those parameter-resolved artifacts from
+the analysis's `output` directory and run the shared mean-generator, J/S,
+dressed-rotation, squeezing, and plotting pipeline locally. Keep each raw
+trajectory axis intact until the notebook explicitly computes its ensemble
+mean.
+
+If a larger ensemble must deliberately be split across multiple SLURM tasks,
+each task must write a separate chunk. A dependent combination step should
+concatenate first- and second-moment arrays along the trajectory axis before
+generic analysis. Multiple tasks must never append to or rewrite one shared
+pickle artifact concurrently. Do not average per-task derived moments.
 
 The ensemble function should:
 
@@ -196,6 +201,13 @@ The ensemble function should:
   single-trajectory diagnostics after any runtime summary;
 - return a `TrajectoryEnsemble` containing one trajectory-resolved moment
   series and shared simulation metadata.
+
+For a homogeneous grouping-equivalence check, use the same total atom number,
+phase protocol, total-$N_J$ sector window, timestep, trajectory seeds, and unit
+coupling in both the one-group and explicitly split two-group runs. Compare the
+one-group observables with additive two-group J and S quantities and with
+two-group full-system squeezing; a local subgroup is not the counterpart of
+the complete one-group system.
 
 High-level data flow should look like:
 
