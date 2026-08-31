@@ -18,6 +18,30 @@ especially `parser/generator_moments.py`, `parser/mcwf.py`,
 General parser-class style rules live in the `parser` skill. This file records
 the repository-specific J- and S-moment container contracts.
 
+= MCWF Initial-Sector Containers
+
+`MCWFSolverParameters` should validate exactly one initial-sector selector:
+
+```python
+MCWFSolverParameters(
+    ...,
+    dN=2,
+    joint_probability=None,
+    linear_constraints=None,
+)
+```
+
+Alternatively use `dN=None` with `joint_probability=q`. A supplied
+`linear_constraints=(A, b)` should be converted into
+`LinearSectorConstraints(matrix=A, offset=b)`. Its integer matrix must have one
+column per physical group and one offset per row.
+
+`InitialSectorSelectionSummary` stores the retained, constraint-eligible, and
+full tuple-sector counts together with the retained percentages and the
+eligible and retained probabilities relative to the complete unconstrained
+wavefunction. It is a transient setup diagnostic printed once by the ensemble
+runner; it is not copied into every trajectory result.
+
 = Raw Trajectory-Resolved Generator-Moment Container
 
 `TrajectoryResolvedMomentSeries` in `parser/generator_moments.py` stores the

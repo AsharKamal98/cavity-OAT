@@ -124,7 +124,7 @@ is at most `dt / 16`.
 The effective generators, jump operators, and full-`dt` propagators are defined
 in `docs/instructions/solvers/mcwf/simulation_precompute.typ`. Initial
 sector-block conventions are defined in
-`docs/instructions/solvers/mcwf/initial_sector_state.typ`.
+`docs/instructions/solvers/mcwf/initial_sector_selection.typ`.
 
 `_simulate_single_trajectory(...)` should keep the trajectory physics local to
 one child seed. It should reuse the supplied precomputed objects and should not

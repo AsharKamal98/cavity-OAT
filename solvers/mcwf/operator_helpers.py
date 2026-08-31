@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from math import comb
+from math import comb, prod
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -42,6 +42,20 @@ def two_group_sector_multiplicity(N1: int, N2: int, Nj1: int, Nj2: int) -> int:
             f"Invalid two-group sector ({Nj1}, {Nj2}) for group sizes N1={N1}, N2={N2}."
         )
     return comb(N1, Nj1) * comb(N2, Nj2)
+
+
+def group_sector_multiplicity(
+    Ni: Sequence[int],
+    sector_key: SectorKey,
+) -> int:
+    """Return the product-binomial multiplicity for any group-sector tuple."""
+    groups = split_sector_key(sector_key)
+    if len(groups) != len(Ni):
+        raise ValueError("sector_key must contain one entry per physical group.")
+    return prod(
+        sector_multiplicity(int(group_size), int(active_size))
+        for group_size, active_size in zip(Ni, groups)
+    )
 
 
 @lru_cache(maxsize=None)
@@ -168,21 +182,26 @@ def build_sector_ops_for_key(
     Ni: Optional[Sequence[int]] = None,
     omega_i: Optional[Sequence[float]] = None,
 ) -> SectorOperators:
-    if isinstance(sector_key, tuple):
-        if len(sector_key) != 2:
-            raise ValueError("Only two-group inhomogeneous sectors are currently supported.")
+    groups = split_sector_key(sector_key)
+    if len(groups) == 1:
+        if Ni is not None and (len(Ni) != 1 or not 0 <= groups[0] <= int(Ni[0])):
+            raise ValueError("One-group sector key is incompatible with Ni.")
+        return build_sector_ops(groups[0])
+    if len(groups) == 2:
         if Ni is None or omega_i is None:
-            raise ValueError("Ni and omega_i must be provided for inhomogeneous sector keys.")
+            raise ValueError(
+                "Ni and omega_i must be provided for inhomogeneous sector keys."
+            )
         if len(Ni) != 2 or len(omega_i) != 2:
             raise ValueError("Only two-group operator construction is currently supported.")
         N1, N2 = (int(group_size) for group_size in Ni)
         omega_1, omega_2 = (float(coupling) for coupling in omega_i)
         return build_two_group_sector_ops(
-            int(sector_key[0]),
-            int(sector_key[1]),
+            groups[0],
+            groups[1],
             omega_1,
             omega_2,
             N1,
             N2,
         )
-    return build_sector_ops(int(sector_key))
+    raise ValueError("Only one-group and two-group operator construction is supported.")

@@ -12,7 +12,7 @@ from parser.moments import SimulationMetadata
 from solvers.mcwf.sim import build_precomputed_trajectory_data
 from solvers.mcwf.state_helpers import (
     build_initial_sector_state,
-    centered_sector_initial_coeffs,
+    group_generic_initial_sector_coeffs,
 )
 
 
@@ -85,12 +85,13 @@ def precompute_case(
     integration_phases: tuple[Phase, ...],
 ) -> PrecomputeBenchmarkCase:
     Ni = (20, 20)
+    sector_coeffs, _ = group_generic_initial_sector_coeffs(Ni, dN=2)
     return PrecomputeBenchmarkCase(
         Ni=Ni,
         omega_i=(0.9, 1.1),
         Gamma=0.1,
         integration_phases=integration_phases,
-        sector_coeffs=centered_sector_initial_coeffs(list(Ni), dN=2),
+        sector_coeffs=sector_coeffs,
         dt=0.005,
     )
 
@@ -109,12 +110,13 @@ def no_jump_trajectory_case(
     no_jump_phase_protocol: PhaseProtocol,
 ) -> TrajectoryBenchmarkCase:
     Ni = (8, 8)
+    sector_coeffs, _ = group_generic_initial_sector_coeffs(Ni, dN=1)
     return TrajectoryBenchmarkCase(
         Ni=Ni,
         omega_i=(0.9, 1.1),
         Gamma=0.001,
         integration_phases=no_jump_phase_protocol.integration_phases,
-        sector_coeffs=centered_sector_initial_coeffs(list(Ni), dN=1),
+        sector_coeffs=sector_coeffs,
         dt=0.005,
         t_eval=np.array([0.0, 0.30]),
         seed=1234,
@@ -141,12 +143,13 @@ def jump_heavy_trajectory_case(
     jump_heavy_phase_protocol: PhaseProtocol,
 ) -> TrajectoryBenchmarkCase:
     Ni = (8, 8)
+    sector_coeffs, _ = group_generic_initial_sector_coeffs(Ni, dN=1)
     return TrajectoryBenchmarkCase(
         Ni=Ni,
         omega_i=(0.9, 1.1),
         Gamma=1.0,
         integration_phases=jump_heavy_phase_protocol.integration_phases,
-        sector_coeffs=centered_sector_initial_coeffs(list(Ni), dN=1),
+        sector_coeffs=sector_coeffs,
         dt=0.005,
         t_eval=np.linspace(0.0, jump_heavy_phase_protocol.total_duration, 61),
         seed=1234,
@@ -181,7 +184,7 @@ def propagation_case(precompute_case: PrecomputeBenchmarkCase) -> PropagationBen
         sector_coeffs=case.sector_coeffs,
         dt=case.dt,
     )
-    blocks = build_initial_sector_state(sum(case.Ni), case.sector_coeffs)
+    blocks = build_initial_sector_state(case.sector_coeffs)
     phase_index = 1
     return PropagationBenchmarkCase(
         psi_blocks=tuple(blocks[key] for key in precomputed["sector_list"]),

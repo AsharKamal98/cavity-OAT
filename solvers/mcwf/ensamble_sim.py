@@ -21,7 +21,10 @@ from solvers.mcwf.sim import (
     _simulate_single_trajectory,
     build_precomputed_trajectory_data,
 )
-from solvers.mcwf.state_helpers import centered_sector_initial_coeffs
+from solvers.mcwf.state_helpers import (
+    group_generic_initial_sector_coeffs,
+    print_initial_sector_summary,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -216,12 +219,14 @@ def run_trajectory_ensemble(
     Ni = [int(group_size) for group_size in parameters.Ni]
     omega_i = [float(coupling) for coupling in parameters.omega_i]
 
-    # initial sector coefficients 
-    sector_coeffs = centered_sector_initial_coeffs(
+    sector_coeffs, sector_summary = group_generic_initial_sector_coeffs(
         Ni,
         dN=parameters.dN,
+        joint_probability=parameters.joint_probability,
+        linear_constraints=parameters.linear_constraints,
         sector_distribution=parameters.sector_distribution,
     )
+    print_initial_sector_summary(sector_summary)
     ratio_check = check_initial_sector_omega_ratio(
         sector_coeffs,
         Omega=max(abs(phase.omega) for phase in integration_phases),

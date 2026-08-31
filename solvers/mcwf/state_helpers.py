@@ -1,41 +1,30 @@
 from __future__ import annotations
 
-from math import comb, sqrt
-from typing import Dict, Mapping, Optional, Tuple
+from collections.abc import Iterable, Mapping, Sequence
+from itertools import product as cartesian_product
+from math import comb, prod, sqrt
 
 import numpy as np
 
-from solvers.mcwf.operator_helpers import split_sector_key, total_active_atoms_in_sector
 from parser.common import Array
-from parser.mcwf import SectorKey
+from parser.mcwf import (
+    InitialSectorSelectionSummary,
+    LinearSectorConstraints,
+    SectorKey,
+)
 
 
 SUPPORTED_SECTOR_DISTRIBUTIONS = {"square", "binomial"}
+CanonicalSectorKey = tuple[int, ...]
+LinearConstraintInput = (
+    LinearSectorConstraints
+    | tuple[Sequence[Sequence[int]], Sequence[int]]
+    | None
+)
 
-
-# -----------------------------------------------------------------------------
-# Initial state helpers
-# -----------------------------------------------------------------------------
 
 def validate_sector_distribution(sector_distribution: str) -> str:
-    """
-    Validate the requested initial N_J-sector distribution.
-
-    Supported options
-    -----------------
-    square
-        Equal amplitudes for every included N_J sector. This preserves the
-        project's original behavior exactly.
-    binomial
-        Weights matched to the product state
-            ((|u> + |d>) / sqrt(2))^N,
-        for which the probability of finding exactly N_J atoms in the active
-        manifold is
-            p(N_J) = binom(N, N_J) / 2^N.
-        Since probabilities are amplitudes squared, the sector amplitudes are
-        chosen proportional to sqrt(binom(N, N_J)) before renormalizing over
-        the included sectors.
-    """
+    """Validate the requested initial-sector amplitude distribution."""
     if sector_distribution not in SUPPORTED_SECTOR_DISTRIBUTIONS:
         allowed = ", ".join(sorted(SUPPORTED_SECTOR_DISTRIBUTIONS))
         raise ValueError(
@@ -45,343 +34,406 @@ def validate_sector_distribution(sector_distribution: str) -> str:
     return sector_distribution
 
 
-def down_state_in_sector(Nj: int) -> Array:
-    """
-    All Nj active atoms start in |down>, i.e. |n_e = 0>.
-
-    Returns the vector (1, 0, 0, ..., 0) of shape (Nj + 1,).
-    """
-    psi = np.zeros(Nj + 1, dtype=np.complex128)
-    psi[0] = 1.0
-    return psi
+def _validated_group_sizes(Ni: Sequence[int]) -> tuple[int, ...]:
+    groups = tuple(int(group_size) for group_size in Ni)
+    if not groups or sum(groups) <= 0:
+        raise ValueError("Ni must contain at least one atom group.")
+    if any(group_size < 0 for group_size in groups):
+        raise ValueError("Ni must contain non-negative group sizes.")
+    return groups
 
 
-def normalize_sector_coefficients(coeffs: Mapping[SectorKey, complex]) -> Dict[SectorKey, complex]:
-    """
-    Normalize a dictionary of sector coefficients to have unit norm.
-
-    Each sector is assumed to carry an internally normalized state, so the full
-    norm is simply sum_NJ |c_NJ|^2.
-    """
-    norm2 = float(sum(abs(c) ** 2 for c in coeffs.values()))
-    if norm2 <= 0.0:
-        raise ValueError("At least one sector coefficient must be non-zero.")
-    norm = np.sqrt(norm2)
-    return {Nj: c / norm for Nj, c in coeffs.items()}
+def _canonical_sector_key(sector_key: SectorKey) -> CanonicalSectorKey:
+    if isinstance(sector_key, tuple):
+        sector = tuple(int(value) for value in sector_key)
+    else:
+        sector = (int(sector_key),)
+    if not sector or any(value < 0 for value in sector):
+        raise ValueError(f"Invalid sector key: {sector_key!r}.")
+    return sector
 
 
-def _sector_distribution_weight(N: int, Nj: int, sector_distribution: str) -> float:
-    """
-    Return the unnormalized amplitude weight for one N_J sector.
-
-    The returned value is a real non-negative amplitude before any optional
-    phase factor is applied.
-    """
-    sector_distribution = validate_sector_distribution(sector_distribution)
-    if sector_distribution == "square":
-        return 1.0
-    # `math.comb` returns a Python integer. For larger N, using NumPy's sqrt
-    # directly on that object can fail because the ufunc does not always cast
-    # arbitrary-precision ints the way we want. `math.sqrt` handles the
-    # combinatorial integer cleanly before we cast to float.
-    return float(sqrt(comb(N, Nj)))
-
-
-def single_group_centered_sector_initial_coeffs(
-    N: int,
-    dN: int,
+def _coerce_linear_constraints(
+    linear_constraints: LinearConstraintInput,
     *,
-    phase_fn=None,
-    sector_distribution: str = "binomial",
-) -> Dict[int, complex]:
-    """
-    Build a normalized superposition of N_J sectors centered around N/2.
-
-    Parameters
-    ----------
-    N
-        Total atom number. Assumes even N if you want the center exactly at
-        N/2.
-    dN
-        How many sectors on each side of N/2 to include.
-
-        dN = 0  -> {N/2}
-        dN = 1  -> {N/2 - 1, N/2, N/2 + 1}
-        dN = 2  -> {N/2 - 2, ..., N/2 + 2}
-    phase_fn
-        Optional function phase_fn(Nj) returning the phase to apply to sector
-        Nj. If omitted, all included sectors have real non-negative amplitudes.
-    sector_distribution
-        Choice of how amplitudes are assigned across the included N_J sectors.
-
-        "square"
-            Equal amplitudes for all included sectors, normalized afterward.
-            This is the historical default used by the codebase.
-
-        "binomial"
-            Amplitudes proportional to sqrt(binom(N, N_J)), corresponding to
-            the product state ((|u> + |d>) / sqrt(2))^N. If the range of
-            included sectors is truncated, the amplitudes are renormalized over
-            only the retained sectors.
-
-    Returns
-    -------
-    Dict[int, complex]
-        Normalized sector coefficients.
-    """
-    if N < 0:
-        raise ValueError("N must be non-negative.")
-    if dN < 0:
-        raise ValueError("dN must be >= 0.")
-    if N % 2 != 0:
-        raise ValueError("This helper assumes even N so the center is exactly N/2.")
-
-    sector_distribution = validate_sector_distribution(sector_distribution)
-
-    center = N // 2
-    sector_list = list(range(center - dN, center + dN + 1))
-    sector_list = [Nj for Nj in sector_list if 0 <= Nj <= N]
-    if not sector_list:
-        raise ValueError("No valid sectors selected.")
-
-    coeffs: Dict[int, complex] = {}
-    for Nj in sector_list:
-        phase = 1.0 if phase_fn is None else np.exp(1j * phase_fn(Nj))
-        coeffs[Nj] = _sector_distribution_weight(N, Nj, sector_distribution) * phase
-
-    return normalize_sector_coefficients(coeffs)
+    num_groups: int,
+) -> LinearSectorConstraints | None:
+    if linear_constraints is None:
+        return None
+    if isinstance(linear_constraints, LinearSectorConstraints):
+        constraints = linear_constraints
+    else:
+        if len(linear_constraints) != 2:
+            raise ValueError("linear_constraints must contain (matrix, offset).")
+        constraints = LinearSectorConstraints(
+            matrix=linear_constraints[0],
+            offset=linear_constraints[1],
+        )
+    if any(len(row) != num_groups for row in constraints.matrix):
+        raise ValueError(
+            "Each linear constraint row must contain one coefficient per group."
+        )
+    return constraints
 
 
-# -----------------------------------------------------------------------------
-
-def _valid_group_resolved_pairs_for_total_sector(
-    total_nj: int,
-    N1: int,
-    N2: int,
-) -> list[tuple[int, int]]:
-    """
-    Return all valid (Nj1, Nj2) pairs with Nj1 + Nj2 = total_nj.
-    """
-    pairs: list[tuple[int, int]] = []
-    nj1_min = max(0, total_nj - N2)
-    nj1_max = min(N1, total_nj)
-    for Nj1 in range(nj1_min, nj1_max + 1):
-        Nj2 = total_nj - Nj1
-        if 0 <= Nj2 <= N2:
-            pairs.append((Nj1, Nj2))
-    return pairs
+def centered_total_nj_values(total_N: int, dN: int) -> tuple[int, ...]:
+    """Return the complete centered total-NJ window selected by ``dN``."""
+    if total_N < 0 or total_N % 2 != 0:
+        raise ValueError("dN selection requires a non-negative even total atom number.")
+    if dN < 0 or dN > total_N // 2:
+        raise ValueError("dN must lie between zero and half the total atom number.")
+    center = total_N // 2
+    return tuple(range(center - dN, center + dN + 1))
 
 
-def _group_resolved_binomial_probability_weight(N1: int, N2: int, Nj1: int, Nj2: int) -> float:
-    """
-    Unnormalized probability weight for one group-resolved sector.
+def exact_group_sector_weights(
+    Ni: Sequence[int],
+    sectors: Iterable[CanonicalSectorKey],
+) -> dict[CanonicalSectorKey, int]:
+    """Compute exact product-binomial integer weights for sector tuples."""
+    groups = _validated_group_sizes(Ni)
+    binomial_tables = tuple(
+        tuple(comb(group_size, active_size) for active_size in range(group_size + 1))
+        for group_size in groups
+    )
+    weights: dict[CanonicalSectorKey, int] = {}
+    for sector in sectors:
+        canonical = _canonical_sector_key(sector)
+        if len(canonical) != len(groups):
+            raise ValueError("Each sector must contain one entry per physical group.")
+        if any(
+            active_size > group_size
+            for active_size, group_size in zip(canonical, groups)
+        ):
+            raise ValueError(f"Sector {canonical} exceeds group sizes {groups}.")
+        weights[canonical] = prod(
+            table[active_size]
+            for table, active_size in zip(binomial_tables, canonical)
+        )
+    return weights
 
-    For the product state ((|u> + |d>) / sqrt(2))^N this is proportional to
-    binom(N1, Nj1) * binom(N2, Nj2).
-    """
-    return float(comb(N1, Nj1) * comb(N2, Nj2))
+
+def constraint_eligible_weights(
+    all_weights: Mapping[CanonicalSectorKey, int],
+    linear_constraints: LinearConstraintInput,
+) -> dict[CanonicalSectorKey, int]:
+    """Restrict exact sector weights to integer solutions of ``A @ sector = b``."""
+    if not all_weights:
+        raise ValueError("all_weights must contain at least one sector.")
+    num_groups = len(next(iter(all_weights)))
+    constraints = _coerce_linear_constraints(
+        linear_constraints,
+        num_groups=num_groups,
+    )
+    if constraints is None:
+        return dict(all_weights)
+
+    eligible = {
+        sector: weight
+        for sector, weight in all_weights.items()
+        if all(
+            sum(coefficient * value for coefficient, value in zip(row, sector))
+            == offset
+            for row, offset in zip(constraints.matrix, constraints.offset)
+        )
+    }
+    if not eligible:
+        raise ValueError("linear_constraints leave no eligible sectors.")
+    return eligible
 
 
-def two_group_centered_sector_initial_coeffs(
-    N: int,
-    dN: int,
-    N1: int,
-    N2: int,
+def _joint_probability_weights(
+    eligible_weights: Mapping[CanonicalSectorKey, int],
+    joint_probability: float,
     *,
-    sector_distribution: str = "binomial",
-) -> Dict[tuple[int, int], complex]:
-    """
-    Build a normalized superposition of two-group sectors centered around N/2.
+    full_weight_sum: int,
+) -> dict[CanonicalSectorKey, int]:
+    """Retain the largest complete weight groups without exceeding the cap."""
+    if not np.isfinite(joint_probability) or not 0.0 < joint_probability <= 1.0:
+        raise ValueError("joint_probability must lie in (0, 1].")
 
-    The returned dictionary uses the low-level inhomogeneous representation
+    eligible_weight_sum = sum(eligible_weights.values())
+    if eligible_weight_sum / full_weight_sum <= joint_probability:
+        return dict(eligible_weights)
 
-        {(Nj1, Nj2): coeff}
+    ordered = sorted(
+        eligible_weights.items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    retained: dict[CanonicalSectorKey, int] = {}
+    retained_weight_sum = 0
+    index = 0
+    while index < len(ordered):
+        cutoff_weight = ordered[index][1]
+        group_end = index
+        while group_end < len(ordered) and ordered[group_end][1] == cutoff_weight:
+            group_end += 1
+        weight_group = ordered[index:group_end]
+        group_weight_sum = sum(weight for _, weight in weight_group)
+        candidate_probability = (
+            retained_weight_sum + group_weight_sum
+        ) / full_weight_sum
+        if candidate_probability > joint_probability:
+            break
+        for sector, weight in weight_group:
+            retained[sector] = weight
+        retained_weight_sum += group_weight_sum
+        index = group_end
 
-    where Nj1 and Nj2 are the active-manifold atom numbers in groups 1 and 2.
+    if not retained:
+        highest_tie_probability = sum(
+            weight for _, weight in ordered if weight == ordered[0][1]
+        ) / full_weight_sum
+        raise ValueError(
+            "joint_probability is too small to retain the complete "
+            "highest-weight tie group: "
+            f"cap={joint_probability:.6g}, "
+            f"tie-group probability={highest_tie_probability:.6g}."
+        )
+    return retained
 
-    The selected total active-manifold sectors are
 
-        N_J in {N/2 - dN, ..., N/2 + dN},
+def select_initial_sector_weights(
+    Ni: Sequence[int],
+    *,
+    dN: int | None = None,
+    joint_probability: float | None = None,
+    linear_constraints: LinearConstraintInput = None,
+) -> tuple[dict[CanonicalSectorKey, int], dict[CanonicalSectorKey, int]]:
+    """Select exact group-sector weights using one supported cutoff method."""
+    groups = _validated_group_sizes(Ni)
+    if (dN is None) == (joint_probability is None):
+        raise ValueError("Exactly one of dN and joint_probability must be provided.")
 
-    and for each selected total N_J the helper includes every valid pair
-    (Nj1, Nj2) satisfying
+    all_sectors = cartesian_product(
+        *(range(group_size + 1) for group_size in groups)
+    )
+    all_weights = exact_group_sector_weights(groups, all_sectors)
+    eligible_weights = constraint_eligible_weights(
+        all_weights,
+        linear_constraints,
+    )
 
-        Nj1 + Nj2 = N_J,
-        0 <= Nj1 <= N1,
-        0 <= Nj2 <= N2.
-
-    Distribution options
-    --------------------
-    binomial
-        Use amplitudes proportional to
-            sqrt(binom(N1, Nj1) * binom(N2, Nj2)),
-        then normalize over only the selected window.
-
-    square
-        Keep equal total probability for each selected total N_J sector, but
-        split that total-sector probability across the valid (Nj1, Nj2) pairs
-        using the conditional binomial distribution within the fixed total N_J.
-    """
-    if N < 0:
-        raise ValueError("N must be non-negative.")
-    if N1 < 0 or N2 < 0:
-        raise ValueError("N1 and N2 must be non-negative.")
-    if N1 + N2 != N:
-        raise ValueError(f"Expected N1 + N2 = N, got N1={N1}, N2={N2}, N={N}.")
-    if dN < 0:
-        raise ValueError("dN must be >= 0.")
-    if N % 2 != 0:
-        raise ValueError("This helper assumes even N so the center is exactly N/2.")
-
-    sector_distribution = validate_sector_distribution(sector_distribution)
-
-    center = N // 2
-    total_sector_list = list(range(center - dN, center + dN + 1))
-    total_sector_list = [total_nj for total_nj in total_sector_list if 0 <= total_nj <= N]
-    if not total_sector_list:
-        raise ValueError("No valid total N_J sectors selected.")
-
-    valid_pairs_by_total: dict[int, list[tuple[int, int]]] = {
-        total_nj: _valid_group_resolved_pairs_for_total_sector(total_nj, N1, N2)
-        for total_nj in total_sector_list
-    }
-    valid_pairs_by_total = {
-        total_nj: pairs for total_nj, pairs in valid_pairs_by_total.items() if pairs
-    }
-    if not valid_pairs_by_total:
-        raise ValueError("No valid group-resolved sectors found in the selected total-N_J window.")
-
-    coeffs: Dict[tuple[int, int], complex] = {}
-
-    if sector_distribution == "binomial":
-        for pairs in valid_pairs_by_total.values():
-            for Nj1, Nj2 in pairs:
-                coeffs[(Nj1, Nj2)] = float(
-                    sqrt(_group_resolved_binomial_probability_weight(N1, N2, Nj1, Nj2))
-                )
-        return normalize_sector_coefficients(coeffs)
-
-    # "square": equal total probability over the selected total-N_J sectors,
-    # then conditional binomial splitting within each total sector.
-    total_sector_probability = 1.0 / len(valid_pairs_by_total)
-    for total_nj, pairs in valid_pairs_by_total.items():
-        conditional_weights = {
-            pair: _group_resolved_binomial_probability_weight(N1, N2, pair[0], pair[1])
-            for pair in pairs
+    if dN is not None:
+        totals = set(centered_total_nj_values(sum(groups), dN))
+        retained_weights = {
+            sector: weight
+            for sector, weight in eligible_weights.items()
+            if sum(sector) in totals
         }
-        conditional_norm = float(sum(conditional_weights.values()))
-        if conditional_norm <= 0.0:
-            raise ValueError(f"Conditional weight for total N_J={total_nj} is zero.")
-        for pair, weight in conditional_weights.items():
-            probability = total_sector_probability * (weight / conditional_norm)
-            coeffs[pair] = float(np.sqrt(probability))
-
-    return normalize_sector_coefficients(coeffs)
-
-
-def centered_sector_initial_coeffs(
-    Ni: list[int],
-    dN: int,
-    *,
-    sector_distribution: str = "binomial",
-) -> Dict[SectorKey, complex]:
-    """
-    This is a temprary wrapper to dispatch to the correct initial-sector coefficient helper based on the number of groups.
-    This will later be replaced by a proper probability-based initial-sector coefficient generator that can handle arbitrary numbers of groups.
-    """
-    if not Ni:
-        raise ValueError("Ni must contain at least one group size.")
-    if any(Ng < 0 for Ng in Ni):
-        raise ValueError("All group sizes in Ni must be non-negative.")
-
-    if len(Ni) == 1:
-        return single_group_centered_sector_initial_coeffs(
-            Ni[0],
-            dN=dN,
-            sector_distribution=sector_distribution,
+    else:
+        retained_weights = _joint_probability_weights(
+            eligible_weights,
+            float(joint_probability),
+            full_weight_sum=sum(all_weights.values()),
         )
-    if len(Ni) == 2:
-        N1, N2 = Ni
-        return two_group_centered_sector_initial_coeffs(
-            N1 + N2,
-            dN=dN,
-            N1=N1,
-            N2=N2,
-            sector_distribution=sector_distribution,
-        )
-    raise ValueError(
-        f"centered_sector_initial_coeffs currently supports 1 or 2 groups, got {len(Ni)}."
+
+    if not retained_weights:
+        raise ValueError("The requested initial-sector selection retained no sectors.")
+    return retained_weights, eligible_weights
+
+
+def compute_initial_sector_summary(
+    Ni: Sequence[int],
+    selected_weights: Mapping[CanonicalSectorKey, int],
+    eligible_weights: Mapping[CanonicalSectorKey, int],
+) -> InitialSectorSelectionSummary:
+    """Compute counts and full-wavefunction weights before renormalization."""
+    groups = _validated_group_sizes(Ni)
+    total_sector_count = prod(group_size + 1 for group_size in groups)
+    eligible_sector_count = len(eligible_weights)
+    retained_sector_count = len(selected_weights)
+    full_weight_sum = 2 ** sum(groups)
+    return InitialSectorSelectionSummary(
+        retained_sector_count=retained_sector_count,
+        eligible_sector_count=eligible_sector_count,
+        total_sector_count=total_sector_count,
+        retained_percentage_of_eligible=(
+            100.0 * retained_sector_count / eligible_sector_count
+        ),
+        retained_percentage_of_full_space=(
+            100.0 * retained_sector_count / total_sector_count
+        ),
+        eligible_joint_probability=(
+            sum(eligible_weights.values()) / full_weight_sum
+        ),
+        retained_joint_probability=(
+            sum(selected_weights.values()) / full_weight_sum
+        ),
     )
 
 
-# -----------------------------------------------------------------------------
+def print_initial_sector_summary(summary: InitialSectorSelectionSummary) -> None:
+    """Print the required once-per-ensemble sector-selection summary."""
+    if summary.eligible_sector_count == summary.total_sector_count:
+        print(
+            "Initial sector selection: "
+            f"{summary.retained_sector_count}/{summary.total_sector_count} "
+            "sectors retained "
+            f"({summary.retained_percentage_of_full_space:.2f}%); "
+            "full-wavefunction probability retained: "
+            f"{100.0 * summary.retained_joint_probability:.2f}%."
+        )
+        return
 
-def total_norm2(blocks: Mapping[SectorKey, Array]) -> float:
-    return float(sum(np.vdot(psi, psi).real for psi in blocks.values()))
+    retained_fraction_of_eligible = (
+        summary.retained_joint_probability / summary.eligible_joint_probability
+    )
+    print(
+        "Initial sector selection: "
+        f"{summary.retained_sector_count}/{summary.eligible_sector_count} "
+        "eligible sectors retained "
+        f"({summary.retained_percentage_of_eligible:.2f}%; "
+        f"{summary.retained_sector_count}/{summary.total_sector_count} "
+        "of full space, "
+        f"{summary.retained_percentage_of_full_space:.2f}%); "
+        "full-wavefunction probability: "
+        f"{100.0 * summary.retained_joint_probability:.2f}% retained from "
+        f"{100.0 * summary.eligible_joint_probability:.2f}% eligible "
+        f"({100.0 * retained_fraction_of_eligible:.2f}% of eligible mass)."
+    )
 
 
-def _two_group_down_state_in_sector(Nj1: int, Nj2: int) -> Array:
-    """
-    Product state |n_{e,1}=0, n_{e,2}=0> in the two-group basis.
-    """
-    psi = np.zeros((Nj1 + 1) * (Nj2 + 1), dtype=np.complex128)
-    psi[0] = 1.0
-    return psi
+def normalize_sector_coefficients(
+    coeffs: Mapping[SectorKey, complex],
+) -> dict[CanonicalSectorKey, complex]:
+    """Canonicalize tuple keys and normalize coefficients to unit norm."""
+    canonical: dict[CanonicalSectorKey, complex] = {}
+    for sector_key, coefficient in coeffs.items():
+        sector = _canonical_sector_key(sector_key)
+        if sector in canonical:
+            raise ValueError(f"Duplicate sector after key normalization: {sector}.")
+        canonical[sector] = complex(coefficient)
+    norm2 = float(sum(abs(coefficient) ** 2 for coefficient in canonical.values()))
+    if not np.isfinite(norm2) or norm2 <= 0.0:
+        raise ValueError("At least one finite sector coefficient must be non-zero.")
+    norm = sqrt(norm2)
+    return {
+        sector: coefficient / norm
+        for sector, coefficient in canonical.items()
+    }
 
 
-def _expected_internal_shape(sector_key: SectorKey) -> Tuple[int, ...]:
-    groups = split_sector_key(sector_key)
-    if len(groups) == 1:
-        return (groups[0] + 1,)
-    if len(groups) == 2:
-        return ((groups[0] + 1) * (groups[1] + 1),)
-    raise ValueError("Only one-group and two-group sectors are currently supported.")
+def _coefficients_from_selected_weights(
+    selected_weights: Mapping[CanonicalSectorKey, int],
+    *,
+    sector_distribution: str,
+) -> dict[CanonicalSectorKey, complex]:
+    """Convert exact selected weights into normalized initial amplitudes."""
+    sector_distribution = validate_sector_distribution(sector_distribution)
+    if sector_distribution == "binomial":
+        total_weight = sum(selected_weights.values())
+        return {
+            sector: complex(sqrt(weight / total_weight))
+            for sector, weight in selected_weights.items()
+        }
+
+    weights_by_total: dict[int, dict[CanonicalSectorKey, int]] = {}
+    for sector, weight in selected_weights.items():
+        weights_by_total.setdefault(sum(sector), {})[sector] = weight
+    total_sector_probability = 1.0 / len(weights_by_total)
+    coefficients: dict[CanonicalSectorKey, complex] = {}
+    for sector_weights in weights_by_total.values():
+        conditional_weight = sum(sector_weights.values())
+        for sector, weight in sector_weights.items():
+            probability = total_sector_probability * weight / conditional_weight
+            coefficients[sector] = complex(sqrt(probability))
+    return coefficients
+
+
+def group_generic_initial_sector_coeffs(
+    Ni: Sequence[int],
+    *,
+    dN: int | None = None,
+    joint_probability: float | None = None,
+    linear_constraints: LinearConstraintInput = None,
+    sector_distribution: str = "binomial",
+) -> tuple[dict[CanonicalSectorKey, complex], InitialSectorSelectionSummary]:
+    """Build group-generic initial amplitudes and their truncation summary."""
+    if joint_probability is not None and sector_distribution != "binomial":
+        raise ValueError(
+            "joint_probability selection requires sector_distribution='binomial'."
+        )
+    selected_weights, eligible_weights = select_initial_sector_weights(
+        Ni,
+        dN=dN,
+        joint_probability=joint_probability,
+        linear_constraints=linear_constraints,
+    )
+    summary = compute_initial_sector_summary(
+        Ni,
+        selected_weights,
+        eligible_weights,
+    )
+    coefficients = _coefficients_from_selected_weights(
+        selected_weights,
+        sector_distribution=sector_distribution,
+    )
+    return normalize_sector_coefficients(coefficients), summary
+
+
+def _expected_internal_shape(sector_key: SectorKey) -> tuple[int, ...]:
+    sector = _canonical_sector_key(sector_key)
+    return (prod(active_size + 1 for active_size in sector),)
 
 
 def build_initial_sector_state(
-    N: int,
     sector_coeffs: Mapping[SectorKey, complex],
-    internal_sector_states: Optional[Mapping[SectorKey, Array]] = None,
-) -> Dict[SectorKey, Array]:
-    """
-    Build the initial wavefunction written as a dictionary {Nj: psi_Nj}, where
-    psi_Nj is the symmetric Dicke vector on the |n_e> basis for that sector.
-
-    The total norm is
-        sum_Nj ||psi_Nj||^2 = 1.
-
-    Returns a dictionary whose values are the normalized local |n_e>-basis
-    states multiplied by the normalized sector coefficient for that N_J.
-    """
-    coeffs = normalize_sector_coefficients(sector_coeffs)
-    blocks: Dict[SectorKey, Array] = {}
-
-    for sector_key, coeff in coeffs.items():
-        groups = split_sector_key(sector_key)
-        Nj_total = total_active_atoms_in_sector(sector_key)
-        if Nj_total < 0 or Nj_total > N:
-            raise ValueError(f"Invalid sector {sector_key} for N={N}.")
-
-        if internal_sector_states is None or sector_key not in internal_sector_states:
-            if len(groups) == 1:
-                local = down_state_in_sector(groups[0])
-            elif len(groups) == 2:
-                local = _two_group_down_state_in_sector(groups[0], groups[1])
-            else:
-                raise ValueError("Only one-group and two-group sectors are currently supported.")
-        else:
-            local = np.asarray(internal_sector_states[sector_key], dtype=np.complex128).copy()
-            expected_shape = _expected_internal_shape(sector_key)
-            if local.shape != expected_shape:
+    internal_sector_states: Mapping[SectorKey, Array] | None = None,
+) -> dict[CanonicalSectorKey, Array]:
+    """Build normalized tuple-keyed direct-sum blocks for the initial state."""
+    coefficients = normalize_sector_coefficients(sector_coeffs)
+    supplied_states: dict[CanonicalSectorKey, Array] = {}
+    if internal_sector_states is not None:
+        for sector_key, state in internal_sector_states.items():
+            sector = _canonical_sector_key(sector_key)
+            if sector in supplied_states:
                 raise ValueError(
-                    f"Internal state for sector {sector_key} must have shape {expected_shape}, "
-                    f"got {local.shape}."
+                    f"Duplicate internal state after key normalization: {sector}."
                 )
-            local_norm = np.linalg.norm(local)
-            if local_norm == 0.0:
-                raise ValueError(f"Internal state for sector {sector_key} has zero norm.")
-            local /= local_norm
+            supplied_states[sector] = np.asarray(
+                state,
+                dtype=np.complex128,
+            ).copy()
 
-        blocks[sector_key] = coeff * local
-
+    blocks: dict[CanonicalSectorKey, Array] = {}
+    for sector, coefficient in coefficients.items():
+        expected_shape = _expected_internal_shape(sector)
+        if sector not in supplied_states:
+            local_state = np.zeros(expected_shape, dtype=np.complex128)
+            local_state[0] = 1.0
+        else:
+            local_state = supplied_states[sector]
+            if local_state.shape != expected_shape:
+                raise ValueError(
+                    f"Internal state for sector {sector} must have shape "
+                    f"{expected_shape}, got {local_state.shape}."
+                )
+            local_norm = float(np.linalg.norm(local_state))
+            if not np.isfinite(local_norm) or local_norm <= 0.0:
+                raise ValueError(
+                    f"Internal state for sector {sector} must have finite non-zero norm."
+                )
+            local_state /= local_norm
+        blocks[sector] = coefficient * local_state
     return blocks
+
+
+def total_norm2(blocks: Mapping[SectorKey, Array]) -> float:
+    """Return the norm squared of a direct-sum sector state."""
+    return float(sum(np.vdot(block, block).real for block in blocks.values()))
+
+
+__all__ = [
+    "build_initial_sector_state",
+    "centered_total_nj_values",
+    "compute_initial_sector_summary",
+    "constraint_eligible_weights",
+    "exact_group_sector_weights",
+    "group_generic_initial_sector_coeffs",
+    "normalize_sector_coefficients",
+    "print_initial_sector_summary",
+    "select_initial_sector_weights",
+    "total_norm2",
+    "validate_sector_distribution",
+]

@@ -31,6 +31,33 @@ def _parse_int_list(value: str) -> tuple[int, ...]:
     return tuple(int(item.strip()) for item in value.split(","))
 
 
+def _parse_linear_constraints(
+    value: str,
+) -> tuple[tuple[tuple[int, ...], ...], tuple[int, ...]]:
+    """Parse ``a1,a2=offset;...`` into exact linear sector constraints."""
+    rows: list[tuple[int, ...]] = []
+    offsets: list[int] = []
+    for equation in value.split(";"):
+        parts = equation.split("=")
+        if len(parts) != 2:
+            raise argparse.ArgumentTypeError(
+                "Each linear constraint must have the form a1,a2,...=offset."
+            )
+        row = _parse_int_list(parts[0])
+        if not row:
+            raise argparse.ArgumentTypeError(
+                "Each linear constraint must contain at least one coefficient."
+            )
+        rows.append(row)
+        try:
+            offsets.append(int(parts[1].strip()))
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "Linear constraint offsets must be integers."
+            ) from exc
+    return tuple(rows), tuple(offsets)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run one- or two-group MCWF and save its output."
@@ -42,7 +69,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--array-index", type=int, required=True)
     parser.add_argument("--Gamma", type=float, required=True)
     parser.add_argument("--Ni", type=_parse_int_list, required=True)
-    parser.add_argument("--dN", type=int, required=True)
+    sector_selection = parser.add_mutually_exclusive_group(required=True)
+    sector_selection.add_argument("--dN", type=int)
+    sector_selection.add_argument(
+        "--joint-probability",
+        type=float,
+        help=(
+            "Maximum exact binomial probability retained relative to the "
+            "complete unconstrained wavefunction."
+        ),
+    )
+    parser.add_argument(
+        "--linear-constraints",
+        type=_parse_linear_constraints,
+        default=None,
+        help=(
+            "Optional semicolon-separated exact constraints, for example "
+            "'1,-2=0' or '1,-2,-3=0;0,1,-1=0'."
+        ),
+    )
     parser.add_argument("--dt", type=float, default=None)
     parser.add_argument("--num-snapshots", type=int, required=True)
     parser.add_argument(
@@ -132,6 +177,8 @@ def _run_mcwf(
         Gamma=metadata.Gamma,
         phase_protocol=metadata.phase_protocol,
         dN=args.dN,
+        joint_probability=args.joint_probability,
+        linear_constraints=args.linear_constraints,
         sector_distribution="binomial",
         dt=dt,
         shifted_jump_operator=True,

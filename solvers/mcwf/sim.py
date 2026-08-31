@@ -8,9 +8,8 @@ from scipy.sparse.linalg import expm, expm_multiply
 
 from solvers.mcwf.operator_helpers import (
     build_sector_ops_for_key,
-    sector_multiplicity,
+    group_sector_multiplicity,
     split_sector_key,
-    two_group_sector_multiplicity,
 )
 from parser.common import Array, Phase
 from parser.generator_moments import TrajectoryResolvedMomentSeries
@@ -22,7 +21,10 @@ from parser.mcwf import (
     TrajectoryResult,
 )
 from solvers.mcwf.generator_moments import compute_snapshot_generator_moments
-from solvers.mcwf.state_helpers import build_initial_sector_state
+from solvers.mcwf.state_helpers import (
+    build_initial_sector_state,
+    normalize_sector_coefficients,
+)
 
 JUMP_TIME_BISECTION_STEPS = 4
 
@@ -181,6 +183,7 @@ def build_precomputed_trajectory_data(
 
     Ni = [int(group_size) for group_size in Ni]
     omega_i = [float(coupling) for coupling in omega_i]
+    sector_coeffs = normalize_sector_coefficients(sector_coeffs)
 
     # Sorted list of populated strong-symmetry sectors, e.g. [N//2 - 1, N//2, N//2 + 1].
     sector_list = sorted(
@@ -200,11 +203,7 @@ def build_precomputed_trajectory_data(
     ]
     # Sector multiplicity lookup, e.g. {500: ...} or {(250, 250): ...}.
     multiplicities = {
-        sector_key: (
-            sector_multiplicity(Ni[0], int(sector_key))
-            if not isinstance(sector_key, tuple)
-            else two_group_sector_multiplicity(Ni[0], Ni[1], int(sector_key[0]), int(sector_key[1]))
-        )
+        sector_key: group_sector_multiplicity(Ni, sector_key)
         for sector_key in sector_list
     }
     # Reduced Hilbert-space dimension in each sector: Nj + 1 or (Nj1 + 1)(Nj2 + 1).
@@ -287,7 +286,7 @@ def _simulate_single_trajectory(
         Flattened piecewise-constant protocol segments.
     sector_coeffs
         Initial amplitudes of the Nj sectors. Example:
-            {N//2: 1.0, N//2 - 1: 1.0}
+            {(N//2,): 1.0, (N//2 - 1,): 1.0}
     dt
         Base time step used for jump detection and propagation.
     t_eval
@@ -334,7 +333,7 @@ def _simulate_single_trajectory(
     if abs(float(t_eval[-1]) - total_time) > 1e-9:
         raise ValueError("The last t_eval point must match the total protocol time.")
 
-    initial_blocks = build_initial_sector_state(N, sector_coeffs)
+    initial_blocks = build_initial_sector_state(sector_coeffs)
     psi_blocks = renormalize_psi_blocks([initial_blocks[Nj] for Nj in sector_list])
 
     group_count = len(Ni)

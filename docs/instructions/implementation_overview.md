@@ -218,6 +218,8 @@ parameters = MCWFSolverParameters(
     Gamma=metadata.Gamma,
     phase_protocol=metadata.phase_protocol,
     dN=dN,
+    joint_probability=None,
+    linear_constraints=None,
     dt=dt,
     ...,
 )
@@ -225,7 +227,8 @@ parameters = MCWFSolverParameters(
 def run_trajectory_ensemble(
     parameters, *, t_eval, ntraj, seed=None, n_processes=None, ...
 ) -> TrajectoryEnsemble:
-    sector_coeffs = centered_sector_initial_coeffs(...)
+    sector_coeffs, sector_summary = group_generic_initial_sector_coeffs(...)
+    print_initial_sector_summary(sector_summary)
     precomputed = build_precomputed_trajectory_data(...)
     trajectory_results = (
         _simulate_single_trajectory(..., precomputed) for _ in range(ntraj)
@@ -244,9 +247,19 @@ The custom MCWF solver should use the shifted jump-operator picture by default.
 Pass `shifted_jump_operator=False` explicitly when the unshifted picture is
 required.
 
-Detailed initialization conventions live in:
+Detailed initial-sector selection and state-construction conventions live in:
 
-- `docs/instructions/solvers/mcwf/initial_sector_state.typ`
+- `docs/instructions/solvers/mcwf/initial_sector_selection.typ`
+
+Select sectors with exactly one of the complete total-$N_J$ window input `dN`
+or the probability-ranked tuple input `joint_probability`. Optional exact
+linear constraints may restrict the eligible group-sector tuples before either
+selection method. `joint_probability` caps the exact retained binomial
+probability relative to the complete unconstrained wavefunction; if the entire
+constraint-eligible support lies below that cap, retain it all.
+The ensemble setup should always print the retained tuple-sector count, its
+percentage of the full tuple space, and the retained physical joint
+probability exactly once.
 
 For precomputation rules, use:
 

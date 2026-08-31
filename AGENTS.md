@@ -76,7 +76,7 @@ AGENTS.md
       -> docs/instructions/scaling.typ
       -> docs/instructions/parser.typ
       -> docs/instructions/solvers/mcwf/method_parameters.typ
-      -> docs/instructions/solvers/mcwf/initial_sector_state.typ
+      -> docs/instructions/solvers/mcwf/initial_sector_selection.typ
       -> docs/instructions/parameter_validation.md (planned/missing)
       -> docs/instructions/solvers/mcwf/simulation_precompute.typ
       -> docs/instructions/solvers/mcwf/sector_operators.typ

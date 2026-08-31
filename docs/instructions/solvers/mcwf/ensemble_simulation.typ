@@ -50,7 +50,8 @@ def run_trajectory_ensemble(parameters, *, t_eval, ntraj, seed=None,
                             n_processes=None, chunksize=1, verbose=False):
     validate runtime inputs
     integration_phases = parameters.phase_protocol.integration_phases
-    sector_coeffs = centered_sector_initial_coeffs(...)
+    sector_coeffs, sector_summary = group_generic_initial_sector_coeffs(...)
+    print_initial_sector_summary(sector_summary)  # unconditional, exactly once
     check_initial_sector_omega_ratio(...)
 
     precomputed = build_precomputed_trajectory_data(...)
@@ -103,7 +104,9 @@ MCWFSolverParameters(
     omega_i=metadata.omega_groups,
     Gamma=metadata.Gamma,
     phase_protocol=metadata.phase_protocol,
-    dN,
+    dN=2,
+    joint_probability=None,  # alternatively: dN=None, joint_probability=q
+    linear_constraints=None,
     sector_distribution="binomial",
     dt=1e-3,
     shifted_jump_operator=True,
@@ -129,8 +132,8 @@ Its validator constructs the final weighted-average coupling as
 `metadata.omega_groups`; pass that completed list as the solver's `omega_i`.
 For single-group runs, use `Ni=[N]` and `omega_i=[]`.
 
-Initial-sector conventions live in
-`docs/instructions/solvers/mcwf/initial_sector_state.typ`.
+Initial-sector selection and block-construction conventions live in
+`docs/instructions/solvers/mcwf/initial_sector_selection.typ`.
 
 Precompute contents and sector-operator conventions live in:
 
