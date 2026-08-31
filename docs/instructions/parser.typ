@@ -20,27 +20,33 @@ the repository-specific J- and S-moment container contracts.
 
 = MCWF Initial-Sector Containers
 
-`MCWFSolverParameters` should validate exactly one initial-sector selector:
+`MCWFSolverParameters` should expose independent optional initial-sector filters:
 
 ```python
 MCWFSolverParameters(
     ...,
     dN=2,
-    joint_probability=None,
+    max_omega_over_omega_c=None,
     linear_constraints=None,
+    joint_probability=None,
 )
 ```
 
-Alternatively use `dN=None` with `joint_probability=q`. A supplied
+Any combination, including all `None`, is valid. Apply non-`None` inputs in
+the order `dN`, `max_omega_over_omega_c`, `linear_constraints`, then
+`joint_probability`; the latter is always the final tuple-wise filter rather
+than an alternative selection branch. Validate
+`0 < max_omega_over_omega_c <= 1`. A supplied
 `linear_constraints=(A, b)` should be converted into
 `LinearSectorConstraints(matrix=A, offset=b)`. Its integer matrix must have one
 column per physical group and one offset per row.
 
-`InitialSectorSelectionSummary` stores the retained, constraint-eligible, and
-full tuple-sector counts together with the retained percentages and the
-eligible and retained probabilities relative to the complete unconstrained
-wavefunction. It is a transient setup diagnostic printed once by the ensemble
-runner; it is not copied into every trajectory result.
+`InitialSectorFilterSummary` stores `filter_name`, `input_sector_count`, and
+`remaining_sector_count` for one applied filter. `InitialSectorSelectionSummary`
+stores these ordered rows in `filter_steps` together with the retained,
+pre-probability-filter, and full tuple-sector counts and the corresponding
+full-wavefunction probabilities. It is a transient setup diagnostic printed
+once by the ensemble runner; it is not copied into every trajectory result.
 
 = Raw Trajectory-Resolved Generator-Moment Container
 

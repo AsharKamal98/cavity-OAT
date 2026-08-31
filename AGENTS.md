@@ -137,6 +137,9 @@ Current investigations:
   matrix-exponential actions, and Krylov propagation for the MCWF solver.
 - `docs/investigations/dyadic_bisection_propagators.md`: assesses precomputed
   dyadic propagators for fixed-depth MCWF jump-time localization.
+- `docs/investigations/initial_sector_cutoff_symmetry.tex`: assesses whether
+  squeezing requires a symmetric initial-sector cutoff and compares symmetric
+  truncation with a low-$N_J$ drive-validity cutoff.
 
 ## General Rules
 - For implementation changes, or any task requiring knowledge about implementation, read

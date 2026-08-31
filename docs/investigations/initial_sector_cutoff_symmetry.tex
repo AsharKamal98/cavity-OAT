@@ -1,0 +1,147 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\title{Symmetry of Initial-$N_J$ Cutoffs for Squeezing}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Conclusion}
+
+Reflection symmetry of the $N_J$ distribution about $N/2$ is not required for
+one-axis twisting (OAT) to generate squeezing.  It is, however, part of the
+canonical initial coherent spin state used to derive the usual OAT formulas
+and the unsqueezed baseline $\xi^2(0)=1$.  A substantial asymmetric truncation
+therefore changes the initial state and its squeezing dynamics, even though it
+does not remove the OAT mechanism.
+
+For enforcing $\lvert\Omega/\Omega_c\rvert<r_{\max}$, retain the valid large
+$N_J$ sectors and remove only the invalid low-$N_J$ sectors.  A mirrored
+high-$N_J$ cutoff has no physical justification: since
+\begin{equation}
+  \frac{\lvert\Omega\rvert}{\Omega_c(N_J)}
+  = \frac{2\lvert\Omega\rvert}{\Gamma N_J},
+\end{equation}
+larger $N_J$ sectors lie farther inside the spin-polarized phase.  The
+one-sided cutoff is safe as an approximation only when its discarded
+probability is negligible.  In an inhomogeneous model, the same argument
+applies to the corresponding positive coupling-weighted active population.
+
+\section{Theory Basis}
+
+The paper starts from the equal single-particle superposition, whose $N_J$
+probabilities are binomial and symmetric about $N/2$.  Sector-dependent Berry
+phases then shear this coherent-state distribution.  Writing fluctuations
+about a general local center $\bar N_J$,
+\begin{equation}
+  \phi_B(N_J)
+  = \phi_0 + \phi_1\Delta N_J
+    + \frac{1}{2}\phi_2(\Delta N_J)^2 + \cdots,
+  \qquad \Delta N_J=N_J-\bar N_J,
+\end{equation}
+shows that the constant is a global phase, the linear term is a rotation, and
+the quadratic curvature produces squeezing.  Exact reflection symmetry does
+not enter this mechanism.  What matters is a localized distribution with
+enough variance and coherence between nearby sectors for the quadratic
+description to apply.
+
+The standard analytic result expands about $N_J=N/2$, or equivalently
+$S_z=0$, and the Holstein--Primakoff calculation takes equal $J$- and
+$\uparrow$-state fractions.  A material one-sided cut produces nonzero mean
+$S_z$, skewness, and a non-coherent initial covariance.  Its effects vanish
+with the discarded conditional probability $q$; for an originally centered
+distribution, the induced mean is
+\begin{equation}
+  \langle S_z\rangle_{\mathrm{kept}}
+  = -\frac{q}{1-q}
+    \left(\frac{N}{2}
+    - \mathbb E[N_J\mid\text{discarded}]\right).
+\end{equation}
+
+The symmetric $N/2\pm dN$ window used in the paper is therefore a convenient
+numerical truncation of a centered binomial distribution, not a dynamical OAT
+requirement.  Squeezing depends on local, low-order sector coherences rather
+than on pairing every $N_J$ sector with its mirror $N-N_J$.
+
+\section{Current Constrained Scan}
+
+For the current $N_i=(50,50)$ scan,
+$\Omega_{\max}=0.1N\Gamma=10\Gamma$.  With the present homogeneous-form code
+check, the strict limit $\lvert\Omega/\Omega_c\rvert<1$ requires $N_J>20$.
+The inhomogeneous mean-field equation instead suggests the sector-wise
+weighted extension
+\begin{equation}
+  N_{J,\omega}=0.7N_{J1}+1.3N_{J2}>20.
+\end{equation}
+This extension should be validated separately before replacing the current
+check; the project theory note establishes the homogeneous form explicitly
+only at the central weighted sector.  The table uses exact product-binomial
+weights conditioned on each line $N_{J1}=A N_{J2}$.  Here $q_{\rm tot}$ is
+removed by the current $N_J\leq20$ rule and $q_\omega$ by the weighted rule.
+
+\begin{center}
+\begin{tabular}{@{}rrrrr@{}}
+\toprule
+$A$ & $\mathbb E[N_J]$ & $\sigma(N_J)$
+& $q_{\rm tot}$ & $q_\omega$ \\
+\midrule
+$1$   & $50.000$ & $5.025$ & $1.11\times10^{-7}\%$ & $1.11\times10^{-7}\%$ \\
+$1.5$ & $48.087$ & $4.842$ & $1.12\times10^{-6}\%$ & $1.12\times10^{-6}\%$ \\
+$2$   & $45.178$ & $4.597$ & $4.76\times10^{-7}\%$ & $2.33\times10^{-5}\%$ \\
+$3$   & $40.650$ & $4.278$ & $3.63\times10^{-4}\%$ & $3.63\times10^{-4}\%$ \\
+$4$   & $37.729$ & $4.104$ & $4.93\times10^{-3}\%$ & $4.93\times10^{-3}\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Thus, either low-only validity estimate is negligible for all five cases;
+even the largest change removes only about $0.005\%$ of the corresponding
+constraint-conditioned state.  A symmetric mirror cutoff would make no
+meaningful numerical difference here, but it would discard valid states for
+no theoretical benefit.
+
+The larger conceptual change already comes from the line constraints.  After
+renormalization they define projected, generally non-coherent initial states;
+for example, the conditional mean moves from $50$ at $A=1$ to about $37.7$ at
+$A=4$.  Differences in squeezing across $A$ therefore include differences in
+the initial state, not only differences in subsequent dynamics.  A generalized
+squeezing metric remains computable, but canonical coherent-state OAT formulas
+need not apply quantitatively.
+
+\section{Recommendation}
+
+Use a lower cutoff derived from the requested maximum
+$\lvert\Omega/\Omega_c\rvert$, without a mirrored upper cutoff.  Report, for
+each constrained initial state, the discarded conditional probability,
+$\mathbb E[N_J]$, $\sigma(N_J)$, skewness, and $\xi^2(0)$.  If the cutoff
+removes appreciable probability or approaches the central support, reduce
+$\lvert\Omega\rvert$ instead of repairing the distribution with a symmetric
+cut: neither truncation would then faithfully represent the intended initial
+state.
+
+\section{Local Sources}
+
+The conclusions use:
+\begingroup
+\raggedright
+\begin{itemize}
+  \item the initial coherent state, strong-symmetry sector evolution, and OAT
+    expansion in \path{docs/theory/main.tex};
+  \item the Berry-phase expansion and symmetric numerical benchmark window in
+    \path{docs/theory/end_matter.tex};
+  \item the equatorial fluctuation expansion in
+    \path{docs/theory/appendix_holstein_primakoff.tex};
+  \item the nearby-sector coherence requirement in
+    \path{docs/theory/appendix_coherence_preservation.tex}.
+  \item the group-weighted critical-drive relation in
+    \path{docs/theory/notes_inhomogeneous_coupling.tex}.
+\end{itemize}
+\endgroup
+
+\end{document}

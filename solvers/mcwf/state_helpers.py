@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from itertools import product as cartesian_product
-from math import comb, prod, sqrt
+from math import comb, floor, prod, sqrt
 
 import numpy as np
 
 from parser.common import Array
 from parser.mcwf import (
+    InitialSectorFilterSummary,
     InitialSectorSelectionSummary,
     LinearSectorConstraints,
     SectorKey,
@@ -142,22 +143,81 @@ def constraint_eligible_weights(
     return eligible
 
 
-def _joint_probability_weights(
-    eligible_weights: Mapping[CanonicalSectorKey, int],
+def filter_sector_weights_by_total_nj(
+    candidate_weights: Mapping[CanonicalSectorKey, int],
+    *,
+    total_N: int,
+    dN: int,
+) -> dict[CanonicalSectorKey, int]:
+    """Retain complete total-NJ sectors in the centered ``dN`` window."""
+    totals = set(centered_total_nj_values(total_N, dN))
+    return {
+        sector: weight
+        for sector, weight in candidate_weights.items()
+        if sum(sector) in totals
+    }
+
+
+def minimum_total_nj_for_omega_ratio(
+    *,
+    max_abs_omega: float,
+    Gamma: float,
+    max_omega_over_omega_c: float,
+) -> int:
+    """Return the smallest total NJ satisfying the strict drive-ratio limit."""
+    if not np.isfinite(max_abs_omega) or max_abs_omega < 0.0:
+        raise ValueError("max_abs_omega must be finite and non-negative.")
+    if not np.isfinite(Gamma) or Gamma <= 0.0:
+        raise ValueError("Gamma must be finite and positive.")
+    if (
+        not np.isfinite(max_omega_over_omega_c)
+        or not 0.0 < max_omega_over_omega_c <= 1.0
+    ):
+        raise ValueError("max_omega_over_omega_c must lie in (0, 1].")
+    threshold = 2.0 * max_abs_omega / (Gamma * max_omega_over_omega_c)
+    return floor(threshold) + 1
+
+
+def filter_sector_weights_by_omega_ratio(
+    candidate_weights: Mapping[CanonicalSectorKey, int],
+    *,
+    max_abs_omega: float,
+    Gamma: float,
+    max_omega_over_omega_c: float,
+) -> dict[CanonicalSectorKey, int]:
+    """Remove total-NJ sectors that violate the strict drive-ratio limit."""
+    minimum_total_nj = minimum_total_nj_for_omega_ratio(
+        max_abs_omega=max_abs_omega,
+        Gamma=Gamma,
+        max_omega_over_omega_c=max_omega_over_omega_c,
+    )
+    return {
+        sector: weight
+        for sector, weight in candidate_weights.items()
+        if sum(sector) >= minimum_total_nj
+    }
+
+
+def filter_sector_weights_by_joint_probability(
+    candidate_weights: Mapping[CanonicalSectorKey, int],
     joint_probability: float,
     *,
     full_weight_sum: int,
 ) -> dict[CanonicalSectorKey, int]:
-    """Retain the largest complete weight groups without exceeding the cap."""
+    """Apply the final full-wavefunction probability cap to individual tuples."""
     if not np.isfinite(joint_probability) or not 0.0 < joint_probability <= 1.0:
         raise ValueError("joint_probability must lie in (0, 1].")
+    if not candidate_weights:
+        raise ValueError(
+            "joint_probability cannot filter an empty candidate-sector set."
+        )
 
-    eligible_weight_sum = sum(eligible_weights.values())
-    if eligible_weight_sum / full_weight_sum <= joint_probability:
-        return dict(eligible_weights)
+    candidate_weight_sum = sum(candidate_weights.values())
+    if candidate_weight_sum / full_weight_sum <= joint_probability:
+        return dict(candidate_weights)
 
     ordered = sorted(
-        eligible_weights.items(),
+        candidate_weights.items(),
         key=lambda item: (-item[1], item[0]),
     )
     retained: dict[CanonicalSectorKey, int] = {}
@@ -193,50 +253,145 @@ def _joint_probability_weights(
     return retained
 
 
-def select_initial_sector_weights(
+def _filter_summary(
+    filter_name: str,
+    input_weights: Mapping[CanonicalSectorKey, int],
+    remaining_weights: Mapping[CanonicalSectorKey, int],
+) -> InitialSectorFilterSummary:
+    """Describe the sector-count change from one applied filter."""
+    return InitialSectorFilterSummary(
+        filter_name=filter_name,
+        input_sector_count=len(input_weights),
+        remaining_sector_count=len(remaining_weights),
+    )
+
+
+def _select_initial_sector_weights_with_steps(
     Ni: Sequence[int],
     *,
     dN: int | None = None,
-    joint_probability: float | None = None,
+    max_omega_over_omega_c: float | None = None,
+    max_abs_omega: float | None = None,
+    Gamma: float | None = None,
     linear_constraints: LinearConstraintInput = None,
-) -> tuple[dict[CanonicalSectorKey, int], dict[CanonicalSectorKey, int]]:
-    """Select exact group-sector weights using one supported cutoff method."""
+    joint_probability: float | None = None,
+) -> tuple[
+    dict[CanonicalSectorKey, int],
+    dict[CanonicalSectorKey, int],
+    tuple[InitialSectorFilterSummary, ...],
+]:
+    """Return filtered weights and count summaries from the ordered pipeline."""
     groups = _validated_group_sizes(Ni)
-    if (dN is None) == (joint_probability is None):
-        raise ValueError("Exactly one of dN and joint_probability must be provided.")
 
     all_sectors = cartesian_product(
         *(range(group_size + 1) for group_size in groups)
     )
     all_weights = exact_group_sector_weights(groups, all_sectors)
-    eligible_weights = constraint_eligible_weights(
-        all_weights,
-        linear_constraints,
-    )
+
+    # Apply each optional support filter once, in its defined order.
+    retained_weights = all_weights
+    filter_steps: list[InitialSectorFilterSummary] = []
 
     if dN is not None:
-        totals = set(centered_total_nj_values(sum(groups), dN))
-        retained_weights = {
-            sector: weight
-            for sector, weight in eligible_weights.items()
-            if sum(sector) in totals
-        }
-    else:
-        retained_weights = _joint_probability_weights(
-            eligible_weights,
-            float(joint_probability),
+        input_weights = retained_weights
+        retained_weights = filter_sector_weights_by_total_nj(
+            retained_weights,
+            total_N=sum(groups),
+            dN=dN,
+        )
+        if not retained_weights:
+            raise ValueError("The dN filter retained no initial sectors.")
+        filter_steps.append(
+            _filter_summary("dN filter", input_weights, retained_weights)
+        )
+
+    if max_omega_over_omega_c is not None:
+        if max_abs_omega is None or Gamma is None:
+            raise ValueError(
+                "max_abs_omega and Gamma are required when "
+                "max_omega_over_omega_c is provided."
+            )
+        input_weights = retained_weights
+        retained_weights = filter_sector_weights_by_omega_ratio(
+            retained_weights,
+            max_abs_omega=max_abs_omega,
+            Gamma=Gamma,
+            max_omega_over_omega_c=max_omega_over_omega_c,
+        )
+        if not retained_weights:
+            raise ValueError(
+                "The max_omega_over_omega_c filter retained no initial sectors."
+            )
+        filter_steps.append(
+            _filter_summary(
+                "Omega/Omega_c filter",
+                input_weights,
+                retained_weights,
+            )
+        )
+
+    if linear_constraints is not None:
+        input_weights = retained_weights
+        retained_weights = constraint_eligible_weights(
+            retained_weights,
+            linear_constraints,
+        )
+        filter_steps.append(
+            _filter_summary("NJ-ratio filter", input_weights, retained_weights)
+        )
+
+    pre_probability_weights = retained_weights
+
+    if joint_probability is not None:
+        input_weights = retained_weights
+        retained_weights = filter_sector_weights_by_joint_probability(
+            retained_weights,
+            joint_probability,
             full_weight_sum=sum(all_weights.values()),
+        )
+        filter_steps.append(
+            _filter_summary(
+                "Joint-probability filter",
+                input_weights,
+                retained_weights,
+            )
         )
 
     if not retained_weights:
         raise ValueError("The requested initial-sector selection retained no sectors.")
-    return retained_weights, eligible_weights
+    return retained_weights, pre_probability_weights, tuple(filter_steps)
+
+
+def select_initial_sector_weights(
+    Ni: Sequence[int],
+    *,
+    dN: int | None = None,
+    max_omega_over_omega_c: float | None = None,
+    max_abs_omega: float | None = None,
+    Gamma: float | None = None,
+    linear_constraints: LinearConstraintInput = None,
+    joint_probability: float | None = None,
+) -> tuple[dict[CanonicalSectorKey, int], dict[CanonicalSectorKey, int]]:
+    """Return final and pre-probability weights from the ordered filters."""
+    selected_weights, pre_probability_weights, _ = (
+        _select_initial_sector_weights_with_steps(
+            Ni,
+            dN=dN,
+            max_omega_over_omega_c=max_omega_over_omega_c,
+            max_abs_omega=max_abs_omega,
+            Gamma=Gamma,
+            linear_constraints=linear_constraints,
+            joint_probability=joint_probability,
+        )
+    )
+    return selected_weights, pre_probability_weights
 
 
 def compute_initial_sector_summary(
     Ni: Sequence[int],
     selected_weights: Mapping[CanonicalSectorKey, int],
     eligible_weights: Mapping[CanonicalSectorKey, int],
+    filter_steps: Sequence[InitialSectorFilterSummary] = (),
 ) -> InitialSectorSelectionSummary:
     """Compute counts and full-wavefunction weights before renormalization."""
     groups = _validated_group_sizes(Ni)
@@ -260,38 +415,46 @@ def compute_initial_sector_summary(
         retained_joint_probability=(
             sum(selected_weights.values()) / full_weight_sum
         ),
+        filter_steps=tuple(filter_steps),
     )
 
 
 def print_initial_sector_summary(summary: InitialSectorSelectionSummary) -> None:
-    """Print the required once-per-ensemble sector-selection summary."""
-    if summary.eligible_sector_count == summary.total_sector_count:
-        print(
-            "Initial sector selection: "
-            f"{summary.retained_sector_count}/{summary.total_sector_count} "
-            "sectors retained "
-            f"({summary.retained_percentage_of_full_space:.2f}%); "
-            "full-wavefunction probability retained: "
-            f"{100.0 * summary.retained_joint_probability:.2f}%."
-        )
+    """Print aligned sector-count retention for every applied filter."""
+    print(
+        "Initial sector construction: "
+        f"{summary.total_sector_count:,} sectors."
+    )
+    if not summary.filter_steps:
         return
 
-    retained_fraction_of_eligible = (
-        summary.retained_joint_probability / summary.eligible_joint_probability
+    row_format = "{:<26}   {:>17}   {:>19}   {:>21}"
+    header = row_format.format(
+        "Filter",
+        "Sectors remaining",
+        "Retained from input",
+        "Retained from initial",
     )
-    print(
-        "Initial sector selection: "
-        f"{summary.retained_sector_count}/{summary.eligible_sector_count} "
-        "eligible sectors retained "
-        f"({summary.retained_percentage_of_eligible:.2f}%; "
-        f"{summary.retained_sector_count}/{summary.total_sector_count} "
-        "of full space, "
-        f"{summary.retained_percentage_of_full_space:.2f}%); "
-        "full-wavefunction probability: "
-        f"{100.0 * summary.retained_joint_probability:.2f}% retained from "
-        f"{100.0 * summary.eligible_joint_probability:.2f}% eligible "
-        f"({100.0 * retained_fraction_of_eligible:.2f}% of eligible mass)."
-    )
+    print()
+    print(header)
+    print("-" * len(header))
+    for step in summary.filter_steps:
+        retained_from_input = (
+            100.0 * step.remaining_sector_count / step.input_sector_count
+        )
+        retained_from_initial = (
+            100.0
+            * step.remaining_sector_count
+            / summary.total_sector_count
+        )
+        print(
+            row_format.format(
+                step.filter_name,
+                f"{step.remaining_sector_count:,}",
+                f"{retained_from_input:.2f}%",
+                f"{retained_from_initial:.2f}%",
+            )
+        )
 
 
 def normalize_sector_coefficients(
@@ -345,25 +508,34 @@ def group_generic_initial_sector_coeffs(
     Ni: Sequence[int],
     *,
     dN: int | None = None,
-    joint_probability: float | None = None,
+    max_omega_over_omega_c: float | None = None,
+    max_abs_omega: float | None = None,
+    Gamma: float | None = None,
     linear_constraints: LinearConstraintInput = None,
+    joint_probability: float | None = None,
     sector_distribution: str = "binomial",
 ) -> tuple[dict[CanonicalSectorKey, complex], InitialSectorSelectionSummary]:
     """Build group-generic initial amplitudes and their truncation summary."""
     if joint_probability is not None and sector_distribution != "binomial":
         raise ValueError(
-            "joint_probability selection requires sector_distribution='binomial'."
+            "joint_probability filtering requires sector_distribution='binomial'."
         )
-    selected_weights, eligible_weights = select_initial_sector_weights(
-        Ni,
-        dN=dN,
-        joint_probability=joint_probability,
-        linear_constraints=linear_constraints,
+    selected_weights, pre_probability_weights, filter_steps = (
+        _select_initial_sector_weights_with_steps(
+            Ni,
+            dN=dN,
+            max_omega_over_omega_c=max_omega_over_omega_c,
+            max_abs_omega=max_abs_omega,
+            Gamma=Gamma,
+            linear_constraints=linear_constraints,
+            joint_probability=joint_probability,
+        )
     )
     summary = compute_initial_sector_summary(
         Ni,
         selected_weights,
-        eligible_weights,
+        pre_probability_weights,
+        filter_steps,
     )
     coefficients = _coefficients_from_selected_weights(
         selected_weights,
@@ -430,7 +602,11 @@ __all__ = [
     "compute_initial_sector_summary",
     "constraint_eligible_weights",
     "exact_group_sector_weights",
+    "filter_sector_weights_by_joint_probability",
+    "filter_sector_weights_by_omega_ratio",
+    "filter_sector_weights_by_total_nj",
     "group_generic_initial_sector_coeffs",
+    "minimum_total_nj_for_omega_ratio",
     "normalize_sector_coefficients",
     "print_initial_sector_summary",
     "select_initial_sector_weights",

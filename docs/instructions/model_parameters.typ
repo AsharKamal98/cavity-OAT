@@ -130,6 +130,9 @@ is_valid, min_nj, omega, omega_c, ratio, ratio_limit
 ```
 
 Notebook workflows may stop before entering a scan if `is_valid` is false.
+MCWF initial-sector construction may first remove low-$N_J$ shells using
+`max_omega_over_omega_c`; the ensemble must then call this helper with the same
+limit to validate the retained support.
 
 = Inhomogeneous Coupling Parameters
 

@@ -22,6 +22,7 @@ mkdir -p "${OUTPUT_DIR}"
 NTRAJ="1000"
 GAMMA="1.0"
 NI="50,50"
+MAX_OMEGA_OVER_OMEGA_C="0.8"
 JOINT_PROBABILITY="0.6"
 NUM_SNAPSHOTS="500"
 OMEGA_1="0.7"
@@ -45,8 +46,9 @@ python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
   --array-index "${SLURM_ARRAY_TASK_ID}" \
   --Gamma "${GAMMA}" \
   --Ni "${NI}" \
-  --joint-probability "${JOINT_PROBABILITY}" \
+  --max-omega-over-omega-c "${MAX_OMEGA_OVER_OMEGA_C}" \
   --linear-constraints "${LINEAR_CONSTRAINT}" \
+  --joint-probability "${JOINT_PROBABILITY}" \
   --num-snapshots "${NUM_SNAPSHOTS}" \
   --omega-i "${OMEGA_1}" \
   --Omega-factor "${OMEGA_FACTOR}" \

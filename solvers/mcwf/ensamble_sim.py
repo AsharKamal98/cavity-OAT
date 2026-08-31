@@ -218,31 +218,42 @@ def run_trajectory_ensemble(
     # _simulate_single_trajectory(...) helper called with the same child seed.
     Ni = [int(group_size) for group_size in parameters.Ni]
     omega_i = [float(coupling) for coupling in parameters.omega_i]
+    max_abs_omega = max(abs(phase.omega) for phase in integration_phases)
 
     sector_coeffs, sector_summary = group_generic_initial_sector_coeffs(
         Ni,
         dN=parameters.dN,
-        joint_probability=parameters.joint_probability,
+        max_omega_over_omega_c=parameters.max_omega_over_omega_c,
+        max_abs_omega=max_abs_omega,
+        Gamma=parameters.Gamma,
         linear_constraints=parameters.linear_constraints,
+        joint_probability=parameters.joint_probability,
         sector_distribution=parameters.sector_distribution,
     )
     print_initial_sector_summary(sector_summary)
     ratio_check = check_initial_sector_omega_ratio(
         sector_coeffs,
-        Omega=max(abs(phase.omega) for phase in integration_phases),
+        Omega=max_abs_omega,
         Gamma=parameters.Gamma,
+        ratio_limit=(
+            parameters.max_omega_over_omega_c
+            if parameters.max_omega_over_omega_c is not None
+            else 1.0
+        ),
     )
     if not ratio_check["is_valid"]:
         if len(Ni) == 1:
             sys.exit(
                 "Omega/Omega_c check not valid for homogeneous run: "
                 f"Omega={ratio_check['omega']}, Omega_c={ratio_check['omega_c']}, "
-                f"smallest Nj={ratio_check['min_nj']}, ratio={ratio_check['ratio']}"
+                f"smallest Nj={ratio_check['min_nj']}, ratio={ratio_check['ratio']}, "
+                f"limit={ratio_check['ratio_limit']}"
             )
         sys.exit(
             "Omega/Omega_c check not valid for inhomogeneous run: "
             f"Omega={ratio_check['omega']}, Omega_c={ratio_check['omega_c']}, "
-            f"smallest Nj={ratio_check['min_nj']}, ratio={ratio_check['ratio']}"
+            f"smallest Nj={ratio_check['min_nj']}, ratio={ratio_check['ratio']}, "
+            f"limit={ratio_check['ratio_limit']}"
         )
 
     parent_seed_sequence = np.random.SeedSequence(seed)

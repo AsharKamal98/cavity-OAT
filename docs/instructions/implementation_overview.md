@@ -218,8 +218,9 @@ parameters = MCWFSolverParameters(
     Gamma=metadata.Gamma,
     phase_protocol=metadata.phase_protocol,
     dN=dN,
-    joint_probability=None,
+    max_omega_over_omega_c=None,
     linear_constraints=None,
+    joint_probability=None,
     dt=dt,
     ...,
 )
@@ -251,15 +252,19 @@ Detailed initial-sector selection and state-construction conventions live in:
 
 - `docs/instructions/solvers/mcwf/initial_sector_selection.typ`
 
-Select sectors with exactly one of the complete total-$N_J$ window input `dN`
-or the probability-ranked tuple input `joint_probability`. Optional exact
-linear constraints may restrict the eligible group-sector tuples before either
-selection method. `joint_probability` caps the exact retained binomial
-probability relative to the complete unconstrained wavefunction; if the entire
-constraint-eligible support lies below that cap, retain it all.
-The ensemble setup should always print the retained tuple-sector count, its
-percentage of the full tuple space, and the retained physical joint
-probability exactly once.
+Apply initial-sector filters independently in a clear sequence: `dN` first,
+`max_omega_over_omega_c` second, exact $N_J$-ratio equations in
+`linear_constraints` third, and `joint_probability` last. Execute each filter
+only when its input is non-`None`; all may be omitted to retain the complete
+support. The drive-ratio filter removes complete total-$N_J$ shells below its
+derived strict minimum. `joint_probability` caps
+exact retained binomial probability relative to the complete unconstrained
+wavefunction and always ranks individual group-resolved tuples, not complete
+total-$N_J$ sectors.
+The ensemble setup should print the initial tuple-sector count followed by one
+aligned row per applied filter. Each row reports sectors remaining, retention
+relative to that filter's input, and retention relative to the initial tuple
+space.
 
 For precomputation rules, use:
 

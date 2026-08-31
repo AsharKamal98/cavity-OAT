@@ -105,8 +105,9 @@ MCWFSolverParameters(
     Gamma=metadata.Gamma,
     phase_protocol=metadata.phase_protocol,
     dN=2,
-    joint_probability=None,  # alternatively: dN=None, joint_probability=q
+    max_omega_over_omega_c=None,  # optional strict drive-validity filter
     linear_constraints=None,
+    joint_probability=None,  # optional final tuple-wise filter; may accompany dN
     sector_distribution="binomial",
     dt=1e-3,
     shifted_jump_operator=True,

@@ -69,14 +69,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--array-index", type=int, required=True)
     parser.add_argument("--Gamma", type=float, required=True)
     parser.add_argument("--Ni", type=_parse_int_list, required=True)
-    sector_selection = parser.add_mutually_exclusive_group(required=True)
-    sector_selection.add_argument("--dN", type=int)
-    sector_selection.add_argument(
-        "--joint-probability",
+    parser.add_argument(
+        "--dN",
+        type=int,
+        help="Optional centered total-NJ window half-width.",
+    )
+    parser.add_argument(
+        "--max-omega-over-omega-c",
         type=float,
+        default=None,
         help=(
-            "Maximum exact binomial probability retained relative to the "
-            "complete unconstrained wavefunction."
+            "Optional strict drive-ratio limit applied immediately after dN."
         ),
     )
     parser.add_argument(
@@ -84,8 +87,17 @@ def parse_args() -> argparse.Namespace:
         type=_parse_linear_constraints,
         default=None,
         help=(
-            "Optional semicolon-separated exact constraints, for example "
-            "'1,-2=0' or '1,-2,-3=0;0,1,-1=0'."
+            "Optional exact NJ-ratio constraints applied after dN and the "
+            "drive-ratio filter, for example '1,-2=0' or "
+            "'1,-2,-3=0;0,1,-1=0'."
+        ),
+    )
+    parser.add_argument(
+        "--joint-probability",
+        type=float,
+        help=(
+            "Optional final tuple-wise cap on exact binomial probability "
+            "retained relative to the complete unconstrained wavefunction."
         ),
     )
     parser.add_argument("--dt", type=float, default=None)
@@ -177,8 +189,9 @@ def _run_mcwf(
         Gamma=metadata.Gamma,
         phase_protocol=metadata.phase_protocol,
         dN=args.dN,
-        joint_probability=args.joint_probability,
+        max_omega_over_omega_c=args.max_omega_over_omega_c,
         linear_constraints=args.linear_constraints,
+        joint_probability=args.joint_probability,
         sector_distribution="binomial",
         dt=dt,
         shifted_jump_operator=True,

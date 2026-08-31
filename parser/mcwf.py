@@ -43,6 +43,26 @@ class LinearSectorConstraints(BaseModel):
         return self
 
 
+class InitialSectorFilterSummary(BaseModel):
+    """Sector counts before and after one initial-support filter."""
+
+    filter_name: str
+    input_sector_count: int
+    remaining_sector_count: int
+
+    model_config = ConfigDict(frozen=True)
+
+    @model_validator(mode="after")
+    def validate_filter_summary(self) -> "InitialSectorFilterSummary":
+        if not self.filter_name.strip():
+            raise ValueError("filter_name must be non-empty.")
+        if not 0 < self.remaining_sector_count <= self.input_sector_count:
+            raise ValueError(
+                "Filter counts must satisfy 0 < remaining <= input."
+            )
+        return self
+
+
 class InitialSectorSelectionSummary(BaseModel):
     """Counts and full-wavefunction weights for one sector selection."""
 
@@ -53,6 +73,7 @@ class InitialSectorSelectionSummary(BaseModel):
     retained_percentage_of_full_space: float
     eligible_joint_probability: float
     retained_joint_probability: float
+    filter_steps: tuple[InitialSectorFilterSummary, ...] = ()
 
     model_config = ConfigDict(frozen=True)
 
@@ -76,6 +97,17 @@ class InitialSectorSelectionSummary(BaseModel):
             raise ValueError(
                 "Initial-sector probabilities must satisfy "
                 "0 < retained <= eligible <= 1."
+            )
+        previous_count = self.total_sector_count
+        for step in self.filter_steps:
+            if step.input_sector_count != previous_count:
+                raise ValueError(
+                    "Each filter input count must equal the preceding output count."
+                )
+            previous_count = step.remaining_sector_count
+        if self.filter_steps and previous_count != self.retained_sector_count:
+            raise ValueError(
+                "The final filter count must equal retained_sector_count."
             )
         return self
 
@@ -118,8 +150,9 @@ class MCWFSolverParameters(BaseModel):
     Gamma: float
     phase_protocol: PhaseProtocol
     dN: int | None = 0
-    joint_probability: float | None = None
+    max_omega_over_omega_c: float | None = None
     linear_constraints: LinearSectorConstraints | None = None
+    joint_probability: float | None = None
     sector_distribution: str = "binomial"
     dt: float = 1e-3
     shifted_jump_operator: bool = True
@@ -147,8 +180,6 @@ class MCWFSolverParameters(BaseModel):
             raise ValueError("omega_i must contain finite group couplings.")
         if not np.isfinite(self.Gamma) or self.Gamma <= 0.0:
             raise ValueError("Gamma must be finite and positive.")
-        if (self.dN is None) == (self.joint_probability is None):
-            raise ValueError("Exactly one of dN and joint_probability must be provided.")
         if self.dN is not None:
             total_atoms = sum(self.Ni)
             if self.dN < 0:
@@ -157,6 +188,12 @@ class MCWFSolverParameters(BaseModel):
                 raise ValueError("dN selection requires an even total atom number.")
             if self.dN > total_atoms // 2:
                 raise ValueError("dN cannot exceed half the total atom number.")
+        if self.max_omega_over_omega_c is not None:
+            if (
+                not np.isfinite(self.max_omega_over_omega_c)
+                or not 0.0 < self.max_omega_over_omega_c <= 1.0
+            ):
+                raise ValueError("max_omega_over_omega_c must lie in (0, 1].")
         if self.joint_probability is not None:
             if (
                 not np.isfinite(self.joint_probability)
@@ -169,7 +206,7 @@ class MCWFSolverParameters(BaseModel):
             raise ValueError("sector_distribution must be 'square' or 'binomial'.")
         if self.joint_probability is not None and self.sector_distribution != "binomial":
             raise ValueError(
-                "joint_probability selection requires sector_distribution='binomial'."
+                "joint_probability filtering requires sector_distribution='binomial'."
             )
         if self.linear_constraints is not None:
             expected_columns = len(self.Ni)

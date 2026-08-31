@@ -20,6 +20,7 @@ from parser.moments import MomentSeries, SimulationMetadata
 from parser.s_moments import SBasisSeries, SMomentSeries, SMomentSnapshot
 from parser.squeezing import SqueezingResult, SqueezingSeries
 from parser.mcwf import (
+    InitialSectorFilterSummary,
     InitialSectorSelectionSummary,
     LinearSectorConstraints,
     MCWFTrajectoryDiagnostics,
@@ -46,6 +47,7 @@ __all__ = [
     "MFEResidualSeries",
     "MFEResult",
     "MFESolverParameters",
+    "InitialSectorFilterSummary",
     "InitialSectorSelectionSummary",
     "LinearSectorConstraints",
     "MCWFSolverParameters",
