@@ -321,26 +321,29 @@ $
 Here $K_("ret")$ counts the group-resolved tuple blocks that will actually be
 evolved, $K_C$ counts the tuples remaining after `dN`, maximum drive-ratio,
 and $N_J$-ratio filtering, and $K_("full")$ counts the complete Cartesian tuple
-space. Keep the probability fields in `InitialSectorSelectionSummary` as
-diagnostics even though the standard console table reports sector counts.
+space.
 
 For every applied filter, store an `InitialSectorFilterSummary` containing its
-name, input sector count, and remaining sector count. Always print the initial
-total followed by one aligned row per applied filter. For example:
+name, input and remaining sector counts, and input and remaining probabilities
+relative to the complete initial wavefunction. Always print the initial total
+followed by one aligned row per applied filter. For example:
 
 ```text
 Initial sector construction: 961 sectors.
 
-Filter                       Sectors remaining   Retained from input   Retained from initial
---------------------------------------------------------------------------------------------
-dN filter                                  541                56.30%                  56.30%
-Omega/Omega_c filter                       400                73.94%                  41.62%
-NJ-ratio filter                              8                 2.00%                   0.83%
-Joint-probability filter                     3                37.50%                   0.31%
+Filter                       Sectors left   Sector % input   Sector % initial   Probability % input   Probability % initial
+---------------------------------------------------------------------------------------------------------------------------
+dN filter                             541           56.30%             56.30%                99.38%                  99.38%
+Omega/Omega_c filter                  400           73.94%             41.62%                87.98%                  87.44%
+NJ-ratio filter                         8            2.00%              0.83%                10.56%                   9.23%
+Joint-probability filter                3           37.50%              0.31%                62.36%                   5.76%
 ```
 
-`Retained from input` uses the count passed into that filter. `Retained from
-initial` uses $K_("full")$. Omitted filters produce no row. If every filter is
+For a filter receiving count $K_("in")$ and weight $Z_("in")$, then returning
+$K_("out")$ and $Z_("out")$, the sector percentages are
+$100 K_("out")/K_("in")$ and $100 K_("out")/K_("full")$. The corresponding
+probability percentages are $100 Z_("out")/Z_("in")$ and
+$100 Z_("out")/Z_("full")$. Omitted filters produce no row. If every filter is
 omitted, print only the initial total. This output must not be gated by
 `verbose`; print it once after shared sector selection, not inside
 per-trajectory state construction.
@@ -462,6 +465,18 @@ def filter_sector_weights_by_joint_probability(
     return retained_weights
 
 
+def summarize_filter(name, input_weights, remaining_weights, full_weight_sum):
+    return InitialSectorFilterSummary(
+        filter_name=name,
+        input_sector_count=len(input_weights),
+        remaining_sector_count=len(remaining_weights),
+        input_joint_probability=sum(input_weights.values()) / full_weight_sum,
+        remaining_joint_probability=(
+            sum(remaining_weights.values()) / full_weight_sum
+        ),
+    )
+
+
 def _select_initial_sector_weights_with_steps(
     Ni,
     *,
@@ -474,48 +489,60 @@ def _select_initial_sector_weights_with_steps(
 ):
     all_sectors = product(*(range(Ni_i + 1) for Ni_i in Ni))
     all_weights = exact_group_sector_weights(Ni, all_sectors)
+    full_weight_sum = sum(all_weights.values())
     retained_weights = all_weights
     filter_steps = []
 
     if dN is not None:
-        input_count = len(retained_weights)
+        input_weights = retained_weights
         retained_weights = filter_sector_weights_by_total_nj(
             retained_weights,
             total_N=sum(Ni),
             dN=dN,
         )
-        append ("dN filter", input_count, len(retained_weights)) to filter_steps
+        append summarize_filter(
+            "dN filter", input_weights, retained_weights, full_weight_sum
+        ) to filter_steps
 
     if max_omega_over_omega_c is not None:
-        input_count = len(retained_weights)
+        input_weights = retained_weights
         retained_weights = filter_sector_weights_by_omega_ratio(
             retained_weights,
             max_abs_omega,
             Gamma,
             max_omega_over_omega_c,
         )
-        append ("Omega/Omega_c filter", input_count,
-                len(retained_weights)) to filter_steps
+        append summarize_filter(
+            "Omega/Omega_c filter",
+            input_weights,
+            retained_weights,
+            full_weight_sum,
+        ) to filter_steps
 
     if linear_constraints is not None:
-        input_count = len(retained_weights)
+        input_weights = retained_weights
         retained_weights = constraint_eligible_weights(
             retained_weights, linear_constraints
         )
-        append ("NJ-ratio filter", input_count,
-                len(retained_weights)) to filter_steps
+        append summarize_filter(
+            "NJ-ratio filter", input_weights, retained_weights, full_weight_sum
+        ) to filter_steps
 
     pre_probability_weights = retained_weights
 
     if joint_probability is not None:
-        input_count = len(retained_weights)
+        input_weights = retained_weights
         retained_weights = filter_sector_weights_by_joint_probability(
             retained_weights,
             joint_probability,
-            full_weight_sum=sum(all_weights.values()),
+            full_weight_sum=full_weight_sum,
         )
-        append ("Joint-probability filter", input_count,
-                len(retained_weights)) to filter_steps
+        append summarize_filter(
+            "Joint-probability filter",
+            input_weights,
+            retained_weights,
+            full_weight_sum,
+        ) to filter_steps
 
     reject an empty retained_weights dictionary
     return retained_weights, pre_probability_weights, filter_steps
@@ -554,9 +581,9 @@ def print_initial_sector_summary(summary):
     print the initial total sector count
     print an aligned header
     for step in summary.filter_steps:
-        print step name, remaining count,
-            100 * remaining / input_count,
-            100 * remaining / initial_count
+        print step name and remaining count,
+            sector percentages from filter input and initial support,
+            probability percentages from filter input and initial state
 
 
 def group_generic_initial_sector_coeffs(

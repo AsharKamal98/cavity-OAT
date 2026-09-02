@@ -257,12 +257,18 @@ def _filter_summary(
     filter_name: str,
     input_weights: Mapping[CanonicalSectorKey, int],
     remaining_weights: Mapping[CanonicalSectorKey, int],
+    *,
+    full_weight_sum: int,
 ) -> InitialSectorFilterSummary:
-    """Describe the sector-count change from one applied filter."""
+    """Describe the sector-count and probability change from one filter."""
     return InitialSectorFilterSummary(
         filter_name=filter_name,
         input_sector_count=len(input_weights),
         remaining_sector_count=len(remaining_weights),
+        input_joint_probability=sum(input_weights.values()) / full_weight_sum,
+        remaining_joint_probability=(
+            sum(remaining_weights.values()) / full_weight_sum
+        ),
     )
 
 
@@ -287,6 +293,7 @@ def _select_initial_sector_weights_with_steps(
         *(range(group_size + 1) for group_size in groups)
     )
     all_weights = exact_group_sector_weights(groups, all_sectors)
+    full_weight_sum = sum(all_weights.values())
 
     # Apply each optional support filter once, in its defined order.
     retained_weights = all_weights
@@ -302,7 +309,12 @@ def _select_initial_sector_weights_with_steps(
         if not retained_weights:
             raise ValueError("The dN filter retained no initial sectors.")
         filter_steps.append(
-            _filter_summary("dN filter", input_weights, retained_weights)
+            _filter_summary(
+                "dN filter",
+                input_weights,
+                retained_weights,
+                full_weight_sum=full_weight_sum,
+            )
         )
 
     if max_omega_over_omega_c is not None:
@@ -327,6 +339,7 @@ def _select_initial_sector_weights_with_steps(
                 "Omega/Omega_c filter",
                 input_weights,
                 retained_weights,
+                full_weight_sum=full_weight_sum,
             )
         )
 
@@ -337,7 +350,12 @@ def _select_initial_sector_weights_with_steps(
             linear_constraints,
         )
         filter_steps.append(
-            _filter_summary("NJ-ratio filter", input_weights, retained_weights)
+            _filter_summary(
+                "NJ-ratio filter",
+                input_weights,
+                retained_weights,
+                full_weight_sum=full_weight_sum,
+            )
         )
 
     pre_probability_weights = retained_weights
@@ -347,13 +365,14 @@ def _select_initial_sector_weights_with_steps(
         retained_weights = filter_sector_weights_by_joint_probability(
             retained_weights,
             joint_probability,
-            full_weight_sum=sum(all_weights.values()),
+            full_weight_sum=full_weight_sum,
         )
         filter_steps.append(
             _filter_summary(
                 "Joint-probability filter",
                 input_weights,
                 retained_weights,
+                full_weight_sum=full_weight_sum,
             )
         )
 
@@ -419,8 +438,16 @@ def compute_initial_sector_summary(
     )
 
 
+def _format_percentage(fraction: float) -> str:
+    """Format a fractional retention value as a readable percentage."""
+    percentage = 100.0 * fraction
+    if percentage < 0.01:
+        return f"{percentage:.2e}%"
+    return f"{percentage:.2f}%"
+
+
 def print_initial_sector_summary(summary: InitialSectorSelectionSummary) -> None:
-    """Print aligned sector-count retention for every applied filter."""
+    """Print aligned sector and probability retention for applied filters."""
     print(
         "Initial sector construction: "
         f"{summary.total_sector_count:,} sectors."
@@ -428,12 +455,14 @@ def print_initial_sector_summary(summary: InitialSectorSelectionSummary) -> None
     if not summary.filter_steps:
         return
 
-    row_format = "{:<26}   {:>17}   {:>19}   {:>21}"
+    row_format = "{:<26}   {:>12}   {:>14}   {:>16}   {:>19}   {:>21}"
     header = row_format.format(
         "Filter",
-        "Sectors remaining",
-        "Retained from input",
-        "Retained from initial",
+        "Sectors left",
+        "Sector % input",
+        "Sector % initial",
+        "Probability % input",
+        "Probability % initial",
     )
     print()
     print(header)
@@ -447,12 +476,18 @@ def print_initial_sector_summary(summary: InitialSectorSelectionSummary) -> None
             * step.remaining_sector_count
             / summary.total_sector_count
         )
+        probability_from_input = (
+            step.remaining_joint_probability
+            / step.input_joint_probability
+        )
         print(
             row_format.format(
                 step.filter_name,
                 f"{step.remaining_sector_count:,}",
                 f"{retained_from_input:.2f}%",
                 f"{retained_from_initial:.2f}%",
+                _format_percentage(probability_from_input),
+                _format_percentage(step.remaining_joint_probability),
             )
         )
 

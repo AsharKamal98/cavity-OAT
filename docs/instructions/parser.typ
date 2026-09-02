@@ -41,8 +41,10 @@ than an alternative selection branch. Validate
 `LinearSectorConstraints(matrix=A, offset=b)`. Its integer matrix must have one
 column per physical group and one offset per row.
 
-`InitialSectorFilterSummary` stores `filter_name`, `input_sector_count`, and
-`remaining_sector_count` for one applied filter. `InitialSectorSelectionSummary`
+`InitialSectorFilterSummary` stores `filter_name`, `input_sector_count`,
+`remaining_sector_count`, `input_joint_probability`, and
+`remaining_joint_probability` for one applied filter. Both probabilities are
+relative to the complete initial wavefunction. `InitialSectorSelectionSummary`
 stores these ordered rows in `filter_steps` together with the retained,
 pre-probability-filter, and full tuple-sector counts and the corresponding
 full-wavefunction probabilities. It is a transient setup diagnostic printed

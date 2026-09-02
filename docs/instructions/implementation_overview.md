@@ -264,7 +264,7 @@ total-$N_J$ sectors.
 The ensemble setup should print the initial tuple-sector count followed by one
 aligned row per applied filter. Each row reports sectors remaining, retention
 relative to that filter's input, and retention relative to the initial tuple
-space.
+space, for both sector count and exact binomial probability.
 
 For precomputation rules, use:
 

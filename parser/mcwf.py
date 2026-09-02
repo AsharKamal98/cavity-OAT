@@ -44,11 +44,13 @@ class LinearSectorConstraints(BaseModel):
 
 
 class InitialSectorFilterSummary(BaseModel):
-    """Sector counts before and after one initial-support filter."""
+    """Sector counts and probabilities around one initial-support filter."""
 
     filter_name: str
     input_sector_count: int
     remaining_sector_count: int
+    input_joint_probability: float
+    remaining_joint_probability: float
 
     model_config = ConfigDict(frozen=True)
 
@@ -59,6 +61,15 @@ class InitialSectorFilterSummary(BaseModel):
         if not 0 < self.remaining_sector_count <= self.input_sector_count:
             raise ValueError(
                 "Filter counts must satisfy 0 < remaining <= input."
+            )
+        if not (
+            0.0
+            < self.remaining_joint_probability
+            <= self.input_joint_probability
+            <= 1.0
+        ):
+            raise ValueError(
+                "Filter probabilities must satisfy 0 < remaining <= input <= 1."
             )
         return self
 
@@ -99,15 +110,37 @@ class InitialSectorSelectionSummary(BaseModel):
                 "0 < retained <= eligible <= 1."
             )
         previous_count = self.total_sector_count
+        previous_probability = 1.0
         for step in self.filter_steps:
             if step.input_sector_count != previous_count:
                 raise ValueError(
                     "Each filter input count must equal the preceding output count."
                 )
+            if not np.isclose(
+                step.input_joint_probability,
+                previous_probability,
+                atol=1e-15,
+                rtol=1e-12,
+            ):
+                raise ValueError(
+                    "Each filter input probability must equal the preceding "
+                    "output probability."
+                )
             previous_count = step.remaining_sector_count
+            previous_probability = step.remaining_joint_probability
         if self.filter_steps and previous_count != self.retained_sector_count:
             raise ValueError(
                 "The final filter count must equal retained_sector_count."
+            )
+        if self.filter_steps and not np.isclose(
+            previous_probability,
+            self.retained_joint_probability,
+            atol=1e-15,
+            rtol=1e-12,
+        ):
+            raise ValueError(
+                "The final filter probability must equal "
+                "retained_joint_probability."
             )
         return self
 
