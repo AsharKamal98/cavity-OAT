@@ -22,6 +22,7 @@ mkdir -p "${OUTPUT_DIR}"
 NTRAJ="1000"
 GAMMA="1.0"
 NI="25,25"
+## set to join prob threshold for the squeezing analysis
 DN="2"
 NUM_SNAPSHOTS="500"
 OMEGA_1_LIST=("1.0" "0.9" "0.8" "0.7")
