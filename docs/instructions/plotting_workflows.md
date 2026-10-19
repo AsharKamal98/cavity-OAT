@@ -23,6 +23,9 @@ palette, and line-style behavior, use the plotting-workflows skill.
        moments.J.y,
        moments.J.z,
        moments.J.length,
+       x_sem=moments.J.x_sem,
+       y_sem=moments.J.y_sem,
+       z_sem=moments.J.z_sem,
        labels=group_labels,
    )
    ```
@@ -30,6 +33,7 @@ palette, and line-style behavior, use the plotting-workflows skill.
 4. The plotting function should not inspect `JMomentSeries` or automatically
    add group-resolved or aggregated fields. The caller may instead pass
    `moments.J.aggregated.*` explicitly when plotting the aggregated curve.
+   Match aggregate curves with `moments.J.aggregated.x_sem/y_sem/z_sem`.
 
 5. The output should be a `2x2` panel showing the x, y, z, and length
    components.
@@ -38,6 +42,26 @@ palette, and line-style behavior, use the plotting-workflows skill.
    `phase_protocol`, `title`,
    `colour_family_index`, `shade_index`, `linestyle`, and `marker` so multiple
    results can be plotted into the same figure.
+
+7. Optional `x_sem`, `y_sem`, `z_sem`, and `length_sem` inputs draw shaded
+   `value ± SEM` bands beneath the central lines. Darken the matching line's
+   RGB channels by a factor of `0.75` and use alpha `0.45`. They accept one
+   array or one entry per curve; `None` omits all errors for that panel, and
+   a sequence may contain `None` for individual curves. Preserve central
+   line styles and a legend containing only the central curves. Validate
+   real nonnegative errors with the same shapes as their values and `t`.
+   Allow `NaN` to omit shading at undefined derived points; reject infinities.
+
+8. MCWF notebooks plotting raw J components should pass their matching SEMs,
+   preserving group selection, curve order, and any time slicing. Normalize
+   errors only when the same already-defined linear scaling is applied to the
+   central values. J lengths and normalized directions have their own matching
+   `length_sem/nx_sem/ny_sem/nz_sem` fields from nonlinear propagation; use
+   those rather than Cartesian SEMs. J-mode vectors expose their own matching
+   `x_sem/y_sem/z_sem/length_sem` fields; pass these for MCWF bright/dark plots,
+   preserving the same time selection in phase-specific plots. MFE mode SEMs
+   remain `None`. S components still require their own uncertainty calculation.
+   Legacy loaded results without SEM fields may use `getattr(..., None)`.
 
 ## `fig, axes = plot_bloch_angles(...)`
 
@@ -123,3 +147,9 @@ palette, and line-style behavior, use the plotting-workflows skill.
    must be finite. THD curves may contain `NaN` for non-oscillating series but
    must not contain infinities. All four metric groups and labels must have
    equal counts. Their supplied order is preserved.
+
+6. For windowed analysis, pass window-centre times as the parameter values and
+   use a time-axis label. Select finite frequency, RMS amplitude, and offset
+   entries from each curve before plotting; select the same entries for THD.
+   Constant signals may retain `NaN` THD. In the bright/dark MCWF notebook,
+   use one color per dark component and solid MCWF/dashed MFE overlays.

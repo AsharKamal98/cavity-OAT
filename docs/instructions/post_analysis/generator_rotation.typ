@@ -89,6 +89,10 @@ then applies it to every retained trajectory and both stored moment orders.
   `np.triu_indices(8 * G)` packing convention.
 - Use one shared time- and group-resolved rotation for first and second moments.
 - Do not store `U` or `R` in the returned moment series.
+- Leave `uncertainty=None` in the rotated result for now. Sampling error in an
+  ensemble-defined dressed frame requires separate treatment; do not copy
+  lab-frame sampling covariance unchanged. See
+  `docs/instructions/post_analysis/uncertainty.typ`.
 - Compute J and S moments from the lab-frame mean before rotating. Do not pass
   the dressed result back to lab-mapping functions such as
   `compute_j_moments(...)` or `compute_s_moments(...)`.

@@ -4,14 +4,19 @@
 #set heading(numbering: "1.")
 
 #align(center)[
-  #text(size: 1.6em, weight: "bold")[Two-Group J-Vector Modes]
+  #text(size: 1.6em, weight: "bold")[J-Vector Modes]
 ]
 
 = Purpose
 
 This file defines the one- and two-group common, contrast, drive-bright, and drive-dark
-vectors computed in `post_analysis/j_modes.py`. Use these derived modes for
-post-simulation comparison and plotting without modifying raw `moments.J` data.
+vectors and their available SEMs computed in `post_analysis/j_modes.py`.
+Use these derived modes for post-simulation comparison and plotting without
+modifying raw `moments.J` data.
+
+Prefer `compute_j_modes_from_j_moments(...)` for shared J-series inputs.
+The existing array-based `compute_j_modes(...)` accepts already-normalized
+vectors and returns central values without sampling uncertainty.
 
 = Definitions
 
@@ -48,8 +53,38 @@ quad
 L_("xy",m)(t) = sqrt(s_(m,x)(t)^2 + s_(m,y)(t)^2).
 $
 
-For one group, $bold(s)_"common"=bold(s)_"bright"=bold(s)_1$ and the
-contrast and dark vectors are zero.
+For one group, $bold(s)_"common"=bold(s)_1$,
+$bold(s)_"bright"="sign"(omega_1) bold(s)_1$, and the contrast and dark
+vectors are zero. Common and bright coincide for positive coupling.
+
+== Sampling SEMs
+
+The J-series converter takes raw `x/y/z` and `N_j` group fields and performs
+the $2 bold(J)_g/N_(J,g)$ normalization internally. All populations must
+exceed `tol`; normalized modes are undefined at zero active population.
+
+When `JMomentSeries.uncertainty` is present, use its full `(time, 5G, 5G)`
+sample covariance in group-major `(x, y, z, N_e, N_j)` order. For each mode,
+construct the Cartesian Jacobian with respect to these source fields. Include
+derivatives of both the normalized inputs and the population-dependent mode
+weights. Couplings are fixed metadata. Retain population/component and
+cross-group correlations in propagation.
+
+Follow the generic covariance and SEM flow in
+`docs/instructions/post_analysis/uncertainty.typ`. Cartesian mode propagation
+is exact when populations are fixed; otherwise it is first-order. Pass the
+propagated `(time, 3, 3)` sample covariance and original sample count to each
+mode's `BlochVectorSeries.uncertainty`. That container owns component SEMs and
+first-order length and xy-length SEMs, using the shared `vector_length_sem`
+helper in `common/utils/moments.py`. Undefined norm derivatives give `NaN`
+SEMs at zero length. For a single group the zero contrast/dark components have
+zero SEMs, while their norm SEMs follow this same undefined-derivative policy.
+
+Missing source covariance leaves every mode uncertainty and SEM unset,
+including MFE output. Never use the input SEM arrays as substitutes for full
+covariance. Each mode retains its own Cartesian covariance; a later quantity
+combining modes must return to the original J covariance and combined
+Jacobians to preserve between-mode correlations.
 
 = Method in Pseudo-code
 
@@ -61,11 +96,25 @@ def compute_j_modes(t, x_components, y_components, z_components,
     contrast = population-weighted relative difference of the group vectors
     bright, dark = coupling-weighted orthogonal combinations
     return JModeSeries(t, common, contrast, bright, dark)
+
+def compute_j_modes_from_j_moments(j_moments: JMomentSeries,
+                                 *, omega_groups, tol=1e-12) -> JModeSeries:
+    require one or two groups and finite positive active populations
+    normalize raw Cartesian group vectors by their active populations
+    modes = compute_j_modes(t, normalized components,
+                            populations=N_j, omega_groups=omega_groups)
+    if source sampling covariance is present:
+        construct each mode Jacobian including population derivatives
+        propagate the full source covariance with the shared generic helper
+        reconstruct each BlochVectorSeries with its covariance and sample count
+            # The vector container derives component and norm SEMs.
+    return modes
 ```
 
-`compute_j_modes(...)` consumes separate normalized x/y/z group series,
-constructs the two vectors internally, and returns all four modes as one
-`JModeSeries`.
+`compute_j_modes_from_j_moments(...)` owns normalization and uncertainty
+propagation, reusing `compute_j_modes(...)` for central values. Both return
+all four modes as one `JModeSeries`. The shared vector container owns length
+and SEM attachment; parser details live in `docs/instructions/parser.typ`.
 
 = Output
 
@@ -80,20 +129,45 @@ JModeSeries(
 ```
 
 Store this result as `moments.J_modes`; keep `moments.J` as the raw shared
-J-moment representation.
+J-moment representation. Each nested vector also has nullable `uncertainty`,
+`x_sem`, `y_sem`, `z_sem`, `length_sem`, and `xy_length_sem` fields.
 
 = Data Requirements
 
 - One shared time grid and matching normalized x/y/z component series for one
   or two groups. Each component input may be one series or a collection of
   group series.
-- Two active-population series and two completed couplings `omega_groups`.
+- One active-population series and completed coupling per physical group.
+- For the J-series converter, matching raw group x/y/z fields and optional
+  full J sampling covariance plus sample count.
+
+= SLURM Analysis
+
+`slurm/analyses/bright_dark_modes_mcwf/submit.slurm` runs one MCWF ensemble
+through the shared `slurm/run_solvers/run_mcwf.py` entry point. Follow the
+`squeezing_nj_ratio-scan` artifact workflow, but use a single run with index
+zero rather than a ratio sweep. Save trajectory-resolved moments with
+`--save-ensemble` to the analysis-local `output` directory; the filename is
+`<job-name>_0.pkl`. The initial defaults mirror
+`notebooks/bright_dark_modes_mcwf.ipynb`, including its sector window and
+scaled drive and detuning. Omitted optional filters remain unset.
+
+The analysis-local `post_analysis.ipynb` loads that artifact and its metadata,
+averages complete trajectories with sampling covariance, constructs J moments
+and modes, and releases the trajectory arrays after averaging. Solve MFE
+locally using the artifact's physical parameters, protocol, and saved-time
+grid. Use the shared converters and plotters throughout. Plot aggregated and
+group-resolved J angles and moments, bright/dark vectors, phase-2 dark traces,
+and the phase-2 dark-component harmonic metrics. MCWF component and length
+plots receive matching SEMs; MFE overlays use dashed lines. Show only bright
+and dark mode curves. Notebook Markdown cells contain titles only. Optional
+figure export goes to `output/plots`.
 
 = Invariants
 
 - Mode construction is post-analysis and must remain independent of the solver.
-- Construct each mode container from x/y/z only; `BlochVectorSeries` is
-  authoritative for deriving `length` and `xy_length`.
+- Construct each mode container from x/y/z and optional sampling uncertainty;
+  `BlochVectorSeries` is authoritative for deriving lengths and SEMs.
 - Do not compute modes from `nx`, `ny`, and `nz`, which
   are instantaneous unit directions. Construct inputs as
   $2 bold(J)_g / N_(J,g)$ so vector shrinkage remains visible.

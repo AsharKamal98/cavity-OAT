@@ -96,6 +96,7 @@ AGENTS.md
       -> docs/instructions/bloch_vector_averaging.typ
       -> docs/instructions/plot_spin_components.typ
       -> docs/instructions/post_analysis/squeezing.typ
+      -> docs/instructions/post_analysis/uncertainty.typ
       -> docs/instructions/dephasing_diagnostics.typ
       -> docs/instructions/post_analysis/post_analysis.md
       -> docs/instructions/plotting_workflows.md

@@ -27,6 +27,18 @@ This function lives in `common/plotting/j_spin.py`.
   be one array or a sequence of arrays.
 - Each position across the four sequences describes one Bloch vector, and the
   matching `labels` entry identifies that vector in every panel.
+- Optional `x_sem`, `y_sem`, `z_sem`, and `length_sem` inputs follow the same
+  curve order. Each accepts one array, a sequence of arrays, or `None`;
+  individual curves in a sequence may also use `None`.
+- Show supplied SEMs as shaded bands from `value - sem` to `value + sem`.
+  Darken the matching line's RGB channels by a factor of `0.75` and use alpha
+  `0.45` so the bands remain visible against phase shading. Draw bands below
+  central lines and omit them from the figure legend. Omitted SEMs preserve
+  the existing line-only behavior, including on overlay calls.
+- SEM arrays must be real, nonnegative, and match their central curve and
+  time grid. `NaN` omits shading where a derived uncertainty is undefined;
+  infinities are invalid. Inputs must already use plotted units and normalization;
+  do not substitute Cartesian SEMs for nonlinear directions or mode errors.
 - The caller chooses whether the supplied curves are full-system,
   group-resolved, normalized, or derived combinations. The plotting function
   should not inspect a moment class or transform the supplied data.

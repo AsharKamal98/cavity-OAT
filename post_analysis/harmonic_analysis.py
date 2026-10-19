@@ -11,6 +11,7 @@ from parser.common import Array, PhaseProtocol
 from parser.harmonic_analysis import (
     HarmonicAnalysisSeries,
     HarmonicSignalAnalysis,
+    WindowedHarmonicAnalysisSeries,
 )
 
 RELATIVE_AMPLITUDE_TOLERANCE = 1e-10
@@ -260,4 +261,91 @@ def compute_harmonic_analysis(
     return HarmonicAnalysisSeries(signals=tuple(analyses))
 
 
-__all__ = ["compute_harmonic_analysis", "extract_family_phase_series"]
+def compute_windowed_harmonic_analysis(
+    t: Array,
+    series: Sequence[Array] | Array,
+    *,
+    window_duration: float,
+    step_duration: float,
+    max_harmonic: int = 5,
+) -> WindowedHarmonicAnalysisSeries:
+    """Fit each curve in successive complete windows using the existing fitter.
+
+    Durations use the same units as t. Windows start at t[0], include their
+    endpoints, and advance by step_duration; incomplete trailing windows are
+    omitted. Metric arrays have shape (windows, curves), even for one curve.
+    Fewer than four samples or one resolved oscillation leaves NaN metrics.
+    Constant curves retain their offset and have zero amplitudes and frequency.
+    """
+    t, dt = _validate_time_grid(t)
+    curves = as_series_tuple(series)
+    if any(
+        values.shape != t.shape or not np.all(np.isfinite(values))
+        for values in curves
+    ):
+        raise ValueError("Each input series must be finite and match t.")
+    if not np.isfinite(window_duration) or not np.isfinite(step_duration):
+        raise ValueError("Window and step durations must be finite.")
+    if window_duration <= 0.0 or step_duration <= 0.0:
+        raise ValueError("Window and step durations must be positive.")
+    if max_harmonic < 1:
+        raise ValueError("max_harmonic must be at least one.")
+
+    # Include grid-aligned endpoints despite floating-point roundoff.
+    time_tolerance = dt * 1e-7
+    if window_duration > t[-1] - t[0] + time_tolerance:
+        raise ValueError("window_duration must not exceed the supplied time span.")
+    if window_duration < 3.0 * dt - time_tolerance:
+        raise ValueError("window_duration must span at least four saved samples.")
+    last_start_offset = t[-1] - t[0] - window_duration
+    window_starts = t[0] + np.arange(
+        0.0, last_start_offset + time_tolerance, step_duration
+    )
+    shape = (window_starts.size, len(curves))
+    offsets = np.full(shape, np.nan)
+    fundamental_amplitudes = np.full(shape, np.nan)
+    rms_amplitudes = np.full(shape, np.nan)
+    fundamental_frequencies = np.full(shape, np.nan)
+    total_harmonic_distortions = np.full(shape, np.nan)
+
+    for window_index, start in enumerate(window_starts):
+        window_mask = (t >= start - time_tolerance) & (
+            t <= start + window_duration + time_tolerance
+        )
+        window_t = t[window_mask]
+        if window_t.size < 4:
+            continue
+        for curve_index, values in enumerate(curves):
+            analysis = compute_harmonic_analysis(
+                window_t, values[window_mask], max_harmonic=max_harmonic
+            )
+            if analysis is None:
+                continue
+            signal = analysis.signals[0]
+            offsets[window_index, curve_index] = signal.offset
+            fundamental_amplitudes[window_index, curve_index] = (
+                signal.amplitudes[0] if signal.amplitudes.size else 0.0
+            )
+            rms_amplitudes[window_index, curve_index] = signal.rms_amplitude
+            fundamental_frequencies[window_index, curve_index] = (
+                signal.fundamental_frequency
+            )
+            total_harmonic_distortions[window_index, curve_index] = (
+                signal.total_harmonic_distortion
+            )
+
+    return WindowedHarmonicAnalysisSeries(
+        window_centers=window_starts + window_duration / 2.0,
+        offsets=offsets,
+        fundamental_amplitudes=fundamental_amplitudes,
+        rms_amplitudes=rms_amplitudes,
+        fundamental_frequencies=fundamental_frequencies,
+        total_harmonic_distortions=total_harmonic_distortions,
+    )
+
+
+__all__ = [
+    "compute_harmonic_analysis",
+    "compute_windowed_harmonic_analysis",
+    "extract_family_phase_series",
+]

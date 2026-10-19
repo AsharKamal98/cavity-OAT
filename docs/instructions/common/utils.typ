@@ -10,7 +10,8 @@
 = Purpose
 
 This file lists the shared helper functions in `common/utils/phases.py`,
-`common/utils/parameters.py`, and `common/utils/moments.py`. Use it when
+`common/utils/parameters.py`, `common/utils/moments.py`, and
+`common/utils/uncertainty.py`. Use it when
 adding, moving, or reusing generic
 helpers that should be available outside a specific simulation backend such as
 `solvers/mcwf`.
@@ -78,6 +79,36 @@ post-analysis.
   Euclidean vector length and normalized vector components.
 - `angles_from_norm_spin_components(sx, sy, sz, valid, tol=...)` returns
   `(theta, phi)` from normalized spin components.
+- `spin_length_and_direction_sems(length, nx, ny, nz, covariance,
+  n_samples=..., tol=...)` returns first-order SEMs for length and normalized
+  components using Cartesian sample covariance. Zero-length derivatives give
+  `NaN` SEMs.
+- `spin_angle_sems(length, nx, ny, nz, covariance, n_samples=..., tol=...)`
+  returns first-order J-sphere angle SEMs in radians using the combined
+  Cartesian Jacobian. Zero-length and polar-axis derivatives give `NaN`.
+- `vector_length_sem(components, covariance, n_samples=..., tol=...)` returns
+  first-order norm SEMs for `(..., D)` vectors, including xy-plane and full
+  Cartesian lengths. Zero-length derivatives give `NaN`.
+
+These helpers use the generic propagation and normalization flow in
+`docs/instructions/post_analysis/uncertainty.typ`. The J-specific integration
+and derivatives are defined in `docs/instructions/post_analysis/j_moments.typ`.
+
+== `common/utils/uncertainty.py`
+
+This file owns generic sampling and covariance helpers shared by
+post-analysis and parser attachment class methods. The existing
+`post_analysis/uncertainty.py` module re-exports them for compatibility.
+
+- `compute_sample_covariance(samples, mean=...)` constructs unbiased sample
+  covariance and sample count from independent real vector samples.
+- `propagate_covariance(covariance, transformation, tol=...)` applies a fixed
+  linear map or a local Jacobian to the complete covariance.
+- `std_from_covariance(covariance, tol=...)` extracts diagonal standard
+  deviations without sample-count normalization.
+
+The complete contracts and SEM flow are defined in
+`docs/instructions/post_analysis/uncertainty.typ`.
 
 = Invariants
 
@@ -87,6 +118,7 @@ post-analysis.
   parameter, protocol, and validation logic.
 - Helpers in `common/utils/moments.py` should stay limited to shared
   moment/vector post-processing.
+- Shared uncertainty helpers must not import `post_analysis` or solver code.
 - This instruction file should stay organized by utility file, with one short
   subsection per file under `common/`.
 - If a helper becomes backend-specific, move it out of `common/utils/phases.py` rather

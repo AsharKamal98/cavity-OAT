@@ -114,6 +114,8 @@ def rotate_generator_moments(
 
     The local rotations act independently on each physical group. Cross-group
     blocks of the full symmetric second-moment matrix are retained.
+    Sampling uncertainty is left unset: an ensemble-defined dressed frame
+    requires its own error propagation, beyond rotating the central moments.
     """
     if not np.isfinite(tol) or tol <= 0.0:
         raise ValueError("tol must be finite and positive.")

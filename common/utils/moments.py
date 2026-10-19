@@ -106,3 +106,139 @@ def spin_components_from_norm_spin_components(
     z = length * nz
 
     return x, y, z
+
+
+def _vector_sems_from_jacobian(
+    jacobian: Array,
+    covariance: Array,
+    valid: Array,
+    *,
+    n_samples: int,
+    tol: float,
+) -> Array:
+    """Propagate vector sample covariance and mask undefined derivatives."""
+    from common.utils.uncertainty import propagate_covariance, std_from_covariance
+
+    if (
+        isinstance(n_samples, (bool, np.bool_))
+        or not isinstance(n_samples, (int, np.integer))
+        or n_samples < 2
+    ):
+        raise ValueError("n_samples must be an integer of at least two.")
+    covariance = np.asarray(covariance)
+    dimension = jacobian.shape[-1]
+    if covariance.shape != valid.shape + (dimension, dimension):
+        raise ValueError(
+            "Vector covariance must match the batch axes and input dimension."
+        )
+    propagated = propagate_covariance(covariance, jacobian, tol=tol)
+    sem = std_from_covariance(propagated, tol=tol) / np.sqrt(n_samples)
+    sem[~valid] = np.nan
+    return sem
+
+
+def vector_length_sem(
+    components: Array,
+    covariance: Array,
+    *,
+    n_samples: int,
+    tol: float = 1e-12,
+) -> Array:
+    """Return first-order norm SEMs for (..., D) vectors and sample covariance.
+
+    Use two components for an xy-plane norm or three for the full length.
+    The norm derivative is undefined at zero length, where the SEM is NaN.
+    """
+    components = np.asarray(components, dtype=float)
+    if components.ndim < 1 or components.shape[-1] == 0:
+        raise ValueError("components must have nonempty shape (..., D).")
+    length = np.linalg.norm(components, axis=-1)
+    valid = length > tol
+    jacobian = np.zeros(length.shape + (1, components.shape[-1]), dtype=float)
+    jacobian[..., 0, :][valid] = components[valid] / length[valid, np.newaxis]
+    return _vector_sems_from_jacobian(
+        jacobian, covariance, valid, n_samples=n_samples, tol=tol
+    )[..., 0]
+
+
+def spin_length_and_direction_sems(
+    length: Array,
+    nx: Array,
+    ny: Array,
+    nz: Array,
+    covariance: Array,
+    *,
+    n_samples: int,
+    tol: float = 1e-12,
+) -> tuple[Array, Array, Array, Array]:
+    """Return first-order SEMs of length, nx, ny, nz from Cartesian covariance.
+
+    Inputs are the length and direction of the averaged Cartesian spin.
+    Covariance is the trajectory sample covariance, not covariance of the mean.
+    Undefined derivatives at length <= tol give NaN rather than zero SEMs.
+    """
+    length = np.asarray(length, dtype=float)
+    direction = np.stack((nx, ny, nz), axis=-1)
+    if direction.shape != length.shape + (3,):
+        raise ValueError("Spin length and normalized components must have matching shapes.")
+    valid = length > tol
+    jacobian = np.zeros(length.shape + (4, 3), dtype=float)
+    jacobian[..., 0, :][valid] = direction[valid]
+
+    # d|J|/dJ = n; d(J/|J|)/dJ = (I - n n.T) / |J|.
+    normalized_jacobian = jacobian[..., 1:, :]
+    valid_direction = direction[valid]
+    direction_outer = (
+        valid_direction[..., :, np.newaxis] * valid_direction[..., np.newaxis, :]
+    )
+    normalized_jacobian[valid] = (
+        np.eye(3) - direction_outer
+    ) / length[valid, np.newaxis, np.newaxis]
+
+    sem = _vector_sems_from_jacobian(
+        jacobian, covariance, valid, n_samples=n_samples, tol=tol
+    )
+    return sem[..., 0], sem[..., 1], sem[..., 2], sem[..., 3]
+
+
+def spin_angle_sems(
+    length: Array,
+    nx: Array,
+    ny: Array,
+    nz: Array,
+    covariance: Array,
+    *,
+    n_samples: int,
+    tol: float = 1e-12,
+) -> tuple[Array, Array]:
+    """Return local first-order theta/phi SEMs from Cartesian sample covariance.
+
+    Compose angle and normalization derivatives directly, avoiding another
+    stored covariance. Angles use theta=acos(-nz) and phi=atan2(ny,nx).
+    At zero spin length or the polar axis, both SEMs are NaN. Phi SEM is a
+    local angular width in radians, including near its +/-pi branch cut.
+    """
+    length, nx, ny, nz = (
+        np.asarray(values, dtype=float) for values in (length, nx, ny, nz)
+    )
+    if any(values.shape != length.shape for values in (nx, ny, nz)):
+        raise ValueError("Spin length and normalized components must have matching shapes.")
+    transverse = np.hypot(nx, ny)
+    valid = (length > tol) & (transverse > tol)
+    jacobian = np.zeros(length.shape + (2, 3), dtype=float)
+    theta_gradient = jacobian[..., 0, :]
+    phi_gradient = jacobian[..., 1, :]
+
+    # These are the combined derivatives with respect to the raw J vector.
+    theta_denominator = length[valid] * transverse[valid]
+    phi_denominator = length[valid] * transverse[valid] ** 2
+    theta_gradient[valid, 0] = -nx[valid] * nz[valid] / theta_denominator
+    theta_gradient[valid, 1] = -ny[valid] * nz[valid] / theta_denominator
+    theta_gradient[valid, 2] = transverse[valid] / length[valid]
+    phi_gradient[valid, 0] = -ny[valid] / phi_denominator
+    phi_gradient[valid, 1] = nx[valid] / phi_denominator
+
+    sem = _vector_sems_from_jacobian(
+        jacobian, covariance, valid, n_samples=n_samples, tol=tol
+    )
+    return sem[..., 0], sem[..., 1]

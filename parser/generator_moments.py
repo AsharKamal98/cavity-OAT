@@ -4,6 +4,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from parser.common import Array
+from parser.uncertainty import SamplingUncertainty
 
 
 class TrajectoryResolvedMomentSeries(BaseModel):
@@ -18,6 +19,7 @@ class TrajectoryResolvedMomentSeries(BaseModel):
     t: Array
     first_moments: Array
     second_moments: Array
+    uncertainty: SamplingUncertainty | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -34,6 +36,8 @@ class TrajectoryResolvedMomentSeries(BaseModel):
     @model_validator(mode="after")
     def validate_shapes(self) -> "TrajectoryResolvedMomentSeries":
         """Validate the trajectory, time, group, and packed-moment axes."""
+        # Older pickled artifacts predate the optional uncertainty field.
+        self.uncertainty = getattr(self, "uncertainty", None)
         if self.t.ndim != 1:
             raise ValueError(
                 "TrajectoryResolvedMomentSeries.t must be one-dimensional."
@@ -78,6 +82,18 @@ class TrajectoryResolvedMomentSeries(BaseModel):
             )
         if not np.all(np.isfinite(self.second_moments)):
             raise ValueError("second_moments must contain only finite values.")
+        if self.uncertainty is not None:
+            if trajectory_count != 1:
+                raise ValueError(
+                    "Sampling uncertainty belongs to a singleton ensemble mean."
+                )
+            if self.uncertainty.sample_covariance.shape != (
+                self.t.size, generator_count, generator_count
+            ):
+                raise ValueError(
+                    "Generator sample_covariance must have shape "
+                    "(len(t), 8 * num_groups, 8 * num_groups)."
+                )
         return self
 
     @property

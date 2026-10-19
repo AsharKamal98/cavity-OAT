@@ -186,6 +186,14 @@ dressed-rotation, squeezing, and plotting pipeline locally. Keep each raw
 trajectory axis intact until the notebook explicitly computes its ensemble
 mean.
 
+The single-run bright/dark workflow lives in
+`slurm/analyses/bright_dark_modes_mcwf`. Its submission script saves one raw
+ensemble using the unified runner and artifact index zero; its local
+`post_analysis.ipynb` computes J moments and modes, solves MFE with the saved
+physical context, and plots J angles/moments and bright/dark diagnostics with
+MCWF SEMs. Follow `docs/instructions/post_analysis/j_modes.typ` for this
+workflow and its phase-2 harmonic analysis.
+
 If a larger ensemble must deliberately be split across multiple SLURM tasks,
 each task must write a separate chunk. A dependent combination step should
 concatenate first- and second-moment arrays along the trajectory axis before
@@ -377,13 +385,23 @@ Current top-level fields are:
   SU(3) generator moments, with complete trajectories retained along axis zero.
   Its shared saved-time grid and stored real moment arrays must be finite.
 - `moments.mean_generator_moments`: the selected trajectory average of the
-  same generator moments, retaining a singleton trajectory axis.
+  same generator moments, retaining a singleton trajectory axis. Averaging
+  automatically attaches first-moment sampling covariance and the selected
+  sample count in its nullable `uncertainty` field, including cross-group
+  correlations. A raw singleton leaves uncertainty unset.
 - `moments.J`: a `JMomentSeries` containing first-order J-sphere moments plus
   derived J-vector direction fields and angles. Unsuffixed physical fields are
   tuples ordered by group, including for $G=1$; full-system fields live in
-  `moments.J.aggregated`.
+  `moments.J.aggregated`. Cartesian, population, length, normalized-direction,
+  and angle fields have nullable `*_sem` counterparts, computed automatically
+  when generator sampling statistics are present; nonlinear SEMs use
+  first-order propagation and mark singular points with `NaN`. Both levels
+  retain propagated affine-field sample covariance
+  and sample count in `uncertainty`.
 - `moments.J_modes`: an optional `JModeSeries` containing post-analysis common,
-  population-weighted contrast, drive-bright, and drive-dark two-group vectors.
+  population-weighted contrast, drive-bright, and drive-dark one/two-group
+  vectors. Each vector can retain Cartesian sampling covariance and sample
+  count, plus component and first-order length/xy-length SEMs.
 - `moments.mfe_residuals`: an `MFEResidualSeries` containing two-group MFE
   residual diagnostics when computed from `moments.J`.
 - `moments.squeezing`: an optional `SqueezingResult`. Its `group_resolved`
@@ -399,7 +417,8 @@ Parser container conventions live in `docs/instructions/parser.typ` and the
 
 Reusable Cartesian vector outputs should use `BlochVectorSeries` from
 `parser/bloch_vector.py`, which derives its full and xy-plane lengths from the
-stored x/y/z components.
+stored x/y/z components. With optional Cartesian sampling uncertainty it also
+derives the matching component and norm SEMs.
 
 ### 4.2 J-Sphere Moments
 
@@ -423,20 +442,36 @@ moments.J = compute_qutip_j_moments(qutip_result)
 
 The shared series may contain group spin components, normalized directions,
 angles, atom-number fields, and counterparts in the nested `aggregated`
-container when those quantities are available. Jump rate is not part of the
+  container when those quantities are available. Jump rate is not part of the
 J-moment output contract. Derived fields
 such as spin directions and angles should be attached inside the J-moment
 layer, so plotting and diagnostics can consume one common structure independent
 of whether the data came from MCWF, MFE, or QuTiP. Additive aggregated fields
 should be constructed through
 `JMomentSeries.attach_aggregated_from_group_fields(...)` by summing their group
-counterparts before nonlinear aggregated fields are attached.
+counterparts before nonlinear aggregated fields are attached. This class
+method also owns aggregate covariance and SEM attachment, including
+cross-group correlations. Attach group covariance before calling it; absent
+input uncertainty leaves aggregate covariance and SEMs unset.
 
 Shared spin-vector direction and angle conventions live in
 `docs/instructions/common/spin_moment_conventions.typ`. The generic conversion
 from averaged generator moments is defined in
 `docs/instructions/post_analysis/j_moments.typ` and summarized in
 `docs/instructions/post_analysis/post_analysis.md`.
+The Cartesian conversion uses the shared, read-only `J_FROM_GENERATORS`
+matrix from `post_analysis/j_moments.py`, also exported by `post_analysis`,
+so later uncertainty calculations can reuse the same generator coefficients.
+`compute_j_components(...)` extracts Cartesian components and populations,
+attaches their group sampling covariance and SEMs, then delegates aggregate
+values, covariance, and SEMs to the aggregation class method. Keep physical
+values as named arrays and share their named coefficients
+with covariance propagation, as described in the J-moment instructions.
+`compute_j_moments(...)` calls it before attaching phase indices and
+group directions and angles. The direction and angle class methods also
+attach their SEMs with first-order Jacobian propagation from the stored
+Cartesian covariance; aggregation uses the same shared helpers. Undefined
+derivatives produce `NaN` SEMs. Deterministic converters leave SEMs unset.
 
 Numerical MFE solving and MFE-to-J-moment conversion are defined in:
 
@@ -529,14 +564,49 @@ Current task-specific diagnostic instructions include:
 - `docs/instructions/post_analysis/mfe_residuals.typ`
 - `docs/instructions/post_analysis/squeezing.typ`
 
+The generic `compute_sample_covariance(...)`, `propagate_covariance(...)`,
+and `std_from_covariance(...)` helpers live in `common/utils/uncertainty.py`,
+with compatibility exports through `post_analysis`. Their contracts and the
+minimal `SamplingUncertainty` container are specified in
+`docs/instructions/post_analysis/uncertainty.typ`, which includes the matrix
+form, Jacobian evaluation at the mean, and a worked two-variable example.
+`compute_mean_generator_moments(...)` calls the helper automatically for
+trajectory first moments and stores only sample covariance and sample count,
+separately from quantum second moments. Mean covariance and SEM are calculated
+downstream when needed. Observable extraction should construct associated
+standard deviations using the shared helpers and store SEMs where requested.
+The J affine-field and first-order nonlinear integration is implemented in
+`docs/instructions/post_analysis/j_moments.typ`. For J modes, prefer
+`compute_j_modes_from_j_moments(moments.J, omega_groups=...)`, which owns active
+population normalization and propagates the full J covariance, including
+population-dependent weights and cross-group correlations. Its contract is
+in `docs/instructions/post_analysis/j_modes.typ`. The array-based
+`compute_j_modes(...)` retains its central-value interface. S/squeezing
+uncertainties remain future work.
+Apply sampling calculations to eligible stochastic ensembles;
+deterministic MFE outputs remain unchanged.
+
 The public post-analysis entry points are summarized in
 `docs/instructions/post_analysis/post_analysis.md`.
+
+For offsets and oscillation amplitudes over time, use
+`compute_windowed_harmonic_analysis(...)` from `post_analysis/harmonic_analysis.py`.
+It reuses the existing fitter in complete caller-sized windows and returns
+window-centre times with per-curve metric arrays, including THD for reuse of
+the existing harmonic plotter. The bright/dark MCWF notebook uses this
+windowed analysis for phase-2 traces and plots the results against time.
+Window and output conventions are defined in
+`docs/instructions/post_analysis/harmonic_analysis.typ`.
 
 ## 6. Plotting
 The shared spin-component plot lives in `common/plotting/j_spin.py`:
 - `plot_spin_components(t, x_components, y_components, z_components, lengths,
-  labels=..., spin_symbol="J", ...)`: plots caller-selected vectors and uses
-  the supplied spin symbol in the component labels.
+  labels=..., x_sem=None, y_sem=None, z_sem=None, length_sem=None,
+  spin_symbol="J", ...)`: plots caller-selected vectors with optional matching
+  mean-plus/minus-SEM bands with darker colors and stronger opacity, and uses
+  the supplied spin symbol in the component labels. MCWF notebook calls
+  plotting raw J components should pass their corresponding SEM fields;
+  derived observables require their own errors.
 
 The transverse spin-component plot lives in `common/plotting/specific.py`:
 - `plot_transverse_spin_components(t, x_components, y_components,

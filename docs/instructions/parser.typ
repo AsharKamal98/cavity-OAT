@@ -13,7 +13,7 @@ This file specifies parser/output-container conventions used by the current
 post-processing pipeline. Use it when editing Pydantic classes in `parser/`,
 especially `parser/generator_moments.py`, `parser/mcwf.py`,
 `parser/j_moments.py`, `parser/s_moments.py`, `parser/squeezing.py`, and
-`parser/moments.py`.
+`parser/moments.py`, together with `parser/uncertainty.py`.
 
 General parser-class style rules live in the `parser` skill. This file records
 the repository-specific J- and S-moment container contracts.
@@ -61,6 +61,7 @@ TrajectoryResolvedMomentSeries(
     t,                       # shape (n_t,)
     first_moments,           # shape (R, n_t, G, 8)
     second_moments,          # shape (R, n_t, K)
+    uncertainty=None,        # optional statistics attached to an ensemble mean
 )
 ```
 
@@ -81,6 +82,21 @@ matrices. A selected ensemble mean reuses the class with $R=1$.
 The saved-time grid must be nonempty, finite, and strictly increasing. Both
 moment arrays must be finite and real; construction may discard only an
 imaginary residual that is zero within the parser tolerance.
+
+`uncertainty` is an optional `SamplingUncertainty` from
+`parser/uncertainty.py`. When present, require a singleton trajectory axis
+and `sample_covariance` shaped `(n_t, 8G, 8G)` in group-major generator order.
+Its `n_samples` records the selected source-trajectory count, independently of
+the singleton stored axis. The generic container validates finite real
+symmetric covariance with nonnegative variances and an integer count of at
+least two. Keep this container limited to `sample_covariance` and `n_samples`;
+compute mean covariance and SEM in downstream analysis when needed.
+
+`compute_mean_generator_moments(...)` automatically attaches first-moment
+sampling statistics, including cross-group correlations. Raw and
+deterministic singleton data leave the field unset. These statistics do not
+describe the quantum covariance built from `second_moments`. The complete
+contract is in `docs/instructions/post_analysis/uncertainty.typ`.
 
 = Analysis Moment Container
 
@@ -117,6 +133,8 @@ type, with a required singleton trajectory axis $R=1$. It must match
 `generator_moments` in time, group, generator, and packed-second-moment axes.
 It may also be stored without the raw trajectories when loading an artifact
 that contains only the central ensemble result.
+Keep its sampling statistics nested in `mean_generator_moments.uncertainty`
+so linear-observable SEMs remain recoverable even without the raw trajectories.
 
 
 = J-Moment Containers
@@ -131,6 +149,11 @@ AggregatedJMomentSeries(
     nx=None, ny=None, nz=None,
     N_e=None, N_j=None,
     theta=None, phi=None,
+    x_sem=None, y_sem=None, z_sem=None,       # one array per aggregate field
+    N_e_sem=None, N_j_sem=None,
+    length_sem=None, nx_sem=None, ny_sem=None, nz_sem=None,
+    theta_sem=None, phi_sem=None,
+    uncertainty=None,
 )
 
 JMomentSeries(
@@ -141,6 +164,11 @@ JMomentSeries(
     nx=None, ny=None, nz=None,
     N_e=None, N_j=None,
     theta=None, phi=None,
+    x_sem=None, y_sem=None, z_sem=None,       # tuples ordered by group
+    N_e_sem=None, N_j_sem=None,
+    length_sem=None, nx_sem=None, ny_sem=None, nz_sem=None,
+    theta_sem=None, phi_sem=None,
+    uncertainty=None,
     aggregated=AggregatedJMomentSeries(...),
 )
 ```
@@ -151,6 +179,25 @@ is the secondary full-system representation. Additive fields are summed over
 groups; nonlinear fields are derived from the aggregated spin vector. Keep
 `t` and `integration_phase_index` on the outer container. Jump rate is not a
 J-moment field.
+
+The eleven nullable `*_sem` fields store sampling standard errors of the
+corresponding observables, never trajectory standard deviations. Arrays must
+be one-dimensional, nonnegative, and match their central fields and saved-time
+grid; group tuples must match group order and count. Affine-field SEMs must
+be finite. Derived `length/nx/ny/nz/theta/phi` SEMs may contain `NaN` where
+the local derivative is undefined, but must not contain infinities. Missing
+source statistics leave every SEM field and `uncertainty` unset, including
+for deterministic MFE output.
+
+`JMomentSeries.uncertainty` uses the minimal `SamplingUncertainty` container.
+Its sample covariance has shape `(len(t), 5G, 5G)`, with group-major order
+`(x, y, z, N_e, N_j)` per group. The nested aggregate uncertainty stores
+`(len(t), 5, 5)` covariance in the same field order. Both retain the original
+sample count; neither stores an extra standard-deviation array. Preserve the
+full covariance as the source for first-order nonlinear error propagation;
+do not store additional derived covariance or standard-deviation arrays. See
+`docs/instructions/post_analysis/j_moments.typ` for construction and
+`docs/instructions/post_analysis/uncertainty.typ` for the generic method.
 
 The generic post-analysis constructs `SMomentSeries`; `SBasisSeries` stores its
 effective zero and one states:
@@ -186,6 +233,9 @@ BlochVectorSeries(
     x, y, z,
     length,     # derived automatically
     xy_length,  # derived automatically
+    uncertainty=None,
+    x_sem=None, y_sem=None, z_sem=None,
+    length_sem=None, xy_length_sem=None,
 )
 ```
 
@@ -200,6 +250,16 @@ $
 Callers should supply matching one-dimensional x/y/z arrays and should not
 compute either derived field themselves.
 
+Optional `uncertainty` is a `SamplingUncertainty` with `(len(x), 3, 3)`
+Cartesian sample covariance and the original sample count. The container
+automatically derives component SEMs and first-order length/xy-length SEMs.
+It calls the generic helpers in `common/utils/uncertainty.py` and
+`vector_length_sem(...)` from `common/utils/moments.py`; follow
+`docs/instructions/post_analysis/uncertainty.typ` for sample normalization.
+Zero-length derivatives give `NaN` norm SEMs. Without covariance, all SEMs
+are reset to `None`. These fields are derived outputs, not independent inputs.
+Retain the Cartesian covariance for subsequent observables.
+
 `JModeSeries` stores post-analysis combinations separately from raw J moments:
 
 ```python
@@ -213,7 +273,9 @@ JModeSeries(
 ```
 
 Store it as nullable `moments.J_modes`; do not add derived mode fields to
-`JMomentSeries`.
+`JMomentSeries`. Each mode carries its own Cartesian covariance and SEMs when
+constructed with sampling statistics. Construction and population-dependent
+Jacobians are defined in `docs/instructions/post_analysis/j_modes.typ`.
 
 `HarmonicAnalysisSeries` stores solver-independent harmonic analyses for one or
 more curves. Each `HarmonicSignalAnalysis` contains its fitted offset and
@@ -222,6 +284,16 @@ amplitudes, RMS oscillation amplitude, phase offsets, and total harmonic
 distortion. The output does not retain the input time grid. Keep this diagnostic
 separate from `JMomentSeries` and `JModeSeries` so it can consume any compatible
 real series.
+
+`WindowedHarmonicAnalysisSeries` in the same parser module stores
+`window_centers` with shape `(windows,)` and `offsets`,
+`fundamental_amplitudes`, `rms_amplitudes`, `fundamental_frequencies`, and
+`total_harmonic_distortions` with
+shape `(windows, curves)`, including a singleton column for one curve.
+Unresolved curve/window fits use `NaN`; constant curves have zero amplitudes
+and frequency with their fitted offset retained and `NaN` THD. Window construction and
+fitting conventions live in
+`docs/instructions/post_analysis/harmonic_analysis.typ`.
 
 `SqueezingSeries` stores the complete generalized squeezing result for either
 one physical group or the full system:
@@ -294,9 +366,11 @@ representations in place:
 ```python
 JMomentSeries.attach_norm_spin_components_from_spin_components(j_moments, tol=...)
     -> attach length, nx, ny, nz from x, y, z
+    -> attach length_sem, nx_sem, ny_sem, nz_sem when covariance is available
 
 JMomentSeries.attach_angles_from_norm_spin_components(j_moments, tol=...)
     -> attach theta, phi from length, nx, ny, nz
+    -> attach theta_sem, phi_sem when covariance is available
 
 JMomentSeries.attach_norm_spin_components_from_angles(j_moments)
     -> attach nx, ny, nz from theta, phi
@@ -310,6 +384,9 @@ JMomentSeries.attach_aggregated_from_group_fields(j_moments, tol=...)
     -> attach aggregated.length, aggregated.nx, aggregated.ny,
        aggregated.nz, aggregated.theta, aggregated.phi from the
        summed spin components
+    -> attach aggregate covariance and x/y/z/N_e/N_j SEMs when
+       j_moments.uncertainty is available
+    -> attach first-order aggregate length, direction, and angle SEMs
 
 SMomentSeries.attach_norm_spin_components_from_spin_components(s_moments, tol=...)
     -> attach group length, nx, ny, nz from x, y, z
@@ -323,6 +400,26 @@ group-resolved fields. `attach_aggregated_from_group_fields(...)` is the sole
 series-level aggregation method and constructs a new complete
 `AggregatedJMomentSeries`. Each method should raise a clear `ValueError` when
 its required group inputs are unavailable.
+
+Aggregation owns aggregate values and their sampling uncertainties. Attach
+group covariance before calling it. Propagate the full group covariance,
+including cross-group blocks, using the shared helpers in
+`common/utils/uncertainty.py`; follow
+`docs/instructions/post_analysis/uncertainty.typ` for the generic SEM flow.
+Recompute these statistics on every aggregation call. Without group
+uncertainty, the new aggregate leaves covariance and SEMs unset, clearing any
+stale aggregate statistics.
+
+Length/direction and angle attachment methods own their corresponding SEMs.
+They delegate to `spin_length_and_direction_sems(...)` and
+`spin_angle_sems(...)` in `common/utils/moments.py`, using each group's
+Cartesian covariance block. Aggregation uses the same helpers after summing
+the full covariance. The angle helper composes derivatives directly with
+respect to Cartesian components. Without input statistics, reset the owned
+SEMs to `None`. At length below tolerance, length and direction SEMs are
+`NaN`; angle SEMs are also `NaN` on the polar axis. Keep existing central-value
+fallbacks. Angle SEMs are local widths in radians, so plotting across the
+azimuthal branch cut requires wrap-aware handling.
 
 The conversion helpers used by these class methods live in
 `common/utils/moments.py`.
@@ -392,7 +489,7 @@ Do not apply this sum to vector lengths, normalized directions, or angles.
   directions, and angles from `aggregated.x/y/z`.
 - Construct series-level aggregated fields only through
   `attach_aggregated_from_group_fields(...)`, after raw group fields have been
-  computed or averaged.
+  computed or averaged and their available covariance has been attached.
 - Unsuffixed fields are always group tuples in public backend outputs, including
   for $G=1$.
 - J-moment extraction code should call these class methods instead of

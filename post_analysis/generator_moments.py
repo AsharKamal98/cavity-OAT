@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from common.utils.uncertainty import compute_sample_covariance
 from parser.common import Array
 from parser.generator_moments import TrajectoryResolvedMomentSeries
 
@@ -35,9 +36,12 @@ def compute_mean_generator_moments(
 
     Repeated ``trajectory_indices`` are allowed so callers can use the same
     operation for bootstrap resampling. First and symmetric second moments are
-    averaged independently; covariance construction belongs to later analysis.
+    averaged independently. Sampling covariance of the trajectory first-moment
+    vectors is attached to the result, including all cross-group blocks. It is
+    distinct from the quantum covariance constructed from second moments.
     """
     if trajectory_indices is None:
+        selected_first_moments = moments.first_moments
         mean_first_moments = np.mean(
             moments.first_moments,
             axis=0,
@@ -55,6 +59,7 @@ def compute_mean_generator_moments(
             trajectory_indices,
             num_trajectories=moments.num_trajectories,
         )
+        selected_first_moments = moments.first_moments[indices]
         weights = np.bincount(
             indices,
             minlength=moments.num_trajectories,
@@ -71,10 +76,22 @@ def compute_mean_generator_moments(
             axes=(0, 0),
         )[np.newaxis, ...]
 
+    # An already-averaged singleton is not a new independent sample. Preserve
+    # its statistics rather than interpreting repeated copies as trajectories.
+    if moments.num_trajectories == 1:
+        uncertainty = getattr(moments, "uncertainty", None)
+    else:
+        n_samples, num_times, num_groups, _ = selected_first_moments.shape
+        uncertainty = compute_sample_covariance(
+            selected_first_moments.reshape(n_samples, num_times, 8 * num_groups),
+            mean=mean_first_moments[0].reshape(num_times, 8 * num_groups),
+        )
+
     return TrajectoryResolvedMomentSeries(
         t=moments.t.copy(),
         first_moments=mean_first_moments,
         second_moments=mean_second_moments,
+        uncertainty=uncertainty,
     )
 
 

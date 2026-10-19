@@ -1,6 +1,10 @@
 from parser.bloch_vector import BlochVectorSeries
 from parser.common import Array, FamilyPhase, Phase, PhaseProtocol
-from parser.harmonic_analysis import HarmonicAnalysisSeries, HarmonicSignalAnalysis
+from parser.harmonic_analysis import (
+    HarmonicAnalysisSeries,
+    HarmonicSignalAnalysis,
+    WindowedHarmonicAnalysisSeries,
+)
 from parser.generator_moments import TrajectoryResolvedMomentSeries
 from parser.j_modes import JModeSeries
 from parser.j_moments import (
@@ -19,6 +23,7 @@ from parser.mfe_residuals import MFEResidualSeries
 from parser.moments import MomentSeries, SimulationMetadata
 from parser.s_moments import SBasisSeries, SMomentSeries, SMomentSnapshot
 from parser.squeezing import SqueezingResult, SqueezingSeries
+from parser.uncertainty import SamplingUncertainty
 from parser.mcwf import (
     InitialSectorFilterSummary,
     InitialSectorSelectionSummary,
@@ -39,6 +44,7 @@ __all__ = [
     "FamilyPhase",
     "HarmonicAnalysisSeries",
     "HarmonicSignalAnalysis",
+    "WindowedHarmonicAnalysisSeries",
     "AggregatedJMomentSeries",
     "AggregatedJMomentSnapshot",
     "JMomentSeries",
@@ -54,6 +60,7 @@ __all__ = [
     "MCWFTrajectoryDiagnostics",
     "MomentSeries",
     "SimulationMetadata",
+    "SamplingUncertainty",
     "SBasisSeries",
     "SMomentSeries",
     "SMomentSnapshot",

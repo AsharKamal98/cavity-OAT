@@ -112,6 +112,54 @@ and the final simultaneous harmonic fit allow a partial final oscillation.
 before analysis. `family_phase_index` is zero-based, so phase 2 uses index 1.
 It returns `(phase_t, phase_series)` and keeps the supplied curve order.
 
+== Windowed Analysis
+
+`compute_windowed_harmonic_analysis(t, series, *, window_duration,
+step_duration, max_harmonic=5)` repeatedly calls the existing
+`compute_harmonic_analysis(...)` to track the offset, fundamental amplitude,
+RMS amplitude, frequency, and THD over time. Durations use the same units as `t`.
+
+```python
+def compute_windowed_harmonic_analysis(t, series, *, window_duration,
+                                     step_duration, max_harmonic=5):
+    validate the shared time grid, curves, and positive finite durations
+    construct complete windows starting at t[0], advancing by step_duration
+    initialize each metric as NaN for every window and input curve
+    for window in windows:
+        if fewer than four saved samples are selected:
+            continue
+        for curve in curves:
+            result = compute_harmonic_analysis(window.t, curve[window],
+                                               max_harmonic=max_harmonic)
+            if result is not None:
+                record offset, fundamental amplitude, RMS amplitude, frequency, THD
+    return WindowedHarmonicAnalysisSeries(window_centers, metrics)
+```
+
+The wrapper owns only window selection and collection of existing fit results;
+keep the original fitter and its callers unchanged. Fit curves independently
+so an unresolved oscillation leaves a gap only for that curve and window.
+Use inclusive endpoints, allowing numerical roundoff at grid-aligned bounds;
+omit an incomplete trailing window. The reported time is the requested window's
+midpoint. A step shorter than the window duration produces overlapping windows.
+
+Select phase 2 with `extract_family_phase_series(...)` before calling the
+wrapper when analyzing dark-mode decay. Each window fits a constant offset
+and amplitude locally; these are estimates averaged over the window, rather
+than instantaneous measurements. The offset is the sinusoidal midpoint; higher
+harmonics can make it differ from the midpoint between extrema. Overlapping
+window estimates are correlated.
+
+`notebooks/bright_dark_modes_mcwf.ipynb` applies this wrapper to the three
+phase-2 dark components for MCWF and MFE. Keep window and step durations
+explicit next to the calls; the initial window spans one-fifth of the supplied
+phase-2 trace and the step is one-quarter of that window. This is an editable
+starting choice, not a guarantee of several resolved periods.
+Reuse `plot_harmonic_sweep(...)` with window-centre time on its x-axis,
+omitting unresolved windows separately for each curve. Plot MCWF solid and
+MFE dashed, with matching component colors. The shared plotter remains
+unchanged; it shows RMS amplitude and offset alongside frequency and THD.
+
 = Output
 
 ```python
@@ -164,6 +212,29 @@ Plotting functions must not repeat the FFT or harmonic fit.
 
 For the sweep plot, use the stored `rms_amplitude` and `offset` directly.
 
+The windowed wrapper returns a `WindowedHarmonicAnalysisSeries` from
+`parser/harmonic_analysis.py`:
+
+```python
+WindowedHarmonicAnalysisSeries(
+    window_centers,              # shape (windows,)
+    offsets,                     # each metric: (windows, curves)
+    fundamental_amplitudes,
+    rms_amplitudes,
+    fundamental_frequencies,
+    total_harmonic_distortions,
+)
+```
+
+Metric columns preserve input curve order, including a singleton column for
+one curve. Unresolved fits or windows selecting fewer than four samples have
+`NaN` metrics. Constant curves retain the fitted offset and have zero
+fundamental amplitude, RMS amplitude, and frequency, with `NaN` THD. For example, plot
+`result.offsets[:, 0]` and `result.fundamental_amplitudes[:, 0]` against
+`result.window_centers` for a single supplied component.
+For the existing four-panel plotter, select finite frequency, RMS amplitude,
+and offset values from the same windows; THD may remain `NaN` for constants.
+
 For a constant or numerically constant curve, the result stores
 `fundamental_frequency=0`,
 `observed_cycles=0`, `rms_amplitude=0`, empty harmonic arrays, and
@@ -200,3 +271,7 @@ context, such as the current `delta`, and skip that parameter value.
 - Reject non-finite, nonuniformly sampled, or shape-mismatched input with a
   clear `ValueError`.
 - Complex transverse signals are not supported by this real-series helper.
+- Window duration must span at least three saved-time spacings and must not
+  exceed the supplied time span; step duration must be positive. Invalid input
+  or errors raised by the existing fitter still raise rather than becoming
+  missing values. No automatic period choice or decay model is introduced.
