@@ -1,6 +1,7 @@
 .python-version
 settings.json
 .vscode/
+.codex_skill_staging/
 .benchmarks/
 *.egg-info/
 *.pyc
