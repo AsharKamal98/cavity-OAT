@@ -7,7 +7,10 @@ from post_analysis.generator_rotation import (
     rotate_generator_moments,
 )
 from post_analysis.harmonic_analysis import (
+    compute_bootstrap_damped_oscillations,
+    compute_damped_oscillation,
     compute_harmonic_analysis,
+    compute_harmonic_quality,
     compute_windowed_harmonic_analysis,
     extract_family_phase_series,
 )
@@ -31,7 +34,10 @@ __all__ = [
     "J_FROM_GENERATORS",
     "build_dressed_basis_transformation",
     "compute_gell_mann_rotation",
+    "compute_bootstrap_damped_oscillations",
+    "compute_damped_oscillation",
     "compute_harmonic_analysis",
+    "compute_harmonic_quality",
     "compute_windowed_harmonic_analysis",
     "compute_mean_generator_moments",
     "compute_sample_covariance",

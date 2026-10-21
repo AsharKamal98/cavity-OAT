@@ -133,23 +133,57 @@ Compatibility exports of the shared implementations in
   integer harmonics, and returns a `HarmonicAnalysisSeries`.
 - The fitted output stores harmonic indices, frequencies, amplitudes, RMS
   oscillation amplitude, phase offsets relative to the first supplied time,
-  and total harmonic distortion.
+  total harmonic distortion, and fit R-squared.
   Constant or numerically constant series use fundamental frequency zero,
   empty harmonic arrays, and `NaN` THD. A non-constant series requires at
   least one observed oscillation; otherwise the function returns `None`. The
   interval need not contain an integer number of oscillations.
 - `compute_windowed_harmonic_analysis(t, series, *, window_duration,
-  step_duration, max_harmonic=5)` calls the same fitter independently for each
+  step_duration, max_harmonic=5, min_fit_r_squared=None)` calls the same fitter independently for each
   curve in successive complete windows. It returns a
   `WindowedHarmonicAnalysisSeries` containing window-centre times and
   `(windows, curves)` arrays of offsets, fundamental amplitudes, RMS amplitudes,
-  fundamental frequencies, and total harmonic distortions. Durations use the
+  fundamental frequencies, total harmonic distortions, and fit R-squared. Durations use the
   input time units; incomplete
   trailing windows are omitted and unresolved curve/window fits use `NaN`.
   Constant curves retain their offset with zero amplitudes and frequency,
-  and `NaN` THD. The bright/dark MCWF notebook plots these metrics against
-  window-centre time through the existing `plot_harmonic_sweep`, selecting
-  finite frequency, RMS amplitude, and offset values for each plotted curve.
+  and `NaN` THD. The bright/dark MCWF notebook keeps candidate fits and plots
+  them against window-centre time through `plot_harmonic_sweep`, marking
+  candidates that fail display criteria with crosses and missing fits as gaps.
+  With a fit-quality threshold, rejected fits keep their window mean as a
+  background estimate while oscillation metrics remain `NaN`. The threshold
+  is a display diagnostic, not a statistical significance test.
+- `compute_harmonic_quality(...)` returns accepted-window masks from the fit
+  R-squared, cycles per window, and samples per period, and can print the
+  failure counts and R-squared summary for each labelled curve.
+- `compute_damped_oscillation(t, series, *, frequency_bounds)` fits a single
+  exponential sinusoid plus a linear background and returns the fitted curve,
+  envelope, parameters, R-squared, and parameter-bound flag. Signed decay
+  rates allow damping, zero decay, or growth. A constant or linear input has
+  no oscillatory fit and returns `None`.
+- `compute_bootstrap_damped_oscillations(t, callback, *, num_trajectories,
+  frequency_bounds, num_resamples=200, confidence_level=0.95, seed=None)`
+  refits curves after resampling complete trajectories, preserving their time
+  correlations. The callback recomputes the usual ensemble observables for
+  the supplied trajectory indices. It returns a `DampedOscillationSeries`
+  with percentile intervals when the central fit and at least 80% of
+  resamples converge away from parameter bounds. Intervals are conditional
+  on the chosen decay model and frequency band. See the harmonic-analysis
+  instructions for the cached-data notebook workflow.
+
+## `post_analysis/short_time_oscillations.py`
+
+- `compute_short_time_dark_mode_analysis(moments, *, duration,
+  reference_frequencies, num_resamples=200, confidence_level=0.95, seed=None,
+  verbose=False)` analyzes the first requested interval of phase 2 using
+  cached trajectories and J modes. It prepares the whole-trajectory bootstrap
+  callback, reuses the existing damped fitter, and optionally prints progress
+  and fit summaries. It returns `ShortTimeDarkModeAnalysis` with `t`, dark
+  x/y/z `components`, optional `sem`, and damped `fits` for direct plotting.
+  Reference frequencies are plain inputs used to choose the fit band; this
+  helper does not run windowed analysis or either simulation. See
+  `docs/instructions/post_analysis/harmonic_analysis.typ` for the unchanged
+  fitting and uncertainty conventions.
 
 ## `post_analysis/squeezing.py`
 

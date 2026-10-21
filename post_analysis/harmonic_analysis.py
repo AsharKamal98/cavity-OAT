@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import numpy as np
-from scipy.optimize import minimize_scalar
+from scipy.optimize import least_squares, minimize_scalar
 
 from common.utils.moments import as_series_tuple
 from common.utils.phases import phase_boundary_times
 from parser.common import Array, PhaseProtocol
 from parser.harmonic_analysis import (
+    DampedOscillationAnalysis,
+    DampedOscillationSeries,
+    DampedOscillationUncertainty,
     HarmonicAnalysisSeries,
     HarmonicSignalAnalysis,
     WindowedHarmonicAnalysisSeries,
@@ -76,23 +79,24 @@ def _estimate_fundamental_frequency(
         return 0.0
 
     peak_bin = int(np.argmax(np.abs(fft_coefficients[1:])) + 1)
-    if peak_bin == fft_frequencies.size - 1:
+    if values.size % 2 == 0 and peak_bin == fft_frequencies.size - 1:
         raise ValueError(
             "The fundamental frequency must lie below the Nyquist frequency."
         )
 
     frequency_step = float(fft_frequencies[1])
+    frequency_below_nyquist = np.nextafter(0.5 / dt, 0.0)
     frequency_guess = float(fft_frequencies[peak_bin])
     lower_bound = max(0.5 * frequency_step, frequency_guess - frequency_step)
     upper_bound = min(
-        float(fft_frequencies[-1]),
+        frequency_below_nyquist,
         frequency_guess + frequency_step,
     )
     fitted_harmonic_count = max(
         1,
         min(
             max_harmonic,
-            int(np.floor(np.nextafter(fft_frequencies[-1], 0.0) / upper_bound)),
+            int(np.floor(frequency_below_nyquist / upper_bound)),
             (values.size - 1) // 2,
         ),
     )
@@ -152,10 +156,16 @@ def _fit_harmonics(
     fundamental_amplitude = float(amplitudes[0])
     if fundamental_amplitude <= np.finfo(float).eps:
         raise ValueError("The fitted fundamental amplitude is zero.")
-    total_harmonic_distortion = float(
-        np.linalg.norm(amplitudes[1:]) / fundamental_amplitude
+    total_harmonic_distortion = (
+        float(np.linalg.norm(amplitudes[1:]) / fundamental_amplitude)
+        if harmonic_count > 1 else np.nan
     )
     rms_amplitude = float(np.linalg.norm(amplitudes) / np.sqrt(2.0))
+    residual = values - design @ coefficients
+    centered_values = values - np.mean(values)
+    fit_r_squared = 1.0 - float(np.dot(residual, residual)) / float(
+        np.dot(centered_values, centered_values)
+    )
 
     return HarmonicSignalAnalysis(
         offset=float(coefficients[0]),
@@ -167,6 +177,7 @@ def _fit_harmonics(
         rms_amplitude=rms_amplitude,
         phase_offsets=phase_offsets,
         total_harmonic_distortion=total_harmonic_distortion,
+        fit_r_squared=fit_r_squared,
     )
 
 
@@ -241,6 +252,7 @@ def compute_harmonic_analysis(
                     rms_amplitude=0.0,
                     phase_offsets=np.array([], dtype=float),
                     total_harmonic_distortion=np.nan,
+                    fit_r_squared=1.0,
                 )
             )
             continue
@@ -268,6 +280,7 @@ def compute_windowed_harmonic_analysis(
     window_duration: float,
     step_duration: float,
     max_harmonic: int = 5,
+    min_fit_r_squared: float | None = None,
 ) -> WindowedHarmonicAnalysisSeries:
     """Fit each curve in successive complete windows using the existing fitter.
 
@@ -276,6 +289,8 @@ def compute_windowed_harmonic_analysis(
     omitted. Metric arrays have shape (windows, curves), even for one curve.
     Fewer than four samples or one resolved oscillation leaves NaN metrics.
     Constant curves retain their offset and have zero amplitudes and frequency.
+    An optional fit-quality threshold suppresses unresolved oscillation metrics
+    while retaining the window mean as a background estimate.
     """
     t, dt = _validate_time_grid(t)
     curves = as_series_tuple(series)
@@ -290,6 +305,10 @@ def compute_windowed_harmonic_analysis(
         raise ValueError("Window and step durations must be positive.")
     if max_harmonic < 1:
         raise ValueError("max_harmonic must be at least one.")
+    if min_fit_r_squared is not None and (
+        not np.isfinite(min_fit_r_squared) or not 0.0 <= min_fit_r_squared <= 1.0
+    ):
+        raise ValueError("min_fit_r_squared must lie between zero and one.")
 
     # Include grid-aligned endpoints despite floating-point roundoff.
     time_tolerance = dt * 1e-7
@@ -307,6 +326,7 @@ def compute_windowed_harmonic_analysis(
     rms_amplitudes = np.full(shape, np.nan)
     fundamental_frequencies = np.full(shape, np.nan)
     total_harmonic_distortions = np.full(shape, np.nan)
+    fit_r_squared = np.full(shape, np.nan)
 
     for window_index, start in enumerate(window_starts):
         window_mask = (t >= start - time_tolerance) & (
@@ -316,12 +336,27 @@ def compute_windowed_harmonic_analysis(
         if window_t.size < 4:
             continue
         for curve_index, values in enumerate(curves):
-            analysis = compute_harmonic_analysis(
-                window_t, values[window_mask], max_harmonic=max_harmonic
-            )
+            window_values = values[window_mask]
+            if min_fit_r_squared is not None:
+                offsets[window_index, curve_index] = np.mean(window_values)
+            try:
+                analysis = compute_harmonic_analysis(
+                    window_t, window_values, max_harmonic=max_harmonic
+                )
+            except ValueError as error:
+                # A Nyquist-edge noise peak is unresolved, not a usable fit.
+                if min_fit_r_squared is not None and "Nyquist" in str(error):
+                    continue
+                raise
             if analysis is None:
                 continue
             signal = analysis.signals[0]
+            fit_r_squared[window_index, curve_index] = signal.fit_r_squared
+            if (
+                min_fit_r_squared is not None
+                and signal.fit_r_squared < min_fit_r_squared
+            ):
+                continue
             offsets[window_index, curve_index] = signal.offset
             fundamental_amplitudes[window_index, curve_index] = (
                 signal.amplitudes[0] if signal.amplitudes.size else 0.0
@@ -341,11 +376,260 @@ def compute_windowed_harmonic_analysis(
         rms_amplitudes=rms_amplitudes,
         fundamental_frequencies=fundamental_frequencies,
         total_harmonic_distortions=total_harmonic_distortions,
+        fit_r_squared=fit_r_squared,
     )
 
 
+def compute_harmonic_quality(
+    analysis: WindowedHarmonicAnalysisSeries,
+    *,
+    sample_spacing: float,
+    window_duration: float,
+    labels: Sequence[str],
+    min_fit_r_squared: float = 0.9,
+    minimum_cycles: float = 3.0,
+    minimum_samples_per_period: float = 8.0,
+    verbose: bool = False,
+) -> Array:
+    """Return accepted-window masks and optionally print why fits were flagged."""
+    if any(
+        not np.isfinite(value) or value <= 0.0
+        for value in (sample_spacing, window_duration, minimum_cycles, minimum_samples_per_period)
+    ):
+        raise ValueError("Sampling, window, and cycle settings must be finite and positive.")
+    if not np.isfinite(min_fit_r_squared) or not 0.0 <= min_fit_r_squared <= 1.0:
+        raise ValueError("min_fit_r_squared must lie between zero and one.")
+    frequency = analysis.fundamental_frequencies
+    r_squared = analysis.fit_r_squared
+    if r_squared is None or r_squared.shape != frequency.shape:
+        raise ValueError("Fit R-squared values must match the frequency array.")
+    if frequency.ndim != 2 or len(labels) != frequency.shape[1]:
+        raise ValueError("Provide one label per harmonic curve.")
+
+    candidate = np.isfinite(frequency) & (frequency > 0.0)
+    low_quality = candidate & ~(r_squared >= min_fit_r_squared)
+    few_cycles = candidate & (frequency * window_duration < minimum_cycles)
+    too_coarse = candidate & (frequency * sample_spacing > 1.0 / minimum_samples_per_period)
+    accepted = candidate & ~low_quality & ~few_cycles & ~too_coarse
+
+    if verbose:
+        print("Failure counts can overlap. A flagged fit is not a detection or a non-detection.")
+        print(f"{'Curve':<17} {'Candidate':>10} {'No fit':>8} {'Low R²':>8} {'Few cycles':>11} {'Too coarse':>11} {'Accepted':>9}")
+        for index, label in enumerate(labels):
+            print(
+                f"{label:<17} {candidate[:, index].sum():>10} "
+                f"{(~candidate[:, index]).sum():>8} {low_quality[:, index].sum():>8} "
+                f"{few_cycles[:, index].sum():>11} {too_coarse[:, index].sum():>11} "
+                f"{accepted[:, index].sum():>9}"
+            )
+            quality = r_squared[:, index]
+            finite_quality = quality[np.isfinite(quality)]
+            if finite_quality.size:
+                print(
+                    "  R² min/median/max:",
+                    ", ".join(f"{value:.3f}" for value in np.quantile(finite_quality, (0.0, 0.5, 1.0))),
+                )
+    return accepted
+
+
+def compute_damped_oscillation(
+    t: Array,
+    series: Array,
+    *,
+    frequency_bounds: tuple[float, float],
+) -> DampedOscillationAnalysis | None:
+    """Fit c + b*u + exp(-gamma*u)*(a*cos(2*pi*f*u)+d*sin(2*pi*f*u)).
+
+    Frequencies are cycles per time unit. Gamma is signed: zero and growth
+    remain admissible, so positive damping is not imposed by the fit. The
+    envelope may change by at most exp(10) over the supplied interval.
+    """
+    t, dt = _validate_time_grid(t)
+    values = np.asarray(series)
+    if np.iscomplexobj(values):
+        raise ValueError("The input series must be real.")
+    values = np.asarray(values, dtype=float)
+    if values.shape != t.shape or not np.all(np.isfinite(values)):
+        raise ValueError("The input series must be finite and match t.")
+    if t.size < 8:
+        raise ValueError("A damped-oscillation fit requires at least eight samples.")
+    lower_frequency, upper_frequency = frequency_bounds
+    if not (
+        np.isfinite(lower_frequency)
+        and np.isfinite(upper_frequency)
+        and 0.0 < lower_frequency < upper_frequency < 0.5 / dt
+    ):
+        raise ValueError(
+            "frequency_bounds must be positive, ordered, and below Nyquist."
+        )
+
+    duration = float(t[-1] - t[0])
+    u = (t - t[0]) / duration
+    background_design = np.column_stack((np.ones_like(u), u))
+    background_coefficients = np.linalg.lstsq(
+        background_design, values, rcond=None
+    )[0]
+    trend = background_design @ background_coefficients
+    centered = values - trend
+    scale = float(np.max(np.abs(centered)))
+    signal_scale = max(1.0, float(np.max(np.abs(values))))
+    if scale <= RELATIVE_AMPLITUDE_TOLERANCE * signal_scale:
+        return None
+    scaled_values = (values - values.mean()) / scale
+    lower_cycles = lower_frequency * duration
+    upper_cycles = upper_frequency * duration
+
+    def solve_linear(parameters):
+        decay, cycles = parameters
+        envelope = np.exp(-decay * u)
+        angle = 2.0 * np.pi * cycles * u
+        design = np.column_stack(
+            (np.ones_like(u), u, envelope * np.cos(angle), envelope * np.sin(angle))
+        )
+        coefficients = np.linalg.lstsq(design, scaled_values, rcond=None)[0]
+        return design, coefficients
+
+    def residual(parameters):
+        design, coefficients = solve_linear(parameters)
+        return design @ coefficients - scaled_values
+
+    fft_frequencies = np.fft.rfftfreq(t.size, d=dt)
+    fft_amplitudes = np.abs(np.fft.rfft(centered))
+    in_band = (fft_frequencies >= lower_frequency) & (
+        fft_frequencies <= upper_frequency
+    )
+    if np.any(in_band):
+        candidates = np.flatnonzero(in_band)
+        peak = candidates[np.argmax(fft_amplitudes[candidates])]
+        frequency_guess = fft_frequencies[peak]
+    else:
+        frequency_guess = 0.5 * (lower_frequency + upper_frequency)
+
+    initial_cycles = np.clip(
+        frequency_guess * duration, lower_cycles, upper_cycles
+    )
+    best = None
+    # A few starts distinguish a damped oscillation from a nearby noisy peak.
+    for initial_decay in (0.0, 2.0, -2.0):
+        fit = least_squares(
+            residual,
+            (initial_decay, initial_cycles),
+            bounds=((-10.0, lower_cycles), (10.0, upper_cycles)),
+            max_nfev=300,
+            ftol=1e-9,
+            xtol=1e-9,
+            gtol=1e-9,
+        )
+        if fit.success and (best is None or fit.cost < best.cost):
+            best = fit
+    if best is None:
+        return None
+
+    design, coefficients = solve_linear(best.x)
+    coefficients *= scale
+    coefficients[0] += values.mean()
+    fitted_values = design @ coefficients
+    background = coefficients[0] + coefficients[1] * u
+    amplitude = float(np.hypot(coefficients[2], coefficients[3]))
+    total_variation = np.sum((values - values.mean()) ** 2)
+    r_squared = 1.0 - float(np.sum((values - fitted_values) ** 2) / total_variation)
+    at_bound = bool(
+        abs(best.x[0]) >= 10.0 - 1e-4
+        or best.x[1] - lower_cycles <= 1e-4
+        or upper_cycles - best.x[1] <= 1e-4
+    )
+    return DampedOscillationAnalysis(
+        t=t.copy(),
+        fitted_values=fitted_values,
+        background=background,
+        envelope=amplitude * np.exp(-best.x[0] * u),
+        offset=float(coefficients[0]),
+        background_slope=float(coefficients[1] / duration),
+        amplitude=amplitude,
+        decay_rate=float(best.x[0] / duration),
+        frequency=float(best.x[1] / duration),
+        phase_offset=float(np.arctan2(-coefficients[3], coefficients[2])),
+        fit_r_squared=r_squared,
+        at_parameter_bound=at_bound,
+    )
+
+
+def compute_bootstrap_damped_oscillations(
+    t: Array,
+    series_from_trajectory_indices: Callable[[Array], Sequence[Array] | Array],
+    *,
+    num_trajectories: int,
+    frequency_bounds: tuple[float, float],
+    num_resamples: int = 200,
+    confidence_level: float = 0.95,
+    seed: int | None = None,
+) -> DampedOscillationSeries:
+    """Refit observables after resampling complete independent trajectories.
+
+    The callback receives trajectory indices, including repetitions, and must
+    recompute ensemble observables in their usual averaging order. Percentile
+    intervals are conditional on this single-decay model and frequency band.
+    A bound-hitting fit is excluded from the intervals, and at least 80% of
+    resamples must succeed before any interval is reported.
+    """
+    if num_trajectories < 2 or num_resamples < 2:
+        raise ValueError(
+            "Bootstrap fitting requires at least two trajectories and resamples."
+        )
+    if not 0.0 < confidence_level < 1.0:
+        raise ValueError("confidence_level must lie between zero and one.")
+    t, _ = _validate_time_grid(t)
+    curves = as_series_tuple(
+        series_from_trajectory_indices(np.arange(num_trajectories))
+    )
+    fits = tuple(
+        compute_damped_oscillation(t, curve, frequency_bounds=frequency_bounds)
+        for curve in curves
+    )
+    parameters = np.full((num_resamples, len(fits), 3), np.nan)
+    rng = np.random.default_rng(seed)
+    for resample in range(num_resamples):
+        indices = rng.integers(0, num_trajectories, size=num_trajectories)
+        resampled_curves = as_series_tuple(series_from_trajectory_indices(indices))
+        if len(resampled_curves) != len(fits):
+            raise ValueError("The resampling callback must preserve the number of curves.")
+        for curve_index, curve in enumerate(resampled_curves):
+            fit = compute_damped_oscillation(
+                t, curve, frequency_bounds=frequency_bounds
+            )
+            if fit is not None and not fit.at_parameter_bound:
+                parameters[resample, curve_index] = (
+                    fit.amplitude, fit.decay_rate, fit.frequency
+                )
+
+    tail_probability = 0.5 * (1.0 - confidence_level)
+    for curve_index, fit in enumerate(fits):
+        if fit is None:
+            continue
+        samples = parameters[:, curve_index]
+        samples = samples[np.all(np.isfinite(samples), axis=1)]
+        uncertainty = DampedOscillationUncertainty(
+            confidence_level=confidence_level,
+            num_resamples=num_resamples,
+            num_successful=len(samples),
+        )
+        minimum_successful = max(2, int(np.ceil(0.8 * num_resamples)))
+        if not fit.at_parameter_bound and len(samples) >= minimum_successful:
+            intervals = np.quantile(
+                samples, (tail_probability, 1.0 - tail_probability), axis=0
+            )
+            uncertainty.amplitude_interval = tuple(float(v) for v in intervals[:, 0])
+            uncertainty.decay_rate_interval = tuple(float(v) for v in intervals[:, 1])
+            uncertainty.frequency_interval = tuple(float(v) for v in intervals[:, 2])
+        fit.uncertainty = uncertainty
+    return DampedOscillationSeries(signals=fits)
+
+
 __all__ = [
+    "compute_bootstrap_damped_oscillations",
+    "compute_damped_oscillation",
     "compute_harmonic_analysis",
+    "compute_harmonic_quality",
     "compute_windowed_harmonic_analysis",
     "extract_family_phase_series",
 ]

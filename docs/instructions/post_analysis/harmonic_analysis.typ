@@ -55,6 +55,15 @@ amplitude. A pure fitted sinusoid has $"THD"=0$; increasing THD means the fitted
 waveform is less sinusoidal. THD is `NaN` when no fundamental oscillation
 exists. The metric refers only to harmonics retained by `max_harmonic` and
 supported below the Nyquist frequency.
+If only the fundamental can be fitted, report THD as `NaN`, since no
+higher-harmonic content was measured.
+
+=== Fit Quality
+
+Store `fit_r_squared` as one minus the squared fit residual divided by the
+squared variation about the window mean. A value near one indicates a good
+local periodic fit. This is a fit diagnostic, not a significance test or an
+uncertainty estimate; correlated MCWF fluctuations can also look periodic.
 
 = Method in Pseudo-code
 
@@ -115,13 +124,14 @@ It returns `(phase_t, phase_series)` and keeps the supplied curve order.
 == Windowed Analysis
 
 `compute_windowed_harmonic_analysis(t, series, *, window_duration,
-step_duration, max_harmonic=5)` repeatedly calls the existing
+step_duration, max_harmonic=5, min_fit_r_squared=None)` repeatedly calls the existing
 `compute_harmonic_analysis(...)` to track the offset, fundamental amplitude,
 RMS amplitude, frequency, and THD over time. Durations use the same units as `t`.
 
 ```python
 def compute_windowed_harmonic_analysis(t, series, *, window_duration,
-                                     step_duration, max_harmonic=5):
+                                     step_duration, max_harmonic=5,
+                                     min_fit_r_squared=None):
     validate the shared time grid, curves, and positive finite durations
     construct complete windows starting at t[0], advancing by step_duration
     initialize each metric as NaN for every window and input curve
@@ -132,16 +142,24 @@ def compute_windowed_harmonic_analysis(t, series, *, window_duration,
             result = compute_harmonic_analysis(window.t, curve[window],
                                                max_harmonic=max_harmonic)
             if result is not None:
+                record fit quality
                 record offset, fundamental amplitude, RMS amplitude, frequency, THD
+                    when the optional fit-quality threshold is satisfied
     return WindowedHarmonicAnalysisSeries(window_centers, metrics)
 ```
 
-The wrapper owns only window selection and collection of existing fit results;
-keep the original fitter and its callers unchanged. Fit curves independently
+The wrapper owns window selection, fit-quality filtering, and collection of
+fit results. Fit curves independently
 so an unresolved oscillation leaves a gap only for that curve and window.
 Use inclusive endpoints, allowing numerical roundoff at grid-aligned bounds;
 omit an incomplete trailing window. The reported time is the requested window's
 midpoint. A step shorter than the window duration produces overlapping windows.
+With `min_fit_r_squared=None`, retain the original unresolved-window behavior.
+With a threshold in $[0,1]$, retain the window mean as a background estimate
+when the periodic fit is unresolved or rejected, and leave its oscillation
+metrics as `NaN`. Also skip an unresolved Nyquist-edge peak in this mode.
+Other invalid inputs still raise. Constant signals retain their established
+zero-amplitude convention.
 
 Select phase 2 with `extract_family_phase_series(...)` before calling the
 wrapper when analyzing dark-mode decay. Each window fits a constant offset
@@ -151,14 +169,113 @@ harmonics can make it differ from the midpoint between extrema. Overlapping
 window estimates are correlated.
 
 `notebooks/bright_dark_modes_mcwf.ipynb` applies this wrapper to the three
-phase-2 dark components for MCWF and MFE. Keep window and step durations
-explicit next to the calls; the initial window spans one-fifth of the supplied
-phase-2 trace and the step is one-quarter of that window. This is an editable
-starting choice, not a guarantee of several resolved periods.
+phase-2 dark components for MCWF and MFE. Its SLURM counterpart,
+`slurm/analyses/bright_dark_modes_mcwf/post_analysis.ipynb`, uses the same
+windowed calls, quality flags, plots, and separate early-time bootstrap on
+saved raw trajectories. Use the loaded artifact's physical metadata and time
+grid, and check its resolution against the reference notebook's saved-time
+spacing. Keep window and step durations
+explicit next to the calls. Its validated example uses $T_2=5000$, saved
+spacing at most $2/Gamma$, windows of $200/Gamma$, and steps of $50/Gamma$.
+Derive the saved-point count from total duration so extending the run does not
+silently coarsen the grid. These settings resolve the example's fundamental
+near $0.0338 Gamma$; reassess them when physical parameters change.
+Keep candidate fits with `min_fit_r_squared=0.0`. Separately flag fits below
+0.9 R-squared, with fewer than three cycles per window, or with fewer than
+eight samples per period. Print candidate counts, missing fits, each failure
+count, accepted counts, and the R-squared range and median for every component.
+Use `compute_harmonic_quality(analysis, sample_spacing=..., window_duration=...,
+labels=..., verbose=True)` to compute the `(windows, curves)` boolean masks
+and print these diagnostics. It accepts the three display thresholds as
+optional arguments and does not modify or refit the stored metrics. Call it
+explicitly for MCWF and MFE instead of repeating component loops in notebooks.
+Failure counts can overlap. These editable criteria judge a local periodic
+approximation; they do not establish whether a physical oscillation exists.
 Reuse `plot_harmonic_sweep(...)` with window-centre time on its x-axis,
-omitting unresolved windows separately for each curve. Plot MCWF solid and
-MFE dashed, with matching component colors. The shared plotter remains
-unchanged; it shows RMS amplitude and offset alongside frequency and THD.
+passing the boolean display criteria through `quality_masks`. Show accepted
+metrics as lines and finite flagged candidates as crosses, without connecting
+across gaps. Missing fits remain `NaN`. Always plot the background. Plot MCWF
+solid and MFE dashed, with matching component colors, and explain the crosses
+in the figure title. The shared plotter remains compatible with parameter
+sweeps without a quality mask. Pass transposed metric and mask arrays to plot
+all three components in one call per method. Plot $f_0/Gamma$ against $Gamma t$ in this
+notebook. The background is the candidate fit offset, or the window mean when
+no fit is available; label that fallback explicitly. A flagged amplitude or
+frequency can reflect noise or model mismatch and must not be interpreted as
+a resolved oscillation.
+
+== Early-Time Damping and Trajectory Bootstrap
+
+`compute_damped_oscillation(t, series, *, frequency_bounds)` fits one real
+series to an exponential sinusoid with a linear background:
+
+$
+y(t) = c + b u + exp(-gamma u)
+  (a cos(2 pi f u) + d sin(2 pi f u)), quad u=t-t_0.
+$
+
+The initial amplitude is $sqrt(a^2+d^2)$; the plotted envelope is this
+amplitude times $exp(-gamma u)$ around the linear background. Frequencies are
+cycles per input time unit. Fit the background and sine/cosine coefficients
+by linear least squares for each trial decay rate and frequency, then choose
+the nonlinear parameters by least squares. Allow signed decay rates so the
+fit can return zero damping or growth. Limit the envelope's change over the
+interval to a factor $exp(10)$ in either direction and report a
+`at_parameter_bound` flag when that limit or a frequency bound is reached.
+Numerically constant or purely linear series return `None`. Require a uniform
+grid with at least eight samples and explicit positive frequency bounds below
+Nyquist.
+
+`compute_bootstrap_damped_oscillations(...)` computes the central fits and
+refits after resampling complete independent trajectories with replacement.
+Its callback receives trajectory indices, including repetitions, and returns
+the desired curves. Preserve all times and groups for each sampled trajectory;
+do not resample time points or treat overlapping windows as independent data.
+The short-time analysis callback reuses `compute_mean_generator_moments(...)`,
+then `compute_j_moments(...)`, then `compute_j_modes_from_j_moments(...)`.
+Thus the original averaging and observable-construction order is preserved.
+
+Keep the notebook orchestration in
+`post_analysis/short_time_oscillations.py` through
+`compute_short_time_dark_mode_analysis(moments, *, duration,
+reference_frequencies, num_resamples=200, confidence_level=0.95, seed=None,
+verbose=False)`. This helper selects the start of phase 2, caps the requested
+duration at its end, prepares the cached trajectories, builds the resampling
+callback, calls the existing bootstrap fitter, and optionally prints its
+summary. It returns `ShortTimeDarkModeAnalysis` from
+`parser/short_time_oscillations.py`: `t`, the dark x/y/z `components`, nullable
+component `sem`, and the existing damped `fits`. Pass these fields directly to
+`plot_damped_oscillations(...)`; keep data selection, callbacks, and reporting
+out of notebook cells. Do not change the windowed analysis or generic fitter
+to implement this orchestration.
+
+The notebook requests the first $200/Gamma$ of cached phase-2 data, 200
+resamples, 95% percentile intervals, and a reproducible seed. It supplies its
+existing MFE frequencies as plain reference values. The helper sets the band
+to half to one-and-a-half times the median positive reference frequency,
+capped below Nyquist; it does not run or modify windowed analysis. Analyze
+the cached raw moments without rerunning either simulation.
+Never rerun parameter initialization merely to import an analysis helper:
+that cell replaces the result containers.
+
+Return amplitude, decay-rate, and frequency intervals only when the central
+fit avoids parameter bounds and at least 80% of resampled fits converge away
+from those bounds. Always report successful resample counts, fit R-squared,
+and bound flags. A positive decay interval supports damping *within this
+chosen model and band*; it does not establish that a single exponential fully
+describes the dynamics. Inspect the fitted trace and residual mismatch before
+interpreting it. Pointwise SEM bands in `plot_damped_oscillations(...)` describe
+uncertainty in the MCWF mean, not the fitted envelope's confidence interval.
+Pass cached MFE times and components through the plotter's `reference_t` and
+`reference_series` arguments. It selects the matching fit interval and draws
+the dashed reference in every panel; no notebook loop is needed.
+
+The damped fit returns `DampedOscillationAnalysis`, including the time grid,
+fitted curve, background, envelope, fitted parameters, fit quality, bound flag,
+and nullable `DampedOscillationUncertainty`. The bootstrap returns these fits
+in `DampedOscillationSeries.signals`, preserving curve order and using `None`
+where no oscillatory fit is available. Keep these outputs separate from the
+simulation and J-mode containers.
 
 = Output
 
@@ -175,6 +292,7 @@ HarmonicAnalysisSeries(
             rms_amplitude,
             phase_offsets,
             total_harmonic_distortion,
+            fit_r_squared,
         ),
         ...,
     ),
@@ -202,6 +320,8 @@ Each `HarmonicSignalAnalysis` contains:
 - `total_harmonic_distortion`: the combined root-sum-square amplitude of all
   retained harmonics with $n >= 2$, divided by the fundamental amplitude. It
   is `NaN` when the series is constant because no fundamental exists.
+- `fit_r_squared`: fraction of centered variation explained by the fit; one
+  for the constant-signal convention.
 
 The array fields `harmonic_indices`, `frequencies`, `amplitudes`, and
 `phase_offsets` correspond element by element.
@@ -223,6 +343,7 @@ WindowedHarmonicAnalysisSeries(
     rms_amplitudes,
     fundamental_frequencies,
     total_harmonic_distortions,
+    fit_r_squared,
 )
 ```
 
@@ -232,8 +353,10 @@ one curve. Unresolved fits or windows selecting fewer than four samples have
 fundamental amplitude, RMS amplitude, and frequency, with `NaN` THD. For example, plot
 `result.offsets[:, 0]` and `result.fundamental_amplitudes[:, 0]` against
 `result.window_centers` for a single supplied component.
-For the existing four-panel plotter, select finite frequency, RMS amplitude,
-and offset values from the same windows; THD may remain `NaN` for constants.
+The optional fit-quality threshold retains background means for rejected fits.
+Pass the complete window grid and `NaN` metric gaps to the four-panel plotter.
+`fit_r_squared` is nullable for compatibility with older constructed outputs;
+the current wrapper always fills its array.
 
 For a constant or numerically constant curve, the result stores
 `fundamental_frequency=0`,
@@ -260,6 +383,13 @@ context, such as the current `delta`, and skip that parameter value.
 - The largest non-DC FFT magnitude is assumed to identify the fundamental
   neighborhood. This simple implementation therefore assumes the fundamental
   is the dominant Fourier component.
+- Test Nyquist equality only for an even sample count; the last FFT bin for
+  an odd count is below Nyquist and is usable.
+- Aliasing cannot be detected or repaired reliably from a sampled trace alone.
+  Check saved-time resolution against an independently resolved frequency;
+  interpolation does not restore omitted oscillations. A noise-only trace can
+  produce nonzero fitted amplitude and an arbitrary frequency. Use trajectory
+  resampling or a deterministic reference before interpreting these as physics.
 - The input interval need not contain an integer number of oscillations.
 - Treat a curve as numerically constant when its maximum centered amplitude is
   at most `1e-10 * max(1, max(abs(curve)))`. This prevents solver roundoff from

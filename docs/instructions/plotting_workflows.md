@@ -143,13 +143,39 @@ palette, and line-style behavior, use the plotting-workflows skill.
    palette.
 
 5. Each curve must be non-empty, one-dimensional, and match the varied
-   parameter array. Parameters, frequency curves, RMS amplitudes, and offsets
-   must be finite. THD curves may contain `NaN` for non-oscillating series but
-   must not contain infinities. All four metric groups and labels must have
+   parameter array. Parameters must be finite. Metric curves may contain `NaN`
+   to show gaps where a quantity is unresolved, but must not contain infinities.
+   Preserve those gaps rather than joining the neighboring valid windows.
+   All four metric groups and labels must have
    equal counts. Their supplied order is preserved.
 
 6. For windowed analysis, pass window-centre times as the parameter values and
-   use a time-axis label. Select finite frequency, RMS amplitude, and offset
-   entries from each curve before plotting; select the same entries for THD.
-   Constant signals may retain `NaN` THD. In the bright/dark MCWF notebook,
-   use one color per dark component and solid MCWF/dashed MFE overlays.
+   use a time-axis label. Missing fits remain `NaN`. Optional boolean
+   `quality_masks` select accepted frequency, amplitude, and THD points for
+   lines; finite flagged candidates appear as crosses. Never connect lines
+   across flagged or missing windows. Offsets remain visible independently.
+   Explain the crosses and any fallback from fitted offset to window mean in
+   the figure. These flags describe fit quality, not statistical detection.
+   Omitting the masks preserves existing parameter-sweep behavior. Constant
+   signals and single-harmonic fits may retain `NaN` THD. In the bright/dark
+   MCWF notebook and its SLURM post-analysis notebook, use one color per dark
+   component and solid MCWF/dashed MFE overlays. Pass transposed metric and
+   mask arrays in one explicit call per method; component loops are unnecessary.
+
+## `fig, axes = plot_damped_oscillations(...)`
+
+Accept the time grid, already-computed curves, and `DampedOscillationSeries`.
+Show one component per panel with the MCWF mean, optional pointwise ±1 SEM
+shading, fitted curve, linear background, and upper/lower exponential envelope.
+Use time since the fit interval began, with caller-provided time scaling and
+label. Show fit R-squared in each panel title. The envelope is the fitted
+oscillation amplitude around its background; it is not a confidence band.
+Do not fit or bootstrap inside the plotter.
+
+The bright/dark MCWF notebook and its SLURM post-analysis notebook overlay one
+dashed MFE dark-mode curve per early-time panel. Optional `reference_t` and
+`reference_series` inputs supply cached curves, with `reference_label` for the
+legend. Require both inputs together and one reference curve per panel.
+The plotter selects the fit interval, uses the same elapsed-time origin and
+scaling, and includes the references in the legend. Keep the original MFE
+values and normalization. Omitting these inputs preserves the existing plots.

@@ -280,20 +280,40 @@ Jacobians are defined in `docs/instructions/post_analysis/j_modes.typ`.
 `HarmonicAnalysisSeries` stores solver-independent harmonic analyses for one or
 more curves. Each `HarmonicSignalAnalysis` contains its fitted offset and
 fundamental frequency, observed cycle count, harmonic indices, frequencies,
-amplitudes, RMS oscillation amplitude, phase offsets, and total harmonic
-distortion. The output does not retain the input time grid. Keep this diagnostic
+amplitudes, RMS oscillation amplitude, phase offsets, total harmonic
+distortion, and `fit_r_squared`. The output does not retain the input time grid. Keep this diagnostic
 separate from `JMomentSeries` and `JModeSeries` so it can consume any compatible
 real series.
 
 `WindowedHarmonicAnalysisSeries` in the same parser module stores
 `window_centers` with shape `(windows,)` and `offsets`,
 `fundamental_amplitudes`, `rms_amplitudes`, `fundamental_frequencies`, and
-`total_harmonic_distortions` with
+`total_harmonic_distortions`, and nullable `fit_r_squared` with
 shape `(windows, curves)`, including a singleton column for one curve.
 Unresolved curve/window fits use `NaN`; constant curves have zero amplitudes
-and frequency with their fitted offset retained and `NaN` THD. Window construction and
+and frequency with their fitted offset retained and `NaN` THD. An optional
+fit-quality threshold retains window-mean backgrounds for rejected fits while
+leaving their oscillation metrics as `NaN`. Current computations always return
+the fit-quality array; its nullable default supports older constructed outputs.
+Window construction and
 fitting conventions live in
 `docs/instructions/post_analysis/harmonic_analysis.typ`.
+
+`DampedOscillationAnalysis` stores one fitted early-time exponential sinusoid
+and linear background: its time grid, fitted curve, background, envelope,
+offset, background slope, initial amplitude, signed decay rate, frequency,
+phase offset, R-squared, and parameter-bound flag. Its nullable `uncertainty`
+contains `DampedOscillationUncertainty`: confidence level, requested and
+successful trajectory-resample counts, and nullable amplitude, decay-rate,
+and frequency intervals. `DampedOscillationSeries.signals` preserves input
+curve order, with `None` for unavailable fits. Keep these standalone analysis
+outputs separate from J moments and simulation containers. Fitting and
+bootstrap conventions are in the harmonic-analysis instruction file above.
+
+`ShortTimeDarkModeAnalysis` in `parser/short_time_oscillations.py` packages
+plot-ready early phase-2 `t`, dark x/y/z `components`, nullable component `sem`,
+and the existing `DampedOscillationSeries` as `fits`. It belongs to the
+separate short-time orchestration and does not change harmonic output classes.
 
 `SqueezingSeries` stores the complete generalized squeezing result for either
 one physical group or the full system:

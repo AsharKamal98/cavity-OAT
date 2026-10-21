@@ -148,20 +148,39 @@ through the shared `slurm/run_solvers/run_mcwf.py` entry point. Follow the
 `squeezing_nj_ratio-scan` artifact workflow, but use a single run with index
 zero rather than a ratio sweep. Save trajectory-resolved moments with
 `--save-ensemble` to the analysis-local `output` directory; the filename is
-`<job-name>_0.pkl`. The initial defaults mirror
-`notebooks/bright_dark_modes_mcwf.ipynb`, including its sector window and
-scaled drive and detuning. Omitted optional filters remain unset.
+`<Ni><job-name>_0.pkl`. The input notebook must use the same prefix and job
+name as the submission script. Keep the physical inputs, initial-sector
+filters, trajectory count, and seed aligned with
+`notebooks/bright_dark_modes_mcwf.ipynb`; omitted optional filters remain
+unset. The cluster worker count follows `SLURM_CPUS_PER_TASK`. Derive the saved
+point count from the total duration and the notebook's saved-time spacing,
+rather than fixing it at 500. Request memory for the full trajectory-resolved
+moment arrays; 500 trajectories at 102001 times require about 58 GiB for those
+arrays alone.
 
 The analysis-local `post_analysis.ipynb` loads that artifact and its metadata,
 averages complete trajectories with sampling covariance, constructs J moments
-and modes, and releases the trajectory arrays after averaging. Solve MFE
+and modes, and retains raw moments in `mcwf_moments.generator_moments` for the
+early-time trajectory bootstrap. Solve MFE
 locally using the artifact's physical parameters, protocol, and saved-time
 grid. Use the shared converters and plotters throughout. Plot aggregated and
 group-resolved J angles and moments, bright/dark vectors, phase-2 dark traces,
-and the phase-2 dark-component harmonic metrics. MCWF component and length
-plots receive matching SEMs; MFE overlays use dashed lines. Show only bright
+and the phase-2 dark-component windowed harmonic metrics. Reuse the reference
+notebook's window durations, fit-quality display criteria, and diagnostic
+counts. Write MCWF and MFE steps as separate explicit calls, including their
+mode construction, analysis, and plot overlays. Keep notebook analysis and
+plotting cells free of loops; pass curves together and use the harmonic
+quality and reference-overlay helpers for repeated work.
+Keep the early-time damped fit separate and call
+`compute_short_time_dark_mode_analysis(...)` with the same duration,
+resampling settings, and MFE reference frequencies. Follow
+`docs/instructions/post_analysis/harmonic_analysis.typ` for both analyses.
+MCWF component and length plots receive matching SEMs. Follow the reference
+notebook's colors and line styles: phase-2 traces distinguish MCWF and MFE by
+color, while the other comparisons use dashed MFE overlays. Show only bright
 and dark mode curves. Notebook Markdown cells contain titles only. Optional
-figure export goes to `output/plots`.
+figure export goes to `output/plots/<run-name>`. Include the dashed MFE dark
+curve in each early-time fit panel, using the same interval and time origin.
 
 = Invariants
 

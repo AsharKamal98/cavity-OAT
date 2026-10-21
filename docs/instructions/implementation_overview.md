@@ -29,6 +29,11 @@ Most runs follow this order:
 Notebook functions should follow this same order when possible, so the main
 analysis cells stay predictable.
 
+In comparison notebooks, write each method's setup, analysis, and plotting
+calls explicitly, with MCWF followed by MFE. Keep analysis and plotting cells
+free of loops and comprehensions. Pass multiple curves to existing plotters
+and move repeated diagnostic work into shared helpers.
+
 ## 1. Model and Method Parameters
 
 Runs should define the effective physical/model parameters such as `Omega`,
@@ -191,8 +196,11 @@ The single-run bright/dark workflow lives in
 ensemble using the unified runner and artifact index zero; its local
 `post_analysis.ipynb` computes J moments and modes, solves MFE with the saved
 physical context, and plots J angles/moments and bright/dark diagnostics with
-MCWF SEMs. Follow `docs/instructions/post_analysis/j_modes.typ` for this
-workflow and its phase-2 harmonic analysis.
+MCWF SEMs. Keep its simulation settings and saved-time resolution aligned with
+`notebooks/bright_dark_modes_mcwf.ipynb`. Retain raw trajectory moments for the
+matching windowed harmonics and early-time bootstrap analysis, including the
+dashed MFE overlays. Follow `docs/instructions/post_analysis/j_modes.typ` for
+this workflow.
 
 If a larger ensemble must deliberately be split across multiple SLURM tasks,
 each task must write a separate chunk. A dependent combination step should
@@ -595,6 +603,22 @@ It reuses the existing fitter in complete caller-sized windows and returns
 window-centre times with per-curve metric arrays, including THD for reuse of
 the existing harmonic plotter. The bright/dark MCWF notebook uses this
 windowed analysis for phase-2 traces and plots the results against time.
+Use adequate saved-time resolution and flag poor periodic fits before
+interpreting changes in amplitude or frequency. The notebook prints failure
+reasons and R-squared values through `compute_harmonic_quality(...)`, which
+returns the boolean display masks. It shows flagged candidate fits as crosses, and
+leaves gaps only where no candidate exists. Fit quality alone is not
+statistical evidence for an oscillation. Early-time damping is orchestrated
+separately by `compute_short_time_dark_mode_analysis(...)` in
+`post_analysis/short_time_oscillations.py`. It selects the early phase-2 data,
+resamples whole cached trajectories through the established averaging-to-J-to-mode
+pipeline, and calls the existing bootstrap fitter. The result contains the
+curves, optional SEMs, and fits for direct plotting; notebook cells only
+configure, call, and plot this helper. Inspect fit quality and
+the model-conditional intervals before claiming damping. Both analyses reuse
+cached simulation results; do not rerun parameter initialization or simulation
+to refresh their imports. Validation notes are in
+`docs/investigations/windowed_dark_mode_harmonics.md`.
 Window and output conventions are defined in
 `docs/instructions/post_analysis/harmonic_analysis.typ`.
 
@@ -625,9 +649,12 @@ The shared MFE residual diagnostic plotting function lives in
 
 The shared harmonic-sweep plot lives in
 `common/plotting/harmonic_analysis.py`:
-- `plot_harmonic_sweep(parameter_values, fundamental_frequencies,
-  total_harmonic_distortions, labels=..., ...)`: plots one or more paired
-  frequency and THD curves against an already-extracted model-parameter sweep.
+- `plot_harmonic_sweep(...)`: plots frequency, RMS amplitude, offset, and THD
+  against a parameter or window-centre time; optional `quality_masks` mark
+  flagged candidates as crosses.
+- `plot_damped_oscillations(...)`: overlays early MCWF curves and SEM shading
+  with already-computed damped fits, backgrounds, and envelopes. Optional
+  reference inputs add dashed cached MFE curves on the same interval.
 
 The shared generalized-squeezing plot lives in
 `common/plotting/squeezing.py`:

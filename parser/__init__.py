@@ -1,6 +1,9 @@
 from parser.bloch_vector import BlochVectorSeries
 from parser.common import Array, FamilyPhase, Phase, PhaseProtocol
 from parser.harmonic_analysis import (
+    DampedOscillationAnalysis,
+    DampedOscillationSeries,
+    DampedOscillationUncertainty,
     HarmonicAnalysisSeries,
     HarmonicSignalAnalysis,
     WindowedHarmonicAnalysisSeries,
@@ -42,6 +45,9 @@ __all__ = [
     "Array",
     "BlochVectorSeries",
     "FamilyPhase",
+    "DampedOscillationAnalysis",
+    "DampedOscillationSeries",
+    "DampedOscillationUncertainty",
     "HarmonicAnalysisSeries",
     "HarmonicSignalAnalysis",
     "WindowedHarmonicAnalysisSeries",

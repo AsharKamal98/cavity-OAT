@@ -1,7 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=bright-dark-v1
+#SBATCH --job-name=bright-dark-v2
 
 #SBATCH --cpus-per-task=64
+#SBATCH --mem=128G
 #SBATCH --time=02:00:00
 #SBATCH --output=../../logs/%j_%x.out
 #SBATCH --error=../../logs/%j_%x.err
@@ -21,14 +22,31 @@ mkdir -p "${OUTPUT_DIR}"
 NTRAJ="500"
 GAMMA="1.0"
 NI="5,5"
-DN="0"
-NUM_SNAPSHOTS="500"
-OMEGA_1="0.7"
-OMEGA_FACTOR="0.1"
-DELTA_FACTOR="0.02"
-T1="10.0"
+# dN=None: omit --dN to disable the total-NJ window.
+# NUM_SNAPSHOTS="500"
+SAVED_TIME_STEP="0.1"
+# OMEGA_1="0.7"
+OMEGA_1="0.6666666666666666"
+# OMEGA_FACTOR="0.1"
+OMEGA_FACTOR="0.119"
+# DELTA_FACTOR="0.02"
+DELTA_FACTOR="0.283"
+JOINT_PROBABILITY="0.20"
+# T1="10.0"
+T1="100.0"
 T2="10000.0"
-T3="10.0"
+# T3="10.0"
+T3="100.0"
+
+# Match the notebook's saved-time spacing of 0.1 / Gamma.
+NUM_SNAPSHOTS="$(python - "${T1}" "${T2}" "${T3}" "${SAVED_TIME_STEP}" "${GAMMA}" <<'PY'
+import math
+import sys
+
+t1, t2, t3, saved_time_step, gamma = map(float, sys.argv[1:])
+print(math.ceil((t1 + t2 + t3) / (saved_time_step / gamma)) + 1)
+PY
+)"
 
 FILENAME="${NI}${SLURM_JOB_NAME}"
 
@@ -40,7 +58,7 @@ python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
   --array-index "0" \
   --Gamma "${GAMMA}" \
   --Ni "${NI}" \
-  --dN "${DN}" \
+  --joint-probability "${JOINT_PROBABILITY}" \
   --num-snapshots "${NUM_SNAPSHOTS}" \
   --omega-i "${OMEGA_1}" \
   --Omega-factor "${OMEGA_FACTOR}" \
