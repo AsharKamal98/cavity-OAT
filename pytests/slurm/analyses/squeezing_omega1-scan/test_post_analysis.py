@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
 from parser.moments import MomentSeries
@@ -12,6 +14,7 @@ from post_analysis import (
     compute_squeezing,
     rotate_generator_moments,
 )
+from slurm.trajectory_ensemble_io import load_combined_trajectory_ensemble
 
 
 def _compute_direct_moments(case) -> MomentSeries:
@@ -97,6 +100,9 @@ def _assert_moments_allclose(actual: MomentSeries, expected: MomentSeries) -> No
             "N_j",
             "theta",
             "phi",
+            "x_sem",
+            "y_sem",
+            "z_sem",
         ),
     )
     _assert_fields_allclose(
@@ -169,7 +175,6 @@ def _assert_moments_allclose(actual: MomentSeries, expected: MomentSeries) -> No
 
 def test_combined_post_analysis_matches_direct_full_ensemble(
     squeezing_post_analysis_case,
-    squeezing_post_analysis_module,
 ):
     """
     Compare analysis after loading two chunks with direct full-ensemble analysis.
@@ -177,17 +182,14 @@ def test_combined_post_analysis_matches_direct_full_ensemble(
     Assert that raw, mean, J, S, and squeezing moments are unchanged.
     """
     case = squeezing_post_analysis_case
-    combined, simulation_metadata = (
-        squeezing_post_analysis_module._load_combined_ensemble(
-            case.input_dir,
-            case.filename,
-            len(case.chunk_sizes),
-        )
+    combined, simulation_metadata = load_combined_trajectory_ensemble(
+        case.input_dir,
+        case.filename,
+        len(case.chunk_sizes),
     )
 
-    actual = squeezing_post_analysis_module._compute_moments(
-        combined,
-        simulation_metadata,
+    actual = _compute_direct_moments(
+        replace(case, ensemble=combined, simulation_metadata=simulation_metadata)
     )
     expected = _compute_direct_moments(case)
 
@@ -196,7 +198,6 @@ def test_combined_post_analysis_matches_direct_full_ensemble(
 
 def test_combined_ensemble_preserves_trajectory_order(
     squeezing_post_analysis_case,
-    squeezing_post_analysis_module,
 ):
     """
     Load uneven trajectory chunks in array-index order.
@@ -205,7 +206,7 @@ def test_combined_ensemble_preserves_trajectory_order(
     """
     case = squeezing_post_analysis_case
 
-    combined, _ = squeezing_post_analysis_module._load_combined_ensemble(
+    combined, _ = load_combined_trajectory_ensemble(
         case.input_dir,
         case.filename,
         len(case.chunk_sizes),

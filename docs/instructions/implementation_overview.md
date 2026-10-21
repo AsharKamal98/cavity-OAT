@@ -191,9 +191,13 @@ dressed-rotation, squeezing, and plotting pipeline locally. Keep each raw
 trajectory axis intact until the notebook explicitly computes its ensemble
 mean.
 
-The single-run bright/dark workflow lives in
-`slurm/analyses/bright_dark_modes_mcwf`. Its submission script saves one raw
-ensemble using the unified runner and artifact index zero; its local
+The bright/dark workflow lives in
+`slurm/analyses/bright_dark_modes_mcwf`. Run `bash submit.sh` there to submit
+four trajectory chunks and an `afterok`-dependent combination job. `NTRAJ`
+in `submit.slurm` is the count per task, so the combined total is `4 * NTRAJ`.
+Each task uses the unified runner with its own array index and seed, saving under
+`output/<array-job-id>/`. The combination job validates and concatenates raw
+moments using `slurm/trajectory_ensemble_io.py`, then saves `ensemble.pkl`. The local
 `post_analysis.ipynb` computes J moments and modes, solves MFE with the saved
 physical context, and plots J angles/moments and bright/dark diagnostics with
 MCWF SEMs. Keep its simulation settings and saved-time resolution aligned with
@@ -202,9 +206,9 @@ matching windowed harmonics and early-time bootstrap analysis, including the
 dashed MFE overlays. Follow `docs/instructions/post_analysis/j_modes.typ` for
 this workflow.
 
-If a larger ensemble must deliberately be split across multiple SLURM tasks,
-each task must write a separate chunk. A dependent combination step should
-concatenate first- and second-moment arrays along the trajectory axis before
+When an ensemble is split across multiple SLURM tasks, each task must write a
+separate chunk. A dependent combination step should concatenate first- and
+second-moment arrays along the trajectory axis before
 generic analysis. Multiple tasks must never append to or rewrite one shared
 pickle artifact concurrently. Do not average per-task derived moments.
 

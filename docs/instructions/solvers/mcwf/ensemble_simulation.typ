@@ -182,6 +182,32 @@ the trajectory axis into one `TrajectoryEnsemble`. Compute J, S, and squeezing
 from that combined ensemble rather than averaging separately derived array
 outputs.
 
+= Combining Saved Array Chunks
+
+`load_combined_trajectory_ensemble(input_dir, filename, num_files)` in
+`slurm/trajectory_ensemble_io.py` loads numbered chunks, checks that their
+physical, phase, sector, and saved-time metadata agree, and concatenates their
+raw first and second moments along the trajectory axis. It returns the
+combined `TrajectoryEnsemble` and shared `SimulationMetadata`. Reject missing
+chunks, incorrect indices or counts, incompatible arrays, and moments that
+already carry mean uncertainty. Unequal chunk sizes are allowed.
+Count and validate chunks in a first pass, then fill preallocated combined
+arrays one chunk at a time in a second pass so all input chunks need not stay
+in memory. Save ensemble pickles with the highest available protocol to avoid
+large temporary byte copies when writing NumPy arrays.
+
+Preserve array-index order and prefix each stored spawn key with its array
+index so that seed labels remain distinct across chunks. The unified runner
+uses parent seed `1234 + array_index`; the combined labels identify each
+source chunk and its original trajectory. Do not average per-chunk means or
+SEMs. Compute sampling covariance only after combining all raw trajectories.
+
+`slurm/combine_trajectory_ensembles.py` calls this loader and saves the result
+through `save_trajectory_ensemble_artifact(...)`, using `array_index=-1` to
+mark a combined artifact. Write a temporary pickle before replacing the final
+`<filename>.pkl`. The bright/dark submission wrapper schedules this command
+only after all four array tasks succeed; it never assumes task zero runs last.
+
 = Invariants and Edge Cases
 
 - Build `precomputed` exactly once per `run_trajectory_ensemble(...)` call.

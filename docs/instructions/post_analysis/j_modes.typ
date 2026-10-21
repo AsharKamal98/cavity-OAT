@@ -143,20 +143,38 @@ J-moment representation. Each nested vector also has nullable `uncertainty`,
 
 = SLURM Analysis
 
-`slurm/analyses/bright_dark_modes_mcwf/submit.slurm` runs one MCWF ensemble
-through the shared `slurm/run_solvers/run_mcwf.py` entry point. Follow the
-`squeezing_nj_ratio-scan` artifact workflow, but use a single run with index
-zero rather than a ratio sweep. Save trajectory-resolved moments with
-`--save-ensemble` to the analysis-local `output` directory; the filename is
-`<Ni><job-name>_0.pkl`. The input notebook must use the same prefix and job
-name as the submission script. Keep the physical inputs, initial-sector
-filters, trajectory count, and seed aligned with
-`notebooks/bright_dark_modes_mcwf.ipynb`; omitted optional filters remain
-unset. The cluster worker count follows `SLURM_CPUS_PER_TASK`. Derive the saved
+Run `bash submit.sh` from `slurm/analyses/bright_dark_modes_mcwf` to submit
+`submit.slurm` as array indices 0-3 and schedule `combine.slurm` with an
+`afterok` dependency on the entire array. The four tasks use one physical
+parameter set through `slurm/run_solvers/run_mcwf.py`. As in the other SLURM
+analyses, `NTRAJ` is the trajectory count per array task: 250 produces four
+250-trajectory files and a combined total of 1000. Never divide `NTRAJ` among
+tasks. The runner uses parent seed
+`1234 + array_index` for independent chunks.
+
+Save raw moments with `--save-ensemble` as
+`output/<array-job-id>/ensemble_<array-index>.pkl`. Separate run directories
+prevent different submissions from mixing chunks. The combine job calls
+`slurm/combine_trajectory_ensembles.py` and writes `ensemble.pkl` in that same
+directory, with `array_index=-1`. It concatenates raw trajectories before any
+averaging; follow `docs/instructions/solvers/mcwf/ensemble_simulation.typ` for
+validation and seed-label conventions. Retain the chunk files after combining.
+Set the post-analysis notebook's `run_name` to the array job ID printed by
+`submit.sh`. Its plots use that ID under `output/plots/<run-name>`.
+
+Keep physical inputs and saved-time resolution consistent with
+`notebooks/bright_dark_modes_mcwf.ipynb`; cluster trajectory count and CPU
+allocation are configured in `submit.slurm`. Omitted optional filters remain
+unset. Each task uses `SLURM_CPUS_PER_TASK` workers. Derive the saved
 point count from the total duration and the notebook's saved-time spacing,
 rather than fixing it at 500. Request memory for the full trajectory-resolved
 moment arrays; 500 trajectories at 102001 times require about 58 GiB for those
 arrays alone.
+The combine job also needs space for the input chunks and concatenated
+arrays; its 64 GiB request covers the current total of 200 trajectories and
+must be increased for substantially larger ensembles. At the same time grid,
+1000 trajectories occupy about 116 GiB before loading a chunk or validating
+the combined arrays; request 192 GiB for that combination job.
 
 The analysis-local `post_analysis.ipynb` loads that artifact and its metadata,
 averages complete trajectories with sampling covariance, constructs J moments

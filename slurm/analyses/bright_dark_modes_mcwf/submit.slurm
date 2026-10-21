@@ -1,14 +1,17 @@
 #!/bin/bash
 #SBATCH --job-name=bright-dark-v2
+#SBATCH --array=0-3
 
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 ## SBATCH --mem=128G
 #SBATCH --time=02:00:00
-#SBATCH --output=../../logs/%j_%x.out
-#SBATCH --error=../../logs/%j_%x.err
+#SBATCH --output=../../logs/%A_%a_%x.out
+#SBATCH --error=../../logs/%A_%a_%x.err
 
-# Submit from this analysis directory with: sbatch submit.slurm
-# One ensemble using the bright_dark_modes_mcwf notebook parameters.
+# Submit the array and its dependent combine job with: bash submit.sh
+# All four tasks use the same physical parameters.
 
 set -euo pipefail
 
@@ -16,10 +19,10 @@ source ~/.venvs/cavity-oat_env/bin/activate
 
 ANALYSIS_DIR="${SLURM_SUBMIT_DIR}"
 REPO_ROOT="$(cd "${ANALYSIS_DIR}/../../.." && pwd)"
-OUTPUT_DIR="${ANALYSIS_DIR}/output"
+OUTPUT_DIR="${ANALYSIS_DIR}/output/${SLURM_ARRAY_JOB_ID}"
 mkdir -p "${OUTPUT_DIR}"
 
-NTRAJ="50"
+NTRAJ="50"  # Trajectories per array task; the combined total is 4 * NTRAJ.
 GAMMA="1.0"
 NI="5,5"
 # dN=None: omit --dN to disable the total-NJ window.
@@ -42,14 +45,12 @@ print(math.ceil((t1 + t2 + t3) / (saved_time_step / gamma)) + 1)
 PY
 )"
 
-FILENAME="${NI}${SLURM_JOB_NAME}"
-
 python "${REPO_ROOT}/slurm/run_solvers/run_mcwf.py" \
   --n-processes "${SLURM_CPUS_PER_TASK}" \
   --ntraj "${NTRAJ}" \
-  --filename "${FILENAME}" \
+  --filename "ensemble" \
   --output-dir "${OUTPUT_DIR}" \
-  --array-index "0" \
+  --array-index "${SLURM_ARRAY_TASK_ID}" \
   --Gamma "${GAMMA}" \
   --Ni "${NI}" \
   --joint-probability "${JOINT_PROBABILITY}" \

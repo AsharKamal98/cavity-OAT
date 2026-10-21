@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import importlib.util
 from pathlib import Path
-from types import ModuleType
 
 import numpy as np
 import pytest
@@ -23,27 +21,6 @@ class SqueezingPostAnalysisCase:
     input_dir: Path
     filename: str
     chunk_sizes: tuple[int, ...]
-
-
-@pytest.fixture(scope="session")
-def squeezing_post_analysis_module() -> ModuleType:
-    module_path = (
-        Path(__file__).resolve().parents[4]
-        / "slurm"
-        / "analyses"
-        / "squeezing_omega1-scan"
-        / "post_analysis.py"
-    )
-    spec = importlib.util.spec_from_file_location(
-        "squeezing_omega1_post_analysis",
-        module_path,
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load {module_path}.")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 @pytest.fixture(scope="session")

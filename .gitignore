@@ -17,6 +17,11 @@ slurm/output/*
 !slurm/output/.gitkeep
 slurm/logs/*
 slurm/analyses/*/output/
+
+# Local diagnostic runs, including saved data and reproduction scripts.
+/output/bright_dark_modes_mcwf/mfe_history_audit/
+/output/bright_dark_modes_mcwf/sector_cutoff_check/
+
 *.pdf
 */single_group_su3_squeezing.tex
 */multi_group_su3_squeezing.tex
